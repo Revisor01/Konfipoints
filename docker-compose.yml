@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:8623:5000"  # Nur localhost, Port 8623
+    environment:
+      - NODE_ENV=production
+      - JWT_SECRET=konfi-secret-super-secure-2025
+    volumes:
+      - konfi_data:/app/data
+    restart: unless-stopped
+    networks:
+      - konfi-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:8624:80"    # Frontend auf Port 8624
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - konfi-network
+    environment:
+      - REACT_APP_API_URL=/api  # Über Reverse Proxy
+
+volumes:
+  konfi_data:
+
+networks:
+  konfi-network:
+    driver: bridge
