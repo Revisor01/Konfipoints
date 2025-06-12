@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
   Users, Award, Calendar, Settings, LogIn, LogOut, Plus, Edit, Eye, Star, 
-  Loader, RefreshCw, Copy, Check, BookOpen, UserPlus, Trash2 
+  Loader, RefreshCw, Copy, Check, BookOpen, UserPlus, Trash2, Search, Gift 
 } from 'lucide-react';
 
 // API Configuration
@@ -36,6 +36,11 @@ const KonfiPointsSystem = () => {
   const [success, setSuccess] = useState('');
   const [copiedPassword, setCopiedPassword] = useState(null);
   
+  // NEUE Suchfelder
+  const [searchTerm, setSearchTerm] = useState('');
+  const [assignSearchTerm, setAssignSearchTerm] = useState('');
+  const [activitySearchTerm, setActivitySearchTerm] = useState('');
+  
   // Form states
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordType, setPasswordType] = useState('');
@@ -45,6 +50,13 @@ const KonfiPointsSystem = () => {
   const [newActivityPoints, setNewActivityPoints] = useState(1);
   const [newActivityType, setNewActivityType] = useState('gottesdienst');
   const [newJahrgangName, setNewJahrgangName] = useState('');
+
+  // NEUE States für Zusatzpunkte
+  const [showBonusModal, setShowBonusModal] = useState(false);
+  const [bonusKonfiId, setBonusKonfiId] = useState(null);
+  const [bonusPoints, setBonusPoints] = useState(1);
+  const [bonusType, setBonusType] = useState('gottesdienst');
+  const [bonusDescription, setBonusDescription] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('konfi_token');
@@ -217,6 +229,35 @@ const KonfiPointsSystem = () => {
     }
   };
 
+  // NEUE Funktion: Zusatzpunkte hinzufügen
+  const addBonusPoints = async () => {
+    if (!bonusDescription.trim() || !bonusPoints || !bonusKonfiId) {
+      setError('Alle Felder sind erforderlich');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await api.post(`/konfis/${bonusKonfiId}/bonus-points`, {
+        points: bonusPoints,
+        type: bonusType,
+        description: bonusDescription.trim()
+      });
+      
+      await loadData(); // Reload data to get updated points
+      setShowBonusModal(false);
+      setBonusDescription('');
+      setBonusPoints(1);
+      setBonusKonfiId(null);
+      setSuccess(`Zusatzpunkte erfolgreich vergeben!`);
+      setError('');
+    } catch (err) {
+      setError('Fehler beim Vergeben der Zusatzpunkte: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const regeneratePassword = async (konfiId) => {
     setLoading(true);
     try {
@@ -267,9 +308,27 @@ const KonfiPointsSystem = () => {
     }
   };
 
-  const filteredKonfis = selectedJahrgang === 'alle' 
-    ? konfis 
-    : konfis.filter(k => k.jahrgang === selectedJahrgang);
+  // ERWEITERTE Filter-Funktionen
+  const filteredKonfis = konfis.filter(konfi => {
+    const matchesJahrgang = selectedJahrgang === 'alle' || konfi.jahrgang === selectedJahrgang;
+    const matchesSearch = searchTerm === '' || 
+      konfi.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      konfi.username.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesJahrgang && matchesSearch;
+  });
+
+  const filteredAssignKonfis = konfis.filter(konfi => {
+    const matchesJahrgang = selectedJahrgang === 'alle' || konfi.jahrgang === selectedJahrgang;
+    const matchesSearch = assignSearchTerm === '' || 
+      konfi.name.toLowerCase().includes(assignSearchTerm.toLowerCase()) ||
+      konfi.username.toLowerCase().includes(assignSearchTerm.toLowerCase());
+    return matchesJahrgang && matchesSearch;
+  });
+
+  const filteredActivities = activities.filter(activity => 
+    activitySearchTerm === '' || 
+    activity.name.toLowerCase().includes(activitySearchTerm.toLowerCase())
+  );
 
   const getProgressColor = (current, target) => {
     const percentage = (current / parseInt(target)) * 100;
@@ -341,13 +400,86 @@ const KonfiPointsSystem = () => {
     );
   };
 
+  // NEUE Komponente: Zusatzpunkte-Modal
+  const BonusPointsModal = () => {
+    const konfi = konfis.find(k => k.id === bonusKonfiId);
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-96">
+          <h3 className="text-lg font-bold mb-4">
+            Zusatzpunkte vergeben für {konfi?.name}
+          </h3>
+          
+          <div className="mb-3">
+            <label className="block text-sm font-medium mb-1">Beschreibung</label>
+            <input
+              type="text"
+              value={bonusDescription}
+              onChange={(e) => setBonusDescription(e.target.value)}
+              className="w-full p-2 border rounded"
+              placeholder="z.B. Besondere Hilfe bei Gemeindefest"
+            />
+          </div>
+          
+          <div className="mb-3">
+            <label className="block text-sm font-medium mb-1">Punkte</label>
+            <input
+              type="number"
+              value={bonusPoints}
+              onChange={(e) => setBonusPoints(parseInt(e.target.value) || 1)}
+              min="1"
+              max="10"
+              className="w-full p-2 border rounded"
+            />
+          </div>
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Typ</label>
+            <select
+              value={bonusType}
+              onChange={(e) => setBonusType(e.target.value)}
+              className="w-full p-2 border rounded"
+            >
+              <option value="gottesdienst">Gottesdienstlich</option>
+              <option value="gemeinde">Gemeindlich</option>
+            </select>
+          </div>
+          
+          <div className="flex gap-2">
+            <button
+              onClick={addBonusPoints}
+              disabled={loading}
+              className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 disabled:opacity-50 flex items-center gap-2"
+            >
+              {loading && <Loader className="w-4 h-4 animate-spin" />}
+              <Gift className="w-4 h-4" />
+              Vergeben
+            </button>
+            <button
+              onClick={() => {
+                setShowBonusModal(false);
+                setBonusDescription('');
+                setBonusPoints(1);
+                setBonusKonfiId(null);
+              }}
+              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+            >
+              Abbrechen
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const LoginView = () => (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
       <div className="bg-white rounded-xl shadow-xl p-8 w-96">
         <div className="text-center mb-8">
           <Award className="w-16 h-16 text-blue-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-800">Konfi-Punkte-System</h1>
-          <p className="text-gray-600">Gemeinde Büsum & Wesselburen</p>
+          <p className="text-gray-600">Gemeinde Büsum, Neuenkirchen & Wesselburen</p>
         </div>
         
         <div className="space-y-4">
@@ -406,6 +538,8 @@ const KonfiPointsSystem = () => {
       );
     }
 
+    const allActivities = [...konfiData.activities, ...(konfiData.bonusPoints || [])];
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-6">
         <div className="max-w-4xl mx-auto">
@@ -414,6 +548,7 @@ const KonfiPointsSystem = () => {
               <div>
                 <h1 className="text-2xl font-bold text-gray-800">Hallo {konfiData.name}!</h1>
                 <p className="text-gray-600">Jahrgang: {konfiData.jahrgang}</p>
+                <p className="text-sm text-gray-500">Gemeinde Büsum, Neuenkirchen & Wesselburen</p>
               </div>
               <button
                 onClick={handleLogout}
@@ -466,15 +601,21 @@ const KonfiPointsSystem = () => {
 
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="font-bold text-gray-800 mb-3">Meine Aktivitäten</h3>
-              {konfiData.activities.length === 0 ? (
+              {allActivities.length === 0 ? (
                 <p className="text-gray-600">Noch keine Aktivitäten eingetragen.</p>
               ) : (
                 <div className="space-y-2">
-                  {konfiData.activities.map((activity, index) => (
+                  {allActivities.map((activity, index) => (
                     <div key={index} className="flex justify-between items-center p-2 bg-white rounded border">
                       <div>
-                        <span className="font-medium">{activity.name}</span>
+                        <span className="font-medium">{activity.name || activity.description}</span>
                         <span className="text-sm text-gray-600 ml-2">({activity.date})</span>
+                        {activity.description && (
+                          <span className="text-xs text-orange-600 ml-2 italic">
+                            <Gift className="w-3 h-3 inline mr-1" />
+                            Zusatzpunkte
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={`px-2 py-1 rounded text-xs font-bold ${
@@ -526,6 +667,7 @@ const KonfiPointsSystem = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
       {showPasswordModal && <PasswordModal />}
+      {showBonusModal && <BonusPointsModal />}
       
       {/* Notifications */}
       {error && (
@@ -550,7 +692,7 @@ const KonfiPointsSystem = () => {
               <Award className="w-8 h-8 text-blue-500" />
               <div>
                 <h1 className="text-2xl font-bold text-gray-800">Konfi-Punkte-System</h1>
-                <p className="text-sm text-gray-600">Gemeinde Büsum & Wesselburen</p>
+                <p className="text-sm text-gray-600">Gemeinde Büsum, Neuenkirchen & Wesselburen</p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -626,7 +768,20 @@ const KonfiPointsSystem = () => {
         {currentView === 'overview' && (
           <div className="space-y-6">
             <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Punkteübersicht</h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-gray-800">Punkteübersicht</h2>
+                {/* NEUES Suchfeld */}
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Nach Name oder Nachname suchen..."
+                    className="pl-10 pr-4 py-2 border rounded-lg w-64"
+                  />
+                </div>
+              </div>
               <div className="grid gap-4">
                 {filteredKonfis.map(konfi => (
                   <div 
@@ -797,11 +952,13 @@ const KonfiPointsSystem = () => {
                       <span className="text-sm text-gray-600">
                         G: {konfi.points.gottesdienst} | Gem: {konfi.points.gemeinde}
                       </span>
+                      {/* VERBESSERTER Passwort-Button */}
                       <button
                         onClick={() => regeneratePassword(konfi.id)}
-                        className="bg-orange-500 text-white px-2 py-1 rounded text-xs hover:bg-orange-600"
+                        className="bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600 flex items-center gap-1 text-sm"
                       >
                         <RefreshCw className="w-3 h-3" />
+                        Neues Passwort
                       </button>
                       <button
                         onClick={() => loadKonfiDetails(konfi.id)}
@@ -896,9 +1053,22 @@ const KonfiPointsSystem = () => {
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="font-bold text-gray-800 mb-3">Konfis</h3>
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="font-bold text-gray-800">Konfis</h3>
+                    {/* NEUES Suchfeld für Zuordnung */}
+                    <div className="relative">
+                      <Search className="w-3 h-3 absolute left-2 top-2 text-gray-400" />
+                      <input
+                        type="text"
+                        value={assignSearchTerm}
+                        onChange={(e) => setAssignSearchTerm(e.target.value)}
+                        placeholder="Suchen..."
+                        className="pl-7 pr-2 py-1 border rounded text-sm w-32"
+                      />
+                    </div>
+                  </div>
                   <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {filteredKonfis.map(konfi => (
+                    {filteredAssignKonfis.map(konfi => (
                       <div 
                         key={konfi.id}
                         className={`p-3 border rounded-lg cursor-pointer hover:bg-blue-50 ${
@@ -917,30 +1087,77 @@ const KonfiPointsSystem = () => {
                 </div>
 
                 <div>
-                  <h3 className="font-bold text-gray-800 mb-3">Aktivitäten zuordnen</h3>
+                  <h3 className="font-bold text-gray-800 mb-3">Aktivitäten & Zusatzpunkte zuordnen</h3>
                   {selectedKonfi ? (
                     <div>
-                      <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                      <div className="mb-4 p-3 bg-blue-50 rounded-lg flex justify-between items-center">
                         <strong>Ausgewählt: {selectedKonfi.name}</strong>
+                        {/* NEUER Button für Zusatzpunkte */}
+                        <button
+                          onClick={() => {
+                            setBonusKonfiId(selectedKonfi.id);
+                            setShowBonusModal(true);
+                          }}
+                          className="bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600 flex items-center gap-1 text-sm"
+                        >
+                          <Gift className="w-3 h-3" />
+                          Zusatzpunkte
+                        </button>
                       </div>
-                      <div className="space-y-2 max-h-96 overflow-y-auto">
-                        {activities.map(activity => (
-                          <div key={activity.id} className="flex justify-between items-center p-3 border rounded-lg">
-                            <div>
-                              <div className="font-medium">{activity.name}</div>
-                              <div className="text-sm text-gray-600">
-                                {activity.points} Punkte ({activity.type === 'gottesdienst' ? 'Gottesdienst' : 'Gemeinde'})
+
+                      {/* Suchfeld für Aktivitäten */}
+                      <div className="mb-3">
+                        <div className="relative">
+                          <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
+                          <input
+                            type="text"
+                            value={activitySearchTerm}
+                            onChange={(e) => setActivitySearchTerm(e.target.value)}
+                            placeholder="Aktivitäten durchsuchen..."
+                            className="w-full pl-10 pr-4 py-2 border rounded-lg"
+                          />
+                        </div>
+                      </div>
+
+                      {/* VERBESSERTE Aktivitäten-Darstellung */}
+                      <div className="space-y-3 max-h-96 overflow-y-auto">
+                        <div>
+                          <h4 className="font-bold text-blue-700 mb-2">Gottesdienstliche Aktivitäten</h4>
+                          {filteredActivities.filter(a => a.type === 'gottesdienst').map(activity => (
+                            <div key={activity.id} className="flex justify-between items-center p-3 bg-blue-50 rounded-lg mb-2 border border-blue-200">
+                              <div>
+                                <div className="font-medium text-blue-800">{activity.name}</div>
+                                <div className="text-sm text-blue-600">{activity.points} Punkte</div>
                               </div>
+                              <button
+                                onClick={() => assignActivityToKonfi(selectedKonfi.id, activity.id)}
+                                disabled={loading}
+                                className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 disabled:opacity-50 text-sm"
+                              >
+                                Zuordnen
+                              </button>
                             </div>
-                            <button
-                              onClick={() => assignActivityToKonfi(selectedKonfi.id, activity.id)}
-                              disabled={loading}
-                              className="bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600 disabled:opacity-50"
-                            >
-                              Zuordnen
-                            </button>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
+
+                        <div>
+                          <h4 className="font-bold text-green-700 mb-2">Gemeindliche Aktivitäten</h4>
+                          {filteredActivities.filter(a => a.type === 'gemeinde').map(activity => (
+                            <div key={activity.id} className="flex justify-between items-center p-3 bg-green-50 rounded-lg mb-2 border border-green-200">
+                              <div>
+                                <div className="font-medium text-green-800">{activity.name}</div>
+                                <div className="text-sm text-green-600">{activity.points} Punkte</div>
+                              </div>
+                              <button
+                                onClick={() => assignActivityToKonfi(selectedKonfi.id, activity.id)}
+                                disabled={loading}
+                                className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 disabled:opacity-50 text-sm"
+                              >
+                                Zuordnen
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   ) : (
@@ -1004,7 +1221,9 @@ const KonfiPointsSystem = () => {
                 <p className="text-xs text-gray-500 mb-2">Benutzername: admin</p>
                 <p className="text-xs text-gray-500 mb-4">Passwort: pastor2025</p>
                 <p className="text-sm text-gray-600 mb-2"><strong>Konfi-Passwörter:</strong></p>
-                <p className="text-xs text-gray-500">Werden automatisch als biblische Referenzen generiert (z.B. "Roemer11,1")</p>
+                <p className="text-xs text-gray-500 mb-4">Werden automatisch als biblische Referenzen generiert (z.B. "Roemer11,1")</p>
+                <p className="text-sm text-gray-600 mb-2"><strong>Zusatzpunkte:</strong></p>
+                <p className="text-xs text-gray-500">Können mit freiem Text für besondere Leistungen vergeben werden</p>
               </div>
             </div>
           </div>
@@ -1058,13 +1277,14 @@ const KonfiPointsSystem = () => {
               </div>
 
               <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="font-bold text-gray-800 mb-3">Absolvierte Aktivitäten</h3>
-                {selectedKonfi.activities.length === 0 ? (
+                <h3 className="font-bold text-gray-800 mb-3">Absolvierte Aktivitäten & Zusatzpunkte</h3>
+                {(selectedKonfi.activities.length === 0 && (!selectedKonfi.bonusPoints || selectedKonfi.bonusPoints.length === 0)) ? (
                   <p className="text-gray-600">Noch keine Aktivitäten absolviert.</p>
                 ) : (
                   <div className="space-y-2">
+                    {/* Normale Aktivitäten */}
                     {selectedKonfi.activities.map((activity, index) => (
-                      <div key={index} className="flex justify-between items-center p-3 bg-white rounded border">
+                      <div key={`activity-${index}`} className="flex justify-between items-center p-3 bg-white rounded border">
                         <div>
                           <span className="font-medium">{activity.name}</span>
                           <span className="text-sm text-gray-600 ml-2">({activity.date})</span>
@@ -1076,6 +1296,27 @@ const KonfiPointsSystem = () => {
                             {activity.type === 'gottesdienst' ? 'Gottesdienst' : 'Gemeinde'}
                           </span>
                           <span className="font-bold text-orange-600">+{activity.points} Punkte</span>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {/* Zusatzpunkte */}
+                    {selectedKonfi.bonusPoints && selectedKonfi.bonusPoints.map((bonus, index) => (
+                      <div key={`bonus-${index}`} className="flex justify-between items-center p-3 bg-orange-50 rounded border border-orange-200">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <Gift className="w-4 h-4 text-orange-600" />
+                            <span className="font-medium">{bonus.description}</span>
+                          </div>
+                          <span className="text-sm text-gray-600 ml-6">({bonus.date})</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-1 rounded text-xs font-bold ${
+                            bonus.type === 'gottesdienst' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                          }`}>
+                            {bonus.type === 'gottesdienst' ? 'Gottesdienst' : 'Gemeinde'}
+                          </span>
+                          <span className="font-bold text-orange-600">+{bonus.points} Punkte</span>
                         </div>
                       </div>
                     ))}

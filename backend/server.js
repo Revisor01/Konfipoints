@@ -92,6 +92,18 @@ db.serialize(() => {
     FOREIGN KEY (activity_id) REFERENCES activities (id)
   )`);
 
+  // NEUE TABELLE: Zusatzpunkte mit freiem Text
+  db.run(`CREATE TABLE IF NOT EXISTS bonus_points (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    konfi_id INTEGER,
+    points INTEGER NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('gottesdienst', 'gemeinde')),
+    description TEXT NOT NULL,
+    completed_date DATE DEFAULT CURRENT_DATE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (konfi_id) REFERENCES konfis (id)
+  )`);
+
   // Settings table
   db.run(`CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
@@ -295,7 +307,7 @@ app.post('/api/jahrgaenge', verifyToken, (req, res) => {
   });
 });
 
-// Get all konfis (admin only)
+// Get all konfis (admin only) - ERWEITERT für Zusatzpunkte
 app.get('/api/konfis', verifyToken, (req, res) => {
   if (req.user.type !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
@@ -303,12 +315,15 @@ app.get('/api/konfis', verifyToken, (req, res) => {
 
   const query = `
     SELECT k.*, j.name as jahrgang_name,
-           COUNT(ka.id) as total_activities,
-           GROUP_CONCAT(DISTINCT a.name || '|' || ka.completed_date || '|' || a.points || '|' || a.type) as activities_list
+           COUNT(DISTINCT ka.id) as total_activities,
+           COUNT(DISTINCT bp.id) as total_bonus,
+           GROUP_CONCAT(DISTINCT a.name || '|' || ka.completed_date || '|' || a.points || '|' || a.type) as activities_list,
+           GROUP_CONCAT(DISTINCT bp.description || '|' || bp.completed_date || '|' || bp.points || '|' || bp.type, '###') as bonus_list
     FROM konfis k
     JOIN jahrgaenge j ON k.jahrgang_id = j.id
     LEFT JOIN konfi_activities ka ON k.id = ka.konfi_id
     LEFT JOIN activities a ON ka.activity_id = a.id
+    LEFT JOIN bonus_points bp ON k.id = bp.konfi_id
     GROUP BY k.id
     ORDER BY j.name DESC, k.name
   `;
@@ -333,6 +348,11 @@ app.get('/api/konfis', verifyToken, (req, res) => {
         row.activities_list.split(',').map(item => {
           const [name, date, points, type] = item.split('|');
           return { name, date, points: parseInt(points), type };
+        }) : [],
+      bonusPoints: row.bonus_list && row.bonus_list !== '' ?
+        row.bonus_list.split('###').map(item => {
+          const [description, date, points, type] = item.split('|');
+          return { description, date, points: parseInt(points), type };
         }) : []
     }));
     
@@ -340,7 +360,7 @@ app.get('/api/konfis', verifyToken, (req, res) => {
   });
 });
 
-// Get single konfi (admin or konfi themselves)
+// Get single konfi (admin or konfi themselves) - ERWEITERT für Zusatzpunkte
 app.get('/api/konfis/:id', verifyToken, (req, res) => {
   const konfiId = req.params.id;
   
@@ -350,11 +370,13 @@ app.get('/api/konfis/:id', verifyToken, (req, res) => {
 
   const query = `
     SELECT k.*, j.name as jahrgang_name,
-           GROUP_CONCAT(a.name || '|' || a.points || '|' || a.type || '|' || ka.completed_date) as activities_list
+           GROUP_CONCAT(DISTINCT a.name || '|' || a.points || '|' || a.type || '|' || ka.completed_date) as activities_list,
+           GROUP_CONCAT(DISTINCT bp.description || '|' || bp.points || '|' || bp.type || '|' || bp.completed_date, '###') as bonus_list
     FROM konfis k
     JOIN jahrgaenge j ON k.jahrgang_id = j.id
     LEFT JOIN konfi_activities ka ON k.id = ka.konfi_id
     LEFT JOIN activities a ON ka.activity_id = a.id
+    LEFT JOIN bonus_points bp ON k.id = bp.konfi_id
     WHERE k.id = ?
     GROUP BY k.id
   `;
@@ -383,6 +405,11 @@ app.get('/api/konfis/:id', verifyToken, (req, res) => {
         row.activities_list.split(',').map(item => {
           const [name, points, type, date] = item.split('|');
           return { name, points: parseInt(points), type, date };
+        }) : [],
+      bonusPoints: row.bonus_list && row.bonus_list !== '' ?
+        row.bonus_list.split('###').map(item => {
+          const [description, points, type, date] = item.split('|');
+          return { description, points: parseInt(points), type, date };
         }) : []
     };
     
@@ -427,7 +454,8 @@ app.post('/api/konfis', verifyToken, (req, res) => {
                jahrgang: jahrgangRow ? jahrgangRow.name : '',
                jahrgang_id,
                points: { gottesdienst: 0, gemeinde: 0 },
-               activities: []
+               activities: [],
+               bonusPoints: []
              });
            });
          });
@@ -527,6 +555,53 @@ app.post('/api/konfis/:id/activities', verifyToken, (req, res) => {
                     });
            });
   });
+});
+
+// NEUE ROUTE: Zusatzpunkte hinzufügen
+app.post('/api/konfis/:id/bonus-points', verifyToken, (req, res) => {
+  if (req.user.type !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  const konfiId = req.params.id;
+  const { points, type, description } = req.body;
+  
+  if (!points || !type || !description) {
+    return res.status(400).json({ error: 'Points, type and description are required' });
+  }
+
+  if (!['gottesdienst', 'gemeinde'].includes(type)) {
+    return res.status(400).json({ error: 'Type must be gottesdienst or gemeinde' });
+  }
+
+  // Add bonus points
+  db.run("INSERT INTO bonus_points (konfi_id, points, type, description) VALUES (?, ?, ?, ?)",
+         [konfiId, points, type, description],
+         function(err) {
+           if (err) {
+             return res.status(500).json({ error: 'Database error' });
+           }
+
+           // Update konfi points
+           const pointField = type === 'gottesdienst' ? 'gottesdienst_points' : 'gemeinde_points';
+           db.run(`UPDATE konfis SET ${pointField} = ${pointField} + ? WHERE id = ?`,
+                  [points, konfiId],
+                  (err) => {
+                    if (err) {
+                      return res.status(500).json({ error: 'Database error updating points' });
+                    }
+                    
+                    res.json({ 
+                      message: 'Bonus points assigned successfully',
+                      bonusPoint: {
+                        description,
+                        points,
+                        type,
+                        date: new Date().toLocaleDateString('de-DE')
+                      }
+                    });
+                  });
+         });
 });
 
 // Get settings
