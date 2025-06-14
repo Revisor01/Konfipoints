@@ -2,7 +2,7 @@
 
 Ein modernes, webbasiertes Verwaltungssystem für Konfirmanden-Punkte in der evangelischen Kirche. Konfirmanden sammeln Punkte durch gottesdienstliche und gemeindliche Aktivitäten. 
 
-![Konfi-Punkte-System](https://img.shields.io/badge/Version-1.2.0-blue.svg)
+![Konfi-Punkte-System](https://img.shields.io/badge/Version-1.2.1-blue.svg)
 ![Docker](https://img.shields.io/badge/Docker-Ready-brightgreen.svg)
 ![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)
 
