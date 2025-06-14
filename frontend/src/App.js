@@ -1978,23 +1978,23 @@ const KonfiPointsSystem = () => {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div>
                       <h4 className="font-medium text-blue-700 mb-2">Gottesdienstliche Aktivitäten</h4>
-                      <div className="space-y-1">
-                        {activities.filter(a => a.type === 'gottesdienst').slice(0, 5).map(activity => (
-                          <button
-                            key={activity.id}
-                            onClick={() => assignActivityToKonfi(selectedKonfi.id, activity.id)}
-                            disabled={loading}
-                            className="w-full text-left p-2 bg-blue-50 hover:bg-blue-100 rounded border text-sm disabled:opacity-50"
-                          >
-                            {activity.name} ({activity.points} Punkte)
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-green-700 mb-2">Gemeindliche Aktivitäten</h4>
-                      <div className="space-y-1">
-                        {activities.filter(a => a.type === 'gemeinde').slice(0, 5).map(activity => (
+            <div className="space-y-1">
+            {activities.filter(a => a.type === 'gottesdienst').map(activity => (
+              <button
+              key={activity.id}
+              onClick={() => assignActivityToKonfi(selectedKonfi.id, activity.id)}
+              disabled={loading}
+              className="w-full text-left p-2 bg-blue-50 hover:bg-blue-100 rounded border text-sm disabled:opacity-50"
+              >
+              {activity.name} ({activity.points} Punkte)
+              </button>
+            ))}
+            </div>
+            </div>
+            <div>
+            <h4 className="font-medium text-green-700 mb-2">Gemeindliche Aktivitäten</h4>
+            <div className="space-y-1">
+            {activities.filter(a => a.type === 'gemeinde').map(activity => (
                           <button
                             key={activity.id}
                             onClick={() => assignActivityToKonfi(selectedKonfi.id, activity.id)}
