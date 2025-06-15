@@ -301,47 +301,78 @@ db.serialize(() => {
 });
 
 // Badge checking functions
+// Badge checking functions - DEBUG VERSION
 const checkCustomBadge = (konfi, badge) => {
-  const { criteria_type, criteria_value, criteria_extra } = badge;
-  const extra = criteria_extra ? JSON.parse(criteria_extra) : {};
-  
-  switch (criteria_type) {
-    case 'total_points':
-      return (konfi.points.gottesdienst + konfi.points.gemeinde) >= criteria_value;
-      
-    case 'gottesdienst_points':
-      return konfi.points.gottesdienst >= criteria_value;
-      
-    case 'gemeinde_points':
-      return konfi.points.gemeinde >= criteria_value;
-      
-    case 'activity_count':
-      return konfi.activities.length >= criteria_value;
-      
-    case 'unique_activities':
-      const uniqueCount = new Set(konfi.activities.map(a => a.name)).size;
-      return uniqueCount >= criteria_value;
-      
-    case 'specific_activity':
-      const activityCount = konfi.activities.filter(a => 
-        a.name === extra.activity_name
-      ).length;
-      return activityCount >= criteria_value;
-      
-    case 'both_categories':
-      return konfi.points.gottesdienst >= criteria_value && 
-             konfi.points.gemeinde >= criteria_value;
-             
-    case 'month_points':
-      const monthlyPoints = groupPointsByMonth(konfi.activities);
-      return monthlyPoints.length > 0 && Math.max(...monthlyPoints) >= criteria_value;
-      
-    case 'week_points':
-      const weeklyPoints = groupPointsByWeek(konfi.activities);
-      return weeklyPoints.length > 0 && Math.max(...weeklyPoints) >= criteria_value;
-      
-    default:
+  try {
+    console.log('DEBUG: checkCustomBadge called with:', { konfi: konfi?.id, badge: badge?.id });
+    
+    if (!konfi || !badge) {
+      console.log('DEBUG: Missing konfi or badge');
       return false;
+    }
+    
+    const { criteria_type, criteria_value } = badge;
+    
+    if (!criteria_type || !criteria_value) {
+      console.log('DEBUG: Missing criteria_type or criteria_value');
+      return false;
+    }
+    
+    console.log('DEBUG: Checking criteria:', criteria_type, criteria_value);
+    
+    switch (criteria_type) {
+      case 'total_points':
+        const total = (konfi.points?.gottesdienst || 0) + (konfi.points?.gemeinde || 0);
+        console.log('DEBUG: total_points check:', total, '>=', criteria_value);
+        return total >= criteria_value;
+      
+      case 'gottesdienst_points':
+        const gottesdienst = konfi.points?.gottesdienst || 0;
+        console.log('DEBUG: gottesdienst_points check:', gottesdienst, '>=', criteria_value);
+        return gottesdienst >= criteria_value;
+      
+      case 'gemeinde_points':
+        const gemeinde = konfi.points?.gemeinde || 0;
+        console.log('DEBUG: gemeinde_points check:', gemeinde, '>=', criteria_value);
+        return gemeinde >= criteria_value;
+      
+      case 'activity_count':
+        const activityCount = konfi.activities?.length || 0;
+        console.log('DEBUG: activity_count check:', activityCount, '>=', criteria_value);
+        return activityCount >= criteria_value;
+      
+      case 'unique_activities':
+        if (!konfi.activities || !Array.isArray(konfi.activities)) {
+          console.log('DEBUG: No activities array');
+          return false;
+        }
+        const uniqueCount = new Set(konfi.activities.map(a => a.name)).size;
+        console.log('DEBUG: unique_activities check:', uniqueCount, '>=', criteria_value);
+        return uniqueCount >= criteria_value;
+      
+      case 'both_categories':
+        const gottesdienstPoints = konfi.points?.gottesdienst || 0;
+        const gemeindePoints = konfi.points?.gemeinde || 0;
+        console.log('DEBUG: both_categories check:', gottesdienstPoints, '>=', criteria_value, '&&', gemeindePoints, '>=', criteria_value);
+        return gottesdienstPoints >= criteria_value && gemeindePoints >= criteria_value;
+      
+      default:
+        console.log('DEBUG: Unknown criteria_type:', criteria_type);
+        return false;
+    }
+  } catch (error) {
+    console.error('ERROR in checkCustomBadge:', error);
+    return false;
+  }
+};
+
+const checkAllBadges = async (konfiId) => {
+  try {
+    console.log('DEBUG: checkAllBadges called for konfi:', konfiId);
+    return Promise.resolve([]);
+  } catch (error) {
+    console.error('ERROR in checkAllBadges:', error);
+    return Promise.resolve([]);
   }
 };
 
