@@ -12,6 +12,7 @@ services:
       - JWT_SECRET=konfi-secret-super-secure-2025
     volumes:
       - konfi_data:/app/data
+      - konfi_uploads:/app/uploads 
     restart: unless-stopped
     networks:
       - konfi-network
@@ -32,6 +33,7 @@ services:
 
 volumes:
   konfi_data:
+  konfi_uploads:
 
 networks:
   konfi-network:
