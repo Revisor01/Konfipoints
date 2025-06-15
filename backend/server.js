@@ -140,14 +140,14 @@ db.serialize(() => {
     password_hash TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
-
+  
   db.run(`CREATE TABLE IF NOT EXISTS jahrgaenge (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT UNIQUE NOT NULL,
     confirmation_date DATE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
-
+  
   db.run(`CREATE TABLE IF NOT EXISTS konfis (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -160,7 +160,7 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (jahrgang_id) REFERENCES jahrgaenge (id)
   )`);
-
+  
   db.run(`CREATE TABLE IF NOT EXISTS activities (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -170,7 +170,7 @@ db.serialize(() => {
     is_special BOOLEAN DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
-
+  
   db.run(`CREATE TABLE IF NOT EXISTS konfi_activities (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     konfi_id INTEGER,
@@ -182,7 +182,7 @@ db.serialize(() => {
     FOREIGN KEY (activity_id) REFERENCES activities (id),
     FOREIGN KEY (admin_id) REFERENCES admins (id)
   )`);
-
+  
   db.run(`CREATE TABLE IF NOT EXISTS bonus_points (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     konfi_id INTEGER,
@@ -195,8 +195,13 @@ db.serialize(() => {
     FOREIGN KEY (konfi_id) REFERENCES konfis (id),
     FOREIGN KEY (admin_id) REFERENCES admins (id)
   )`);
-
-  // NEW: Custom Badges System
+  
+  db.run(`CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  )`);
+  
+  // BADGE TABELLEN IMMER ERSTELLEN (raus aus if (!dbExists))
   db.run(`CREATE TABLE IF NOT EXISTS custom_badges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -210,7 +215,7 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (created_by) REFERENCES admins (id)
   )`);
-
+  
   db.run(`CREATE TABLE IF NOT EXISTS konfi_badges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     konfi_id INTEGER,
@@ -219,8 +224,7 @@ db.serialize(() => {
     FOREIGN KEY (konfi_id) REFERENCES konfis (id),
     FOREIGN KEY (badge_id) REFERENCES custom_badges (id)
   )`);
-
-  // NEW: Activity Requests System
+  
   db.run(`CREATE TABLE IF NOT EXISTS activity_requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     konfi_id INTEGER,
@@ -237,30 +241,25 @@ db.serialize(() => {
     FOREIGN KEY (activity_id) REFERENCES activities (id),
     FOREIGN KEY (approved_by) REFERENCES admins (id)
   )`);
-
-  db.run(`CREATE TABLE IF NOT EXISTS settings (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-  )`);
-
+  
   console.log('✅ Database schema ensured');
-
+  
   // Default data only for new database
   if (!dbExists) {
     console.log('📝 Inserting default data...');
     
     const adminPassword = bcrypt.hashSync('pastor2025', 10);
     db.run("INSERT INTO admins (username, display_name, password_hash) VALUES (?, ?, ?)", 
-           ['admin', 'Pastor Administrator', adminPassword]);
-
+      ['admin', 'Pastor Administrator', adminPassword]);
+    
     db.run("INSERT INTO settings (key, value) VALUES (?, ?)", ['target_gottesdienst', '10']);
     db.run("INSERT INTO settings (key, value) VALUES (?, ?)", ['target_gemeinde', '10']);
-
+    
     const defaultJahrgaenge = ['2024/25', '2025/26', '2026/27'];
     defaultJahrgaenge.forEach(jahrgang => {
       db.run("INSERT INTO jahrgaenge (name) VALUES (?)", [jahrgang]);
     });
-
+    
     const defaultActivities = [
       ['Sonntagsgottesdienst', 2, 'gottesdienst', 'sonntagsgottesdienst'],
       ['Kindergottesdienst helfen', 3, 'gemeinde', 'kindergottesdienst'],
@@ -277,28 +276,39 @@ db.serialize(() => {
     defaultActivities.forEach(([name, points, type, category]) => {
       db.run("INSERT INTO activities (name, points, type, category) VALUES (?, ?, ?, ?)", [name, points, type, category]);
     });
-
-    // Default badges
-    const defaultBadges = [
-      ['Starter', '🥉', 'Erste 5 Punkte gesammelt', 'total_points', 5, null, 1],
-      ['Sammler', '🥈', 'Erste 10 Punkte gesammelt', 'total_points', 10, null, 1],
-      ['Zielerreichung', '🥇', 'Erste 20 Punkte erreicht', 'total_points', 20, null, 1],
-      ['Überflieger', '⭐', '25 Punkte gesammelt', 'total_points', 25, null, 1],
-      ['Gottesdienstgänger', '📖', '10 gottesdienstliche Punkte', 'gottesdienst_points', 10, null, 1],
-      ['Gemeindeheld', '🤝', '10 gemeindliche Punkte', 'gemeinde_points', 10, null, 1],
-      ['Ausgewogen', '⚖️', 'Beide Kategorien >= 10 Punkte', 'both_categories', 10, null, 1],
-      ['Vielseitig', '🔄', '5 verschiedene Aktivitäten', 'unique_activities', 5, null, 1],
-      ['Champion', '💎', '40+ Punkte gesammelt', 'total_points', 40, null, 1]
-    ];
-
-    defaultBadges.forEach(([name, icon, description, criteria_type, criteria_value, criteria_extra, is_active]) => {
-      db.run("INSERT INTO custom_badges (name, icon, description, criteria_type, criteria_value, criteria_extra, is_active, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", 
-             [name, icon, description, criteria_type, criteria_value, criteria_extra, is_active, 1]);
-    });
-
+    
     console.log('✅ Default data created');
   }
+  
+  // DEFAULT BADGES IMMER ERSTELLEN (nach Schema-Update)
+  setTimeout(() => {
+    db.get("SELECT COUNT(*) as count FROM custom_badges", [], (err, row) => {
+      if (!err && row.count === 0) {
+        console.log('📝 Inserting default badges...');
+        
+        const defaultBadges = [
+          ['Starter', '🥉', 'Erste 5 Punkte gesammelt', 'total_points', 5, null, 1],
+          ['Sammler', '🥈', 'Erste 10 Punkte gesammelt', 'total_points', 10, null, 1],
+          ['Zielerreichung', '🥇', 'Erste 20 Punkte erreicht', 'total_points', 20, null, 1],
+          ['Überflieger', '⭐', '25 Punkte gesammelt', 'total_points', 25, null, 1],
+          ['Gottesdienstgänger', '📖', '10 gottesdienstliche Punkte', 'gottesdienst_points', 10, null, 1],
+          ['Gemeindeheld', '🤝', '10 gemeindliche Punkte', 'gemeinde_points', 10, null, 1],
+          ['Ausgewogen', '⚖️', 'Beide Kategorien >= 10 Punkte', 'both_categories', 10, null, 1],
+          ['Vielseitig', '🔄', '5 verschiedene Aktivitäten', 'unique_activities', 5, null, 1],
+          ['Champion', '💎', '40+ Punkte gesammelt', 'total_points', 40, null, 1]
+        ];
+        
+        defaultBadges.forEach(([name, icon, description, criteria_type, criteria_value, criteria_extra, is_active]) => {
+          db.run("INSERT INTO custom_badges (name, icon, description, criteria_type, criteria_value, criteria_extra, is_active, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", 
+            [name, icon, description, criteria_type, criteria_value, criteria_extra, is_active, 1]);
+        });
+        
+        console.log('✅ Default badges created');
+      }
+    });
+  }, 1000);
 });
+
 
 // Badge checking functions
 // Badge checking functions - DEBUG VERSION
@@ -393,79 +403,6 @@ const groupPointsByWeek = (activities) => {
     weeks[week] = (weeks[week] || 0) + activity.points;
   });
   return Object.values(weeks);
-};
-
-const checkAllBadges = async (konfiId) => {
-  return new Promise((resolve, reject) => {
-    // Get konfi with activities
-    const konfiQuery = `
-      SELECT k.*, j.name as jahrgang_name
-      FROM konfis k
-      JOIN jahrgaenge j ON k.jahrgang_id = j.id
-      WHERE k.id = ?
-    `;
-    
-    db.get(konfiQuery, [konfiId], (err, konfiRow) => {
-      if (err) return reject(err);
-      if (!konfiRow) return resolve([]);
-      
-      // Get activities
-      const activitiesQuery = `
-        SELECT a.name, a.points, a.type, ka.completed_date as date
-        FROM konfi_activities ka
-        JOIN activities a ON ka.activity_id = a.id
-        WHERE ka.konfi_id = ?
-      `;
-      
-      db.all(activitiesQuery, [konfiId], (err, activities) => {
-        if (err) return reject(err);
-        
-        // Get bonus points
-        const bonusQuery = `
-          SELECT description as name, points, type, completed_date as date
-          FROM bonus_points
-          WHERE konfi_id = ?
-        `;
-        
-        db.all(bonusQuery, [konfiId], (err, bonusPoints) => {
-          if (err) return reject(err);
-          
-          const allActivities = [...activities, ...bonusPoints];
-          const konfi = {
-            ...konfiRow,
-            points: {
-              gottesdienst: konfiRow.gottesdienst_points,
-              gemeinde: konfiRow.gemeinde_points
-            },
-            activities: allActivities
-          };
-          
-          // Get all badges
-          db.all("SELECT * FROM custom_badges WHERE is_active = 1", [], (err, badges) => {
-            if (err) return reject(err);
-            
-            // Get already earned badges
-            db.all("SELECT badge_id FROM konfi_badges WHERE konfi_id = ?", [konfiId], (err, earnedBadgeRows) => {
-              if (err) return reject(err);
-              
-              const earnedBadgeIds = earnedBadgeRows.map(row => row.badge_id);
-              const newBadges = [];
-              
-              badges.forEach(badge => {
-                if (!earnedBadgeIds.includes(badge.id) && checkCustomBadge(konfi, badge)) {
-                  // Award badge
-                  db.run("INSERT INTO konfi_badges (konfi_id, badge_id) VALUES (?, ?)", [konfiId, badge.id]);
-                  newBadges.push(badge);
-                }
-              });
-              
-              resolve(newBadges);
-            });
-          });
-        });
-      });
-    });
-  });
 };
 
 // Middleware to verify JWT
