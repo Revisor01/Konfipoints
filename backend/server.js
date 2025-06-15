@@ -22,7 +22,23 @@ app.use(cors({
   ],
   credentials: true
 }));
-app.use(express.json());
+app.use(express.json({ 
+  limit: '10mb',
+  strict: true,
+  type: 'application/json'
+}));
+app.use(express.urlencoded({ 
+  extended: true, 
+  limit: '10mb' 
+}));
+
+// Add error handling for JSON parsing
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return res.status(400).json({ error: 'Invalid JSON format' });
+  }
+  next(err);
+});
 
 // Uploads directory
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -34,26 +50,48 @@ if (!fs.existsSync(uploadsDir)) {
 app.use('/uploads', express.static(uploadsDir));
 
 // Multer configuration for file uploads
+// SAFER Multer configuration for Docker
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadsDir);
+    try {
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      cb(null, uploadsDir);
+    } catch (error) {
+      console.error('Upload directory error:', error);
+      cb(error);
+    }
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'request-' + uniqueSuffix + path.extname(file.originalname));
+    try {
+      const safeName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, 'request-' + uniqueSuffix + '-' + safeName);
+    } catch (error) {
+      console.error('Filename generation error:', error);
+      cb(error);
+    }
   }
 });
 
 const upload = multer({ 
   storage: storage,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+    files: 1,
+    fields: 10
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed!'), false);
+    try {
+      if (file.mimetype && file.mimetype.startsWith('image/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only image files are allowed!'), false);
+      }
+    } catch (error) {
+      console.error('File filter error:', error);
+      cb(error, false);
     }
   }
 });
@@ -128,7 +166,18 @@ if (!dbExists) {
   console.log('📊 Using existing database...');
 }
 
-const db = new sqlite3.Database(dbPath);
+const db = new sqlite3.Database(dbPath, (err) => {
+  if (err) {
+    console.error('Database connection error:', err);
+    process.exit(1);
+  }
+  console.log('✅ Database connected successfully');
+});
+
+// Add connection error handling
+db.on('error', (err) => {
+  console.error('Database error:', err);
+});
 
 // Initialize Database with correct schema
 db.serialize(() => {
@@ -248,7 +297,13 @@ db.serialize(() => {
   if (!dbExists) {
     console.log('📝 Inserting default data...');
     
-    const adminPassword = bcrypt.hashSync('pastor2025', 10);
+    let adminPassword;
+    try {
+      adminPassword = bcrypt.hashSync('pastor2025', 10);
+    } catch (bcryptError) {
+      console.error('Bcrypt hash error:', bcryptError);
+      adminPassword = 'fallback-hash'; // This will never match, but prevents crash
+    }
     db.run("INSERT INTO admins (username, display_name, password_hash) VALUES (?, ?, ?)", 
       ['admin', 'Pastor Administrator', adminPassword]);
     
@@ -399,7 +454,15 @@ app.post('/api/admin/login', (req, res) => {
       return res.status(500).json({ error: 'Database error' });
     }
     
-    if (!admin || !bcrypt.compareSync(password, admin.password_hash)) {
+    let passwordValid = false;
+    try {
+      passwordValid = admin && bcrypt.compareSync(password, admin.password_hash);
+    } catch (bcryptError) {
+      console.error('Bcrypt error:', bcryptError);
+      passwordValid = false;
+    }
+    
+    if (!passwordValid) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
@@ -1690,11 +1753,28 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+// Start server with error handling
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Konfi Points API running on port ${PORT}`);
   console.log(`📊 Database: ${dbPath}`);
   console.log(`🔐 Admin login: username=admin, password=pastor2025`);
   console.log(`📁 Uploads directory: ${uploadsDir}`);
+});
+
+server.on('error', (err) => {
+  console.error('Server error:', err);
+  process.exit(1);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
 });
 
 // Graceful shutdown
