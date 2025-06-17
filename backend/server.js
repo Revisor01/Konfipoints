@@ -1607,34 +1607,39 @@ app.post('/api/activities', verifyToken, (req, res) => {
 });
 
 // Update activity
+// Update activity
 app.put('/api/activities/:id', verifyToken, (req, res) => {
   if (req.user.type !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
   }
-
+  
   const activityId = req.params.id;
   const { name, points, type, category } = req.body;
   
   if (!name || !points || !type) {
     return res.status(400).json({ error: 'Name, points and type are required' });
   }
-
+  
   if (!['gottesdienst', 'gemeinde'].includes(type)) {
     return res.status(400).json({ error: 'Type must be gottesdienst or gemeinde' });
   }
-
+  
+  // Handle category - can be empty string or null
+  const categoryValue = category && category.trim() ? category.trim() : null;
+  
   db.run("UPDATE activities SET name = ?, points = ?, type = ?, category = ? WHERE id = ?", 
-         [name, points, type, category, activityId], function(err) {
-    if (err) {
-      return res.status(500).json({ error: 'Database error' });
-    }
-    
-    if (this.changes === 0) {
-      return res.status(404).json({ error: 'Activity not found' });
-    }
-    
-    res.json({ message: 'Activity updated successfully' });
-  });
+    [name, points, type, categoryValue, activityId], function(err) {
+      if (err) {
+        console.error('Database error updating activity:', err);
+        return res.status(500).json({ error: 'Database error: ' + err.message });
+      }
+      
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Activity not found' });
+      }
+      
+      res.json({ message: 'Activity updated successfully' });
+    });
 });
 
 // Delete activity

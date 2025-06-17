@@ -131,7 +131,7 @@ const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = fal
   );
 };
 
-// Image Popup Component - FIXED
+// Image Popup Component
 const ImageModal = ({ show, onClose, imageUrl, title }) => {
   if (!show) return null;
   
@@ -162,7 +162,7 @@ const ImageModal = ({ show, onClose, imageUrl, title }) => {
   );
 };
 
-// Enhanced Ranking Component - IMPROVED DESIGN
+// Enhanced Ranking Component
 const EnhancedRankingDisplay = ({ ranking, isAdmin = false }) => {
   if (isAdmin) {
     return (
@@ -213,7 +213,7 @@ const EnhancedRankingDisplay = ({ ranking, isAdmin = false }) => {
       </div>
     );
   } else {
-    // Konfi view - IMPROVED STYLE like Zeit los zur konfi
+    // Konfi view
     return (
       <div className="text-center space-y-6">
         {/* Main Position Card */}
@@ -416,7 +416,6 @@ const ActivityRequestModal = ({
 };
 
 // Enhanced Badge Management Modal
-// Enhanced Badge Management Modal - MIT KATEGORIEN
 const BadgeModal = ({ 
   show, 
   onClose, 
@@ -489,72 +488,72 @@ const BadgeModal = ({
       case 'activity_combination':
         return (
           <div>
-          <label className="block text-sm font-medium mb-1">Erforderliche Aktivitäten</label>
-          <div className="space-y-2 max-h-32 overflow-y-auto border rounded p-2">
-          {activities.map(activity => (
-            <label key={activity.id} className="flex items-center gap-2">
-            <input
-            type="checkbox"
-            checked={(formData.criteria_extra.required_activities || []).includes(activity.name)}
-            onChange={(e) => {
-              const current = formData.criteria_extra.required_activities || [];
-              const updated = e.target.checked 
-              ? [...current, activity.name]
-              : current.filter(name => name !== activity.name);
-              setFormData({
-                ...formData,
-                criteria_extra: { ...formData.criteria_extra, required_activities: updated }
-              });
-            }}
-            />
-            <span className="text-sm">{activity.name}</span>
-            </label>
-          ))}
-          </div>
+            <label className="block text-sm font-medium mb-1">Erforderliche Aktivitäten</label>
+            <div className="space-y-2 max-h-32 overflow-y-auto border rounded p-2">
+              {activities.map(activity => (
+                <label key={activity.id} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={(formData.criteria_extra.required_activities || []).includes(activity.name)}
+                    onChange={(e) => {
+                      const current = formData.criteria_extra.required_activities || [];
+                      const updated = e.target.checked 
+                        ? [...current, activity.name]
+                        : current.filter(name => name !== activity.name);
+                      setFormData({
+                        ...formData,
+                        criteria_extra: { ...formData.criteria_extra, required_activities: updated }
+                      });
+                    }}
+                  />
+                  <span className="text-sm">{activity.name}</span>
+                </label>
+              ))}
+            </div>
           </div>
         );
       
       case 'category_activities':
         return (
           <div>
-          <label className="block text-sm font-medium mb-1">Kategorie wählen</label>
-          <select
-          value={formData.criteria_extra.required_category || ''}
-          onChange={(e) => setFormData({
-            ...formData,
-            criteria_extra: { ...formData.criteria_extra, required_category: e.target.value }
-          })}
-          className="w-full p-2 border rounded"
-          >
-          <option value="">Kategorie wählen...</option>
-          {categories.map(category => (
-            <option key={category} value={category}>{category}</option>
-          ))}
-          </select>
-          <p className="text-xs text-gray-500 mt-1">
-          {formData.criteria_value} Aktivitäten aus Kategorie "{formData.criteria_extra.required_category || '...'}"
-          </p>
+            <label className="block text-sm font-medium mb-1">Kategorie wählen</label>
+            <select
+              value={formData.criteria_extra.required_category || ''}
+              onChange={(e) => setFormData({
+                ...formData,
+                criteria_extra: { ...formData.criteria_extra, required_category: e.target.value }
+              })}
+              className="w-full p-2 border rounded"
+            >
+              <option value="">Kategorie wählen...</option>
+              {categories.map(category => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              {formData.criteria_value} Aktivitäten aus Kategorie "{formData.criteria_extra.required_category || '...'}"
+            </p>
           </div>
         );
       
       case 'time_based':
         return (
           <div>
-          <label className="block text-sm font-medium mb-1">Zeitraum (Tage)</label>
-          <input
-          type="number"
-          value={formData.criteria_extra.days || 7}
-          onChange={(e) => setFormData({
-            ...formData,
-            criteria_extra: { ...formData.criteria_extra, days: parseInt(e.target.value) || 7 }
-          })}
-          className="w-full p-2 border rounded"
-          min="1"
-          max="365"
-          />
-          <p className="text-xs text-gray-500 mt-1">
-          {formData.criteria_value} Aktivitäten in {formData.criteria_extra.days || 7} Tagen
-          </p>
+            <label className="block text-sm font-medium mb-1">Zeitraum (Tage)</label>
+            <input
+              type="number"
+              value={formData.criteria_extra.days || 7}
+              onChange={(e) => setFormData({
+                ...formData,
+                criteria_extra: { ...formData.criteria_extra, days: parseInt(e.target.value) || 7 }
+              })}
+              className="w-full p-2 border rounded"
+              min="1"
+              max="365"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              {formData.criteria_value} Aktivitäten in {formData.criteria_extra.days || 7} Tagen
+            </p>
           </div>
         );
       
@@ -565,120 +564,120 @@ const BadgeModal = ({
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-    <h3 className="text-lg font-bold mb-4">
-    {badge ? 'Badge bearbeiten' : 'Neues Badge erstellen'}
-    </h3>
-    
-    <form onSubmit={handleSubmit} className="space-y-4">
-    <div className="grid grid-cols-2 gap-3">
-    <div>
-    <label className="block text-sm font-medium mb-1">Name *</label>
-    <input
-    type="text"
-    value={formData.name}
-    onChange={(e) => setFormData({...formData, name: e.target.value})}
-    className="w-full p-2 border rounded"
-    placeholder="z.B. All-Rounder"
-    required
-    />
-    </div>
-    <div>
-    <label className="block text-sm font-medium mb-1">Icon *</label>
-    <input
-    type="text"
-    value={formData.icon}
-    onChange={(e) => setFormData({...formData, icon: e.target.value})}
-    className="w-full p-2 border rounded"
-    placeholder="🏆"
-    required
-    />
-    </div>
-    </div>
-    
-    <div>
-    <label className="block text-sm font-medium mb-1">Beschreibung</label>
-    <textarea
-    value={formData.description}
-    onChange={(e) => setFormData({...formData, description: e.target.value})}
-    className="w-full p-2 border rounded"
-    rows="2"
-    placeholder="z.B. Drei verschiedene Aktivitäten in einer Woche"
-    />
-    </div>
-    
-    <div className="grid grid-cols-2 gap-3">
-    <div>
-    <label className="block text-sm font-medium mb-1">Kriterium *</label>
-    <select
-    value={formData.criteria_type}
-    onChange={(e) => setFormData({...formData, criteria_type: e.target.value})}
-    className="w-full p-2 border rounded"
-    required
-    >
-    <option value="">Kriterium wählen...</option>
-    {Object.entries(criteriaTypes).map(([key, type]) => (
-      <option key={key} value={key}>{type.label}</option>
-    ))}
-    </select>
-    </div>
-    <div>
-    <label className="block text-sm font-medium mb-1">Wert *</label>
-    <input
-    type="number"
-    value={formData.criteria_value}
-    onChange={(e) => setFormData({...formData, criteria_value: parseInt(e.target.value) || 1})}
-    className="w-full p-2 border rounded"
-    min="1"
-    required
-    />
-    </div>
-    </div>
-    
-    {renderExtraFields()}
-    
-    <div className="space-y-2">
-    <div className="flex items-center gap-2">
-    <input
-    type="checkbox"
-    checked={formData.is_active}
-    onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
-    id="is-active"
-    />
-    <label htmlFor="is-active" className="text-sm">Badge aktiv</label>
-    </div>
-    
-    <div className="flex items-center gap-2">
-    <input
-    type="checkbox"
-    checked={formData.is_hidden}
-    onChange={(e) => setFormData({...formData, is_hidden: e.target.checked})}
-    id="is-hidden"
-    />
-    <label htmlFor="is-hidden" className="text-sm">Verstecktes Badge (erscheint erst bei Erreichen)</label>
-    </div>
-    </div>
-    
-    <div className="flex gap-2">
-    <button
-    type="submit"
-    disabled={loading}
-    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50 flex items-center gap-2"
-    >
-    {loading && <Loader className="w-4 h-4 animate-spin" />}
-    <Save className="w-4 h-4" />
-    {badge ? 'Aktualisieren' : 'Erstellen'}
-    </button>
-    <button
-    type="button"
-    onClick={onClose}
-    className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-    >
-    Abbrechen
-    </button>
-    </div>
-    </form>
-    </div>
+      <div className="bg-white rounded-lg p-4 w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <h3 className="text-lg font-bold mb-4">
+          {badge ? 'Badge bearbeiten' : 'Neues Badge erstellen'}
+        </h3>
+        
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Name *</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                className="w-full p-2 border rounded text-sm"
+                placeholder="z.B. All-Rounder"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Icon *</label>
+              <input
+                type="text"
+                value={formData.icon}
+                onChange={(e) => setFormData({...formData, icon: e.target.value})}
+                className="w-full p-2 border rounded text-sm"
+                placeholder="🏆"
+                required
+              />
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Beschreibung</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({...formData, description: e.target.value})}
+              className="w-full p-2 border rounded text-sm"
+              rows="2"
+              placeholder="z.B. Drei verschiedene Aktivitäten in einer Woche"
+            />
+          </div>
+          
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Kriterium *</label>
+              <select
+                value={formData.criteria_type}
+                onChange={(e) => setFormData({...formData, criteria_type: e.target.value})}
+                className="w-full p-2 border rounded text-sm"
+                required
+              >
+                <option value="">Kriterium wählen...</option>
+                {Object.entries(criteriaTypes).map(([key, type]) => (
+                  <option key={key} value={key}>{type.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Wert *</label>
+              <input
+                type="number"
+                value={formData.criteria_value}
+                onChange={(e) => setFormData({...formData, criteria_value: parseInt(e.target.value) || 1})}
+                className="w-full p-2 border rounded text-sm"
+                min="1"
+                required
+              />
+            </div>
+          </div>
+          
+          {renderExtraFields()}
+          
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={formData.is_active}
+                onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
+                id="is-active"
+              />
+              <label htmlFor="is-active" className="text-sm">Badge aktiv</label>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={formData.is_hidden}
+                onChange={(e) => setFormData({...formData, is_hidden: e.target.checked})}
+                id="is-hidden"
+              />
+              <label htmlFor="is-hidden" className="text-sm">Verstecktes Badge</label>
+            </div>
+          </div>
+          
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={loading}
+              className="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600 disabled:opacity-50 flex items-center gap-2 text-sm"
+            >
+              {loading && <Loader className="w-3 h-3 animate-spin" />}
+              <Save className="w-3 h-3" />
+              {badge ? 'Aktualisieren' : 'Erstellen'}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="bg-gray-500 text-white px-3 py-2 rounded hover:bg-gray-600 text-sm"
+            >
+              Abbrechen
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };
@@ -702,10 +701,14 @@ const RequestStatusBadge = ({ status }) => {
 };
 
 // Statistics Dashboard
-const StatisticsDashboard = ({ konfiData, allStats, badges }) => {
+const StatisticsDashboard = ({ konfiData, allStats, badges, settings }) => {
   const countdown = getConfirmationCountdown(konfiData.confirmation_date);
   const earnedBadges = badges.earned || [];
   const availableBadges = badges.available || [];
+  
+  // Check if targets should be shown (not 0)
+  const showGottesdienstTarget = parseInt(settings.target_gottesdienst || 10) > 0;
+  const showGemeindeTarget = parseInt(settings.target_gemeinde || 10) > 0;
   
   return (
     <div className="space-y-6">
@@ -831,6 +834,7 @@ const KonfiPointsSystem = () => {
   const [newActivityName, setNewActivityName] = useState('');
   const [newActivityPoints, setNewActivityPoints] = useState(1);
   const [newActivityType, setNewActivityType] = useState('gottesdienst');
+  const [newActivityCategory, setNewActivityCategory] = useState('');
   const [newJahrgangName, setNewJahrgangName] = useState('');
   const [newJahrgangDate, setNewJahrgangDate] = useState('');
   
@@ -855,7 +859,7 @@ const KonfiPointsSystem = () => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [currentImage, setCurrentImage] = useState(null);
   
-  // Function to show image - FIXED
+  // Function to show image
   const showImage = (filename, title) => {
     setCurrentImage({ url: `${API_BASE_URL}/activity-requests/${filename}/photo`, title });
     setShowImageModal(true);
@@ -932,18 +936,20 @@ const KonfiPointsSystem = () => {
   const loadKonfiData = async (konfiId) => {
     setLoading(true);
     try {
-      const [konfiRes, requestsRes, badgesRes, statsRes, rankingRes] = await Promise.all([
+      const [konfiRes, requestsRes, badgesRes, statsRes, rankingRes, settingsRes] = await Promise.all([
         api.get(`/konfis/${konfiId}`),
         api.get('/activity-requests'),
         api.get(`/konfis/${konfiId}/badges`),
         api.get('/statistics'),
-        api.get('/ranking')
+        api.get('/ranking'),
+        api.get('/settings')
       ]);
       
       setSelectedKonfi(konfiRes.data);
       setActivityRequests(requestsRes.data);
       setStatistics(statsRes.data);
       setRanking(rankingRes.data);
+      setSettings(settingsRes.data);
       
       // Set badges for display
       setBadges({
@@ -957,6 +963,10 @@ const KonfiPointsSystem = () => {
       
     } catch (err) {
       setError('Fehler beim Laden der Konfi-Daten: ' + (err.response?.data?.error || err.message));
+      // Fix für Refresh Problem: Setze View zurück auf Dashboard
+      if (err.response?.status === 404) {
+        setCurrentView('konfi-dashboard');
+      }
     } finally {
       setLoading(false);
     }
@@ -1109,7 +1119,7 @@ const KonfiPointsSystem = () => {
     }
   };
   
-  // Generic CRUD functions (keeping existing ones)
+  // Generic CRUD functions
   const handleCreate = async (type, data) => {
     setLoading(true);
     try {
@@ -1167,6 +1177,7 @@ const KonfiPointsSystem = () => {
     setNewKonfiName('');
     setNewActivityName('');
     setNewActivityPoints(1);
+    setNewActivityCategory('');
     setNewJahrgangName('');
     setNewJahrgangDate('');
     setAdminForm({ username: '', display_name: '', password: '' });
@@ -1362,20 +1373,24 @@ const KonfiPointsSystem = () => {
     return 'bg-blue-500';
   };
   
-  // Navigation items
+  // Navigation items - KÜRZERE TITEL
   const navigationItems = user?.type === 'admin' ? [
     { id: 'overview', label: 'Übersicht', icon: Users },
-    { id: 'requests', label: 'Anträge prüfen', icon: Clock },
-    { id: 'manage-konfis', label: 'Konfis verwalten', icon: UserPlus },
-    { id: 'manage-activities', label: 'Aktionen verwalten', icon: Calendar },
-    { id: 'manage-badges', label: 'Badges verwalten', icon: Award },
-    { id: 'manage-jahrgaenge', label: 'Jahrgänge verwalten', icon: BookOpen },
+    { id: 'requests', label: 'Anträge', icon: Clock },
+    { id: 'manage-konfis', label: 'Konfis', icon: UserPlus },
+    { id: 'manage-activities', label: 'Aktionen', icon: Calendar },
+    { id: 'manage-badges', label: 'Badges', icon: Award },
+    { id: 'manage-jahrgaenge', label: 'Jahrgänge', icon: BookOpen },
     { id: 'settings', label: 'Einstellungen', icon: Settings }
   ] : [
-    { id: 'konfi-dashboard', label: 'Mein Dashboard', icon: BarChart3 },
-    { id: 'konfi-requests', label: 'Meine Anträge', icon: Upload },
-    { id: 'konfi-badges', label: 'Meine Badges', icon: Award }
+    { id: 'konfi-dashboard', label: 'Dashboard', icon: BarChart3 },
+    { id: 'konfi-requests', label: 'Anträge', icon: Upload },
+    { id: 'konfi-badges', label: 'Badges', icon: Award }
   ];
+  
+  // Check if targets should be shown (not 0)
+  const showGottesdienstTarget = parseInt(settings.target_gottesdienst || 10) > 0;
+  const showGemeindeTarget = parseInt(settings.target_gemeinde || 10) > 0;
   
   // MODAL COMPONENTS
   
@@ -1543,10 +1558,18 @@ const KonfiPointsSystem = () => {
   };
   
   const PasswordModal = () => {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
+    const [formData, setFormData] = useState({ username: '', password: '' });
     
     if (!showPasswordModal) return null;
+    
+    const handleInputChange = (field, value) => {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    };
+    
+    const handleSubmit = (e) => {
+      e.preventDefault();
+      handleLogin(formData.username, formData.password, passwordType);
+    };
     
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1555,49 +1578,53 @@ const KonfiPointsSystem = () => {
             {passwordType === 'admin' ? 'Admin-Anmeldung' : 'Konfi-Anmeldung'}
           </h3>
           
-          <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="w-full p-2 border rounded mb-3"
-            placeholder={passwordType === 'admin' ? 'Benutzername' : 'Benutzername (z.B. anna.mueller)'}
-          />
-          
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-2 border rounded mb-4"
-            placeholder="Passwort"
-            onKeyPress={(e) => e.key === 'Enter' && handleLogin(username, password, passwordType)}
-          />
-          
-          {passwordType === 'konfi' && (
-            <p className="text-sm text-gray-600 mb-3">
-              <BookOpen className="w-4 h-4 inline mr-1" />
-              Passwort-Format: z.B. "Roemer11,1" oder "Johannes3,16"
-            </p>
-          )}
-          
-          <div className="flex gap-2">
-            <button
-              onClick={() => handleLogin(username, password, passwordType)}
-              disabled={loading}
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50 flex items-center gap-2"
-            >
-              {loading && <Loader className="w-4 h-4 animate-spin" />}
-              Anmelden
-            </button>
-            <button
-              onClick={() => {
-                setShowPasswordModal(false);
-                setError('');
-              }}
-              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-            >
-              Abbrechen
-            </button>
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <input
+              type="text"
+              value={formData.username}
+              onChange={(e) => handleInputChange('username', e.target.value)}
+              className="w-full p-2 border rounded"
+              placeholder={passwordType === 'admin' ? 'Benutzername' : 'Benutzername (z.B. anna.mueller)'}
+              autoFocus
+            />
+            
+            <input
+              type="password"
+              value={formData.password}
+              onChange={(e) => handleInputChange('password', e.target.value)}
+              className="w-full p-2 border rounded"
+              placeholder="Passwort"
+            />
+            
+            {passwordType === 'konfi' && (
+              <p className="text-sm text-gray-600">
+                <BookOpen className="w-4 h-4 inline mr-1" />
+                Passwort-Format: z.B. "Roemer11,1" oder "Johannes3,16"
+              </p>
+            )}
+            
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={loading}
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50 flex items-center gap-2"
+              >
+                {loading && <Loader className="w-4 h-4 animate-spin" />}
+                Anmelden
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setError('');
+                  setFormData({ username: '', password: '' });
+                }}
+                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+              >
+                Abbrechen
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     );
@@ -2048,141 +2075,150 @@ const KonfiPointsSystem = () => {
                           : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
                       }`}
                     >
-                    <Icon className="w-4 h-4" />
-                    <span className="font-medium">{label}</span>
+                      <Icon className="w-4 h-4" />
+                      <span className="font-medium">{label}</span>
                     </button>
                   ))}
-              </div>
+                </div>
               </nav>
             )}
-      </div>
-      </div>
-      
-      {/* Content */}
-      <div className="flex-1 flex flex-col min-h-0">
-      <div className="w-full max-w-4xl mx-auto px-4 py-6 flex-1">
-      {loading && (
-        <div className="flex justify-center items-center py-8">
-        <Loader className="w-8 h-8 animate-spin text-blue-500" />
-        </div>
-      )}
-      
-      {/* Konfi Dashboard */}
-      {currentView === 'konfi-dashboard' && selectedKonfi && (
-        <div className="space-y-6">
-        {/* Points Overview - WITH SHADOWS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-blue-50 p-6 rounded-xl shadow-lg">
-        <h3 className="font-bold text-blue-800 mb-3 flex items-center gap-2">
-        <BookOpen className="w-5 h-5" />
-        Gottesdienstliche Aktivitäten
-        </h3>
-        <div className="text-3xl font-bold text-blue-600 mb-3">
-        {selectedKonfi.points.gottesdienst}/{settings.target_gottesdienst}
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
-        <div 
-        className={`h-4 rounded-full transition-all ${getProgressColor(selectedKonfi.points.gottesdienst, settings.target_gottesdienst)}`}
-        style={{ width: `${Math.min((selectedKonfi.points.gottesdienst / parseInt(settings.target_gottesdienst)) * 100, 100)}%` }}
-        ></div>
-        </div>
-        {selectedKonfi.points.gottesdienst >= parseInt(settings.target_gottesdienst) && (
-          <div className="text-green-600 font-bold flex items-center gap-1">
-          <Star className="w-4 h-4" />
-          Ziel erreicht!
           </div>
-        )}
         </div>
         
-        <div className="bg-green-50 p-6 rounded-xl shadow-lg">
-        <h3 className="font-bold text-green-800 mb-3 flex items-center gap-2">
-        <Heart className="w-5 h-5" />
-        Gemeindliche Aktivitäten
-        </h3>
-        <div className="text-3xl font-bold text-green-600 mb-3">
-        {selectedKonfi.points.gemeinde}/{settings.target_gemeinde}
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
-        <div 
-        className={`h-4 rounded-full transition-all ${getProgressColor(selectedKonfi.points.gemeinde, settings.target_gemeinde)}`}
-        style={{ width: `${Math.min((selectedKonfi.points.gemeinde / parseInt(settings.target_gemeinde)) * 100, 100)}%` }}
-        ></div>
-        </div>
-        {selectedKonfi.points.gemeinde >= parseInt(settings.target_gemeinde) && (
-          <div className="text-green-600 font-bold flex items-center gap-1">
-          <Star className="w-4 h-4" />
-          Ziel erreicht!
-          </div>
-        )}
-        </div>
-        </div>
-        
-        {/* Quick Actions */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
-        <h3 className="text-lg font-bold mb-4">Schnell-Aktionen</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <button
-        onClick={() => setShowRequestModal(true)}
-        className="bg-blue-500 text-white p-4 rounded-lg hover:bg-blue-600 flex items-center gap-3"
-        >
-        <Upload className="w-6 h-6" />
-        <div>
-        <div className="font-bold">Aktivität beantragen</div>
-        <div className="text-sm opacity-90">Neue Punkte beantragen</div>
-        </div>
-        </button>
-        <button
-        onClick={() => setCurrentView('konfi-badges')}
-        className="bg-yellow-500 text-white p-4 rounded-lg hover:bg-yellow-600 flex items-center gap-3"
-        >
-        <Award className="w-6 h-6" />
-        <div>
-        <div className="font-bold">Meine Badges</div>
-        <div className="text-sm opacity-90">Erreichte Auszeichnungen</div>
-        </div>
-        </button>
-        </div>
-        </div>
-        
-        {/* Statistics Dashboard */}
-        <StatisticsDashboard 
-        konfiData={selectedKonfi}
-        allStats={ranking}
-        badges={badges}
-        />
-        
-        {/* Recent Activities */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
-        <h3 className="text-lg font-bold mb-4">Letzte Aktivitäten</h3>
-        {(selectedKonfi.activities?.slice(0, 5) || []).length === 0 ? (
-          <p className="text-gray-600">Noch keine Aktivitäten eingetragen.</p>
-        ) : (
-          <div className="space-y-3">
-          {(selectedKonfi.activities?.slice(0, 5) || []).map((activity, index) => (
-            <div key={index} className={`flex justify-between items-center p-3 rounded ${
-              activity.type === 'gottesdienst' ? 'bg-blue-50' : 'bg-green-50'
-            }`}>
-            <div className="flex items-center gap-3">
-            {activity.type === 'gottesdienst' ? (
-              <BookOpen className="w-4 h-4 text-blue-600" />
-            ) : (
-              <Heart className="w-4 h-4 text-green-600" />
+        {/* Content */}
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="w-full max-w-4xl mx-auto px-4 py-6 flex-1">
+            {loading && (
+              <div className="flex justify-center items-center py-8">
+                <Loader className="w-8 h-8 animate-spin text-blue-500" />
+              </div>
             )}
-            <div>
-            <div className="font-medium">{activity.name}</div>
-            <div className="text-sm text-gray-600">{formatDate(activity.date)}</div>
-            </div>
-            </div>
-            <span className="font-bold text-orange-600">+{activity.points}</span>
-            </div>
-          ))}
-          </div>
-        )}
-        </div>
-        </div>
-      )}
+            
+            {/* Konfi Dashboard */}
+            {currentView === 'konfi-dashboard' && selectedKonfi && (
+              <div className="space-y-6">
+                {/* Points Overview - Conditional Display */}
+                <div className="grid gap-6">
+                  {/* Nur wenn Ziele > 0 */}
+              {(showGottesdienstTarget || showGemeindeTarget) && (
+                <div className={`grid gap-6 ${showGottesdienstTarget && showGemeindeTarget ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+                {showGottesdienstTarget && (
+                  <div className="bg-blue-50 p-6 rounded-xl shadow-lg">
+                  <h3 className="font-bold text-blue-800 mb-3 flex items-center gap-2">
+                  <BookOpen className="w-5 h-5" />
+                  Gottesdienstliche Aktivitäten
+                  </h3>
+                  <div className="text-3xl font-bold text-blue-600 mb-3">
+                  {selectedKonfi.points.gottesdienst}/{settings.target_gottesdienst}
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
+                  <div 
+                  className={`h-4 rounded-full transition-all ${getProgressColor(selectedKonfi.points.gottesdienst, settings.target_gottesdienst)}`}
+                  style={{ width: `${Math.min((selectedKonfi.points.gottesdienst / parseInt(settings.target_gottesdienst)) * 100, 100)}%` }}
+                  ></div>
+                  </div>
+                  {selectedKonfi.points.gottesdienst >= parseInt(settings.target_gottesdienst) && (
+                    <div className="text-green-600 font-bold flex items-center gap-1">
+                    <Star className="w-4 h-4" />
+                    Ziel erreicht!
+                    </div>
+                  )}
+                  </div>
+                )}
+                
+                {showGemeindeTarget && (
+                  <div className="bg-green-50 p-6 rounded-xl shadow-lg">
+                  <h3 className="font-bold text-green-800 mb-3 flex items-center gap-2">
+                  <Heart className="w-5 h-5" />
+                  Gemeindliche Aktivitäten
+                  </h3>
+                  <div className="text-3xl font-bold text-green-600 mb-3">
+                  {selectedKonfi.points.gemeinde}/{settings.target_gemeinde}
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
+                  <div 
+                  className={`h-4 rounded-full transition-all ${getProgressColor(selectedKonfi.points.gemeinde, settings.target_gemeinde)}`}
+                  style={{ width: `${Math.min((selectedKonfi.points.gemeinde / parseInt(settings.target_gemeinde)) * 100, 100)}%` }}
+                  ></div>
+                  </div>
+                  {selectedKonfi.points.gemeinde >= parseInt(settings.target_gemeinde) && (
+                    <div className="text-green-600 font-bold flex items-center gap-1">
+                    <Star className="w-4 h-4" />
+                    Ziel erreicht!
+                    </div>
+                  )}
+                  </div>
+                )}
+                </div>
+              )}
+              
+              {/* Quick Actions */}
+              <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-bold mb-4">Schnell-Aktionen</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button
+              onClick={() => setShowRequestModal(true)}
+              className="bg-blue-500 text-white p-4 rounded-lg hover:bg-blue-600 flex items-center gap-3"
+              >
+              <Upload className="w-6 h-6" />
+              <div>
+              <div className="font-bold">Aktivität beantragen</div>
+              <div className="text-sm opacity-90">Neue Punkte beantragen</div>
+              </div>
+              </button>
+              <button
+              onClick={() => setCurrentView('konfi-badges')}
+              className="bg-yellow-500 text-white p-4 rounded-lg hover:bg-yellow-600 flex items-center gap-3"
+              >
+              <Award className="w-6 h-6" />
+              <div>
+              <div className="font-bold">Meine Badges</div>
+              <div className="text-sm opacity-90">Erreichte Auszeichnungen</div>
+              </div>
+              </button>
+              </div>
+              </div>
+              
+              {/* Statistics Dashboard */}
+              <StatisticsDashboard 
+              konfiData={selectedKonfi}
+              allStats={ranking}
+              badges={badges}
+              settings={settings}
+              />
+              
+              {/* Recent Activities */}
+              <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-bold mb-4">Letzte Aktivitäten</h3>
+              {(selectedKonfi.activities?.slice(0, 5) || []).length === 0 ? (
+                <p className="text-gray-600">Noch keine Aktivitäten eingetragen.</p>
+              ) : (
+                <div className="space-y-3">
+                {(selectedKonfi.activities?.slice(0, 5) || []).map((activity, index) => (
+                  <div key={index} className={`flex justify-between items-center p-3 rounded ${
+                    activity.type === 'gottesdienst' ? 'bg-blue-50' : 'bg-green-50'
+                  }`}>
+                  <div className="flex items-center gap-3">
+                  {activity.type === 'gottesdienst' ? (
+                    <BookOpen className="w-4 h-4 text-blue-600" />
+                  ) : (
+                    <Heart className="w-4 h-4 text-green-600" />
+                  )}
+                  <div>
+                  <div className="font-medium">{activity.name}</div>
+                  <div className="text-sm text-gray-600">{formatDate(activity.date)}</div>
+                  </div>
+                  </div>
+                  <span className="font-bold text-orange-600">+{activity.points}</span>
+                  </div>
+                ))}
+                </div>
+              )}
+              </div>
+              </div>
+            )}
       
-      {/* Konfi Requests */}
+      {/* Konfi Requests - KOMPAKTER */}
       {currentView === 'konfi-requests' && (
         <div className="space-y-6">
         <div className="bg-white rounded-xl shadow-lg p-6">
@@ -2197,38 +2233,40 @@ const KonfiPointsSystem = () => {
         </button>
         </div>
         
-        <div className="space-y-4">
+        <div className="space-y-3">
         {activityRequests.length === 0 ? (
           <p className="text-gray-600 text-center py-8">Noch keine Anträge gestellt.</p>
         ) : (
           activityRequests.map(request => (
-            <div key={request.id} className="border rounded-lg p-4">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+            <div key={request.id} className="border rounded-lg p-3">
+            <div className="flex flex-col gap-2">
+            <div className="flex justify-between items-start">
             <div className="flex-1">
-            <h3 className="font-bold">{request.activity_name}</h3>
-            <p className="text-sm text-gray-600">
+            <h3 className="font-bold text-sm">{request.activity_name}</h3>
+            <p className="text-xs text-gray-600">
             {formatDate(request.requested_date)} • {request.activity_points} Punkte
             </p>
-            {request.comment && (
-              <p className="text-sm text-gray-700 mt-1">"{request.comment}"</p>
-            )}
-            {request.admin_comment && (
-              <p className="text-sm text-blue-600 mt-1 italic">
-              Admin: {request.admin_comment}
-              </p>
-            )}
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
             <RequestStatusBadge status={request.status} />
             {request.photo_filename && (
               <button 
               onClick={() => showImage(request.id, `Foto für ${request.activity_name}`)}
               className="text-blue-500 hover:text-blue-700"
               >
-              <Camera className="w-4 h-4" />
+              <Camera className="w-3 h-3" />
               </button>
             )}
             </div>
+            </div>
+            {request.comment && (
+              <p className="text-xs text-gray-700 italic">"{request.comment}"</p>
+            )}
+            {request.admin_comment && (
+              <p className="text-xs text-blue-600 italic">
+              Admin: {request.admin_comment}
+              </p>
+            )}
             </div>
             </div>
           ))
@@ -2539,7 +2577,6 @@ const KonfiPointsSystem = () => {
         <p className="text-sm text-gray-600">
         Jahrgang: {konfi.jahrgang} | Username: {konfi.username}
         </p>
-        {/* Show badges count */}
         {konfi.badges && konfi.badges.length > 0 && (
           <p className="text-sm text-yellow-600 flex items-center gap-1">
           <Award className="w-3 h-3" />
@@ -2548,18 +2585,22 @@ const KonfiPointsSystem = () => {
         )}
         </div>
         <div className="flex gap-4">
-        <div className="text-center">
-        <div className="text-2xl font-bold text-blue-600">
-        {konfi.points.gottesdienst}/{settings.target_gottesdienst}
-        </div>
-        <div className="text-xs text-gray-600">Gottesdienst</div>
-        </div>
-        <div className="text-center">
-        <div className="text-2xl font-bold text-green-600">
-        {konfi.points.gemeinde}/{settings.target_gemeinde}
-        </div>
-        <div className="text-xs text-gray-600">Gemeinde</div>
-        </div>
+        {showGottesdienstTarget && (
+          <div className="text-center">
+          <div className="text-2xl font-bold text-blue-600">
+          {konfi.points.gottesdienst}/{settings.target_gottesdienst}
+          </div>
+          <div className="text-xs text-gray-600">Gottesdienst</div>
+          </div>
+        )}
+        {showGemeindeTarget && (
+          <div className="text-center">
+          <div className="text-2xl font-bold text-green-600">
+          {konfi.points.gemeinde}/{settings.target_gemeinde}
+          </div>
+          <div className="text-xs text-gray-600">Gemeinde</div>
+          </div>
+        )}
         <div className="text-center">
         <div className="text-2xl font-bold text-purple-600">
         {konfi.points.gottesdienst + konfi.points.gemeinde}
@@ -2569,33 +2610,39 @@ const KonfiPointsSystem = () => {
         </div>
         </div>
         
-        {/* Progress bars */}
-        <div className="mt-3 space-y-2">
-        <div>
-        <div className="flex justify-between text-xs text-gray-600 mb-1">
-        <span>Gottesdienst</span>
-        <span>{Math.round((konfi.points.gottesdienst / parseInt(settings.target_gottesdienst)) * 100)}%</span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-        <div 
-        className={`h-2 rounded-full transition-all ${getProgressColor(konfi.points.gottesdienst, settings.target_gottesdienst)}`}
-        style={{ width: `${Math.min((konfi.points.gottesdienst / parseInt(settings.target_gottesdienst)) * 100, 100)}%` }}
-        ></div>
-        </div>
-        </div>
-        <div>
-        <div className="flex justify-between text-xs text-gray-600 mb-1">
-        <span>Gemeinde</span>
-        <span>{Math.round((konfi.points.gemeinde / parseInt(settings.target_gemeinde)) * 100)}%</span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-        <div 
-        className={`h-2 rounded-full transition-all ${getProgressColor(konfi.points.gemeinde, settings.target_gemeinde)}`}
-        style={{ width: `${Math.min((konfi.points.gemeinde / parseInt(settings.target_gemeinde)) * 100, 100)}%` }}
-        ></div>
-        </div>
-        </div>
-        </div>
+        {/* Progress bars - Conditional Display */}
+        {(showGottesdienstTarget || showGemeindeTarget) && (
+          <div className="mt-3 space-y-2">
+          {showGottesdienstTarget && (
+            <div>
+            <div className="flex justify-between text-xs text-gray-600 mb-1">
+            <span>Gottesdienst</span>
+            <span>{Math.round((konfi.points.gottesdienst / parseInt(settings.target_gottesdienst)) * 100)}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+            className={`h-2 rounded-full transition-all ${getProgressColor(konfi.points.gottesdienst, settings.target_gottesdienst)}`}
+            style={{ width: `${Math.min((konfi.points.gottesdienst / parseInt(settings.target_gottesdienst)) * 100, 100)}%` }}
+            ></div>
+            </div>
+            </div>
+          )}
+          {showGemeindeTarget && (
+            <div>
+            <div className="flex justify-between text-xs text-gray-600 mb-1">
+            <span>Gemeinde</span>
+            <span>{Math.round((konfi.points.gemeinde / parseInt(settings.target_gemeinde)) * 100)}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+            className={`h-2 rounded-full transition-all ${getProgressColor(konfi.points.gemeinde, settings.target_gemeinde)}`}
+            style={{ width: `${Math.min((konfi.points.gemeinde / parseInt(settings.target_gemeinde)) * 100, 100)}%` }}
+            ></div>
+            </div>
+            </div>
+          )}
+          </div>
+        )}
         </div>
       ))}
       </div>
@@ -2603,13 +2650,13 @@ const KonfiPointsSystem = () => {
       </div>
     )}
     
-    {/* REQUESTS MANAGEMENT */}
+    {/* REQUESTS MANAGEMENT - KOMPAKTER */}
     {currentView === 'requests' && (
       <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-lg p-6">
       <h2 className="text-xl font-bold text-gray-800 mb-6">Anträge prüfen</h2>
       
-      <div className="space-y-4">
+      <div className="space-y-3">
       {activityRequests.filter(r => r.status === 'pending').length === 0 ? (
         <div className="text-center py-8 text-gray-600">
         <Clock className="w-12 h-12 mx-auto mb-4 text-gray-400" />
@@ -2618,39 +2665,41 @@ const KonfiPointsSystem = () => {
       ) : (
         activityRequests.filter(r => r.status === 'pending').map(request => (
           <div key={request.id} className="border-2 border-yellow-200 bg-yellow-50 rounded-lg p-4">
-          <div className="flex flex-col lg:flex-row lg:justify-between gap-4">
+          <div className="flex flex-col gap-3">
+          <div className="flex justify-between items-start">
           <div className="flex-1">
-          <h3 className="font-bold text-lg">{request.konfi_name}</h3>
-          <p className="text-gray-700">
+          <h3 className="font-bold">{request.konfi_name}</h3>
+          <p className="text-sm text-gray-700">
           <strong>{request.activity_name}</strong> ({request.activity_points} Punkte)
           </p>
-          <p className="text-sm text-gray-600">
-          Datum: {formatDate(request.requested_date)}
+          <p className="text-xs text-gray-600">
+          {formatDate(request.requested_date)}
           </p>
-          {request.comment && (
-            <p className="text-sm text-gray-700 mt-1 italic">
-            "{request.comment}"
-            </p>
-          )}
           </div>
-          
-          <div className="flex flex-col sm:flex-row gap-3 items-start">
           {request.photo_filename && (
             <button 
             onClick={() => showImage(request.id, `Foto für ${request.activity_name}`)}
-            className="bg-blue-100 text-blue-700 px-3 py-2 rounded hover:bg-blue-200 flex items-center gap-2"
+            className="bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 flex items-center gap-1 text-xs"
             >
-            <Camera className="w-4 h-4" />
-            Foto ansehen
+            <Camera className="w-3 h-3" />
+            Foto
             </button>
           )}
+          </div>
           
+          {request.comment && (
+            <p className="text-xs text-gray-700 italic bg-white p-2 rounded">
+            "{request.comment}"
+            </p>
+          )}
+          
+          <div className="flex gap-2">
           <button
           onClick={() => handleUpdateRequestStatus(request.id, 'approved')}
           disabled={loading}
-          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:opacity-50 flex items-center gap-2"
+          className="bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600 disabled:opacity-50 flex items-center gap-1 text-sm"
           >
-          <CheckCircle className="w-4 h-4" />
+          <CheckCircle className="w-3 h-3" />
           Genehmigen
           </button>
           
@@ -2660,9 +2709,9 @@ const KonfiPointsSystem = () => {
             handleUpdateRequestStatus(request.id, 'rejected', comment || '');
           }}
           disabled={loading}
-          className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 disabled:opacity-50 flex items-center gap-2"
+          className="bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 disabled:opacity-50 flex items-center gap-1 text-sm"
           >
-          <XCircle className="w-4 h-4" />
+          <XCircle className="w-3 h-3" />
           Ablehnen
           </button>
           </div>
@@ -2672,20 +2721,20 @@ const KonfiPointsSystem = () => {
       )}
       </div>
       
-      {/* Recent processed requests - WITH PHOTO VIEWING */}
+      {/* Recent processed requests - KOMPAKTER */}
       <div className="mt-8">
       <h3 className="text-lg font-bold mb-4">Kürzlich bearbeitet</h3>
       <div className="space-y-2">
       {activityRequests.filter(r => r.status !== 'pending').slice(0, 5).map(request => (
-        <div key={request.id} className="flex justify-between items-center p-3 bg-gray-50 rounded">
-        <div className="flex items-center gap-3">
+        <div key={request.id} className="flex justify-between items-center p-2 bg-gray-50 rounded text-sm">
+        <div className="flex items-center gap-2">
         <span className="font-medium">{request.konfi_name}</span> - {request.activity_name}
         {request.photo_filename && (
           <button 
           onClick={() => showImage(request.id, `Foto für ${request.activity_name}`)}
           className="text-blue-500 hover:text-blue-700"
           >
-          <Camera className="w-4 h-4" />
+          <Camera className="w-3 h-3" />
           </button>
         )}
         </div>
@@ -2698,7 +2747,7 @@ const KonfiPointsSystem = () => {
       </div>
     )}
     
-    {/* KONFIS MANAGEMENT */}
+    {/* KONFIS MANAGEMENT - KOMPAKTER */}
     {currentView === 'manage-konfis' && (
       <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-lg p-6">
@@ -2740,7 +2789,7 @@ const KonfiPointsSystem = () => {
       
       <div className="grid gap-3">
       {filteredKonfis.map(konfi => (
-        <div key={konfi.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-4 border rounded-lg gap-4">
+        <div key={konfi.id} className="flex flex-col p-3 border rounded-lg gap-3">
         <div className="flex-1">
         <h3 className="font-bold">{konfi.name}</h3>
         <p className="text-sm text-gray-600">
@@ -2766,9 +2815,8 @@ const KonfiPointsSystem = () => {
         {copiedPassword === konfi.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
         </button>
         </div>
-        {/* Show badges for this konfi */}
         {konfi.badges && konfi.badges.length > 0 && (
-          <div className="flex items-center gap-1 mt-2">
+          <div className="flex items-center gap-1 mt-1">
           <Award className="w-3 h-3 text-yellow-500" />
           <span className="text-xs text-yellow-600">
           {konfi.badges.length} Badge(s): {konfi.badges.map(b => b.icon).join(' ')}
@@ -2776,16 +2824,16 @@ const KonfiPointsSystem = () => {
           </div>
         )}
         </div>
-        <div className="flex flex-wrap gap-2">
-        <span className="text-sm text-gray-600 px-2 py-1 bg-gray-100 rounded">
+        <div className="flex flex-wrap gap-1">
+        <span className="text-xs text-gray-600 px-2 py-1 bg-gray-100 rounded">
         G: {konfi.points.gottesdienst} | Gem: {konfi.points.gemeinde}
         </span>
         <button
         onClick={() => regeneratePassword(konfi.id)}
-        className="bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600 flex items-center gap-1 text-sm"
+        className="bg-orange-500 text-white px-2 py-1 rounded hover:bg-orange-600 flex items-center gap-1 text-xs"
         >
         <RefreshCw className="w-3 h-3" />
-        Neues Passwort
+        PW
         </button>
         <button
         onClick={() => {
@@ -2793,16 +2841,16 @@ const KonfiPointsSystem = () => {
           setEditItem(konfi);
           setShowEditModal(true);
         }}
-        className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 flex items-center gap-1"
+        className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 flex items-center gap-1 text-xs"
         >
-        <Edit className="w-4 h-4" />
-        Bearbeiten
+        <Edit className="w-3 h-3" />
+        Edit
         </button>
         <button
         onClick={() => loadKonfiDetails(konfi.id)}
-        className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 flex items-center gap-1"
+        className="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600 flex items-center gap-1 text-xs"
         >
-        <Eye className="w-4 h-4" />
+        <Eye className="w-3 h-3" />
         Details
         </button>
         <button
@@ -2811,10 +2859,10 @@ const KonfiPointsSystem = () => {
           setDeleteItem(konfi);
           setShowDeleteModal(true);
         }}
-        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 flex items-center gap-1"
+        className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 flex items-center gap-1 text-xs"
         >
-        <Trash2 className="w-4 h-4" />
-        Löschen
+        <Trash2 className="w-3 h-3" />
+        Del
         </button>
         </div>
         </div>
@@ -2824,7 +2872,7 @@ const KonfiPointsSystem = () => {
       </div>
     )}
     
-    {/* ACTIVITIES MANAGEMENT */}
+    {/* ACTIVITIES MANAGEMENT - MIT KATEGORIEN */}
     {currentView === 'manage-activities' && (
       <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-lg p-6">
@@ -2832,7 +2880,7 @@ const KonfiPointsSystem = () => {
       
       <div className="mb-6 p-4 bg-green-50 rounded-lg">
       <h3 className="font-bold text-green-800 mb-3">Neue Aktion hinzufügen</h3>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
       <input
       type="text"
       value={newActivityName}
@@ -2856,11 +2904,19 @@ const KonfiPointsSystem = () => {
       <option value="gottesdienst">Gottesdienstlich</option>
       <option value="gemeinde">Gemeindlich</option>
       </select>
+      <input
+      type="text"
+      value={newActivityCategory}
+      onChange={(e) => setNewActivityCategory(e.target.value)}
+      placeholder="Kategorie (optional)"
+      className="p-2 border rounded-lg"
+      />
       <button
       onClick={() => handleCreate('activities', {
         name: newActivityName.trim(),
         points: newActivityPoints,
-        type: newActivityType
+        type: newActivityType,
+        category: newActivityCategory.trim()
       })}
       disabled={loading || !newActivityName.trim()}
       className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 disabled:opacity-50 flex items-center gap-2"
@@ -2879,7 +2935,10 @@ const KonfiPointsSystem = () => {
         <div key={activity.id} className="flex justify-between items-center p-3 bg-blue-50 rounded border">
         <div>
         <span className="font-medium">{activity.name}</span>
-        <div className="text-sm text-blue-600">{activity.points} Punkte</div>
+        <div className="text-sm text-blue-600">
+        {activity.points} Punkte
+        {activity.category && ` • ${activity.category}`}
+        </div>
         </div>
         <div className="flex gap-1">
         <button
@@ -2915,7 +2974,10 @@ const KonfiPointsSystem = () => {
         <div key={activity.id} className="flex justify-between items-center p-3 bg-green-50 rounded border">
         <div>
         <span className="font-medium">{activity.name}</span>
-        <div className="text-sm text-green-600">{activity.points} Punkte</div>
+        <div className="text-sm text-green-600">
+        {activity.points} Punkte
+        {activity.category && ` • ${activity.category}`}
+        </div>
         </div>
         <div className="flex gap-1">
         <button
@@ -2948,7 +3010,7 @@ const KonfiPointsSystem = () => {
       </div>
     )}
     
-    {/* BADGES MANAGEMENT */}
+    {/* BADGES MANAGEMENT - KOMPAKTER */}
     {currentView === 'manage-badges' && (
       <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-lg p-6">
@@ -2966,20 +3028,19 @@ const KonfiPointsSystem = () => {
       </button>
       </div>
       
-      <div className="grid gap-4">
+      <div className="grid gap-3">
       {badges.length === 0 ? (
         <p className="text-gray-600 text-center py-8">Keine Badges vorhanden</p>
       ) : (
         badges.map(badge => (
-          <div key={badge.id} className="bg-white p-4 rounded-lg border flex justify-between items-center">
+          <div key={badge.id} className="bg-white p-3 rounded-lg border flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
           <div className="flex items-center gap-3">
-          <span className="text-3xl">{badge.icon}</span>
+          <span className="text-2xl">{badge.icon}</span>
           <div>
           <h3 className="font-bold">{badge.name}</h3>
           <p className="text-sm text-gray-600">{badge.description}</p>
           <p className="text-xs text-gray-500">
           {criteriaTypes[badge.criteria_type]?.label} ≥ {badge.criteria_value}
-          {badge.criteria_extra && ` (${JSON.parse(badge.criteria_extra).activity_name})`}
           </p>
           </div>
           </div>
@@ -2989,7 +3050,7 @@ const KonfiPointsSystem = () => {
           </span>
           {badge.is_hidden && (
             <span className="px-2 py-1 text-xs rounded bg-purple-100 text-purple-800">
-            🎭 Versteckt
+            🎭
             </span>
           )}
           <button
@@ -2997,15 +3058,15 @@ const KonfiPointsSystem = () => {
             setEditBadge(badge);
             setShowBadgeModal(true);
           }}
-          className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
+          className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 text-xs"
           >
-          <Edit className="w-4 h-4" />
+          <Edit className="w-3 h-3" />
           </button>
           <button
           onClick={() => handleDeleteBadge(badge.id)}
-          className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm"
+          className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 text-xs"
           >
-          <Trash2 className="w-4 h-4" />
+          <Trash2 className="w-3 h-3" />
           </button>
           </div>
           </div>
@@ -3016,7 +3077,7 @@ const KonfiPointsSystem = () => {
       </div>
     )}
     
-    {/* JAHRGÄNGE MANAGEMENT */}
+    {/* JAHRGÄNGE MANAGEMENT - KOMPAKTER */}
     {currentView === 'manage-jahrgaenge' && (
       <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-lg p-6">
@@ -3054,7 +3115,7 @@ const KonfiPointsSystem = () => {
       
       <div className="grid gap-3">
       {jahrgaenge.map(jahrgang => (
-        <div key={jahrgang.id} className="flex justify-between items-center p-4 border rounded-lg">
+        <div key={jahrgang.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 border rounded-lg gap-3">
         <div>
         <h3 className="font-bold">{jahrgang.name}</h3>
         <p className="text-sm text-gray-600">
@@ -3069,10 +3130,10 @@ const KonfiPointsSystem = () => {
           setEditItem(jahrgang);
           setShowEditModal(true);
         }}
-        className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 flex items-center gap-1"
+        className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 flex items-center gap-1 text-xs"
         >
-        <Edit className="w-4 h-4" />
-        Bearbeiten
+        <Edit className="w-3 h-3" />
+        Edit
         </button>
         <button
         onClick={() => {
@@ -3080,10 +3141,10 @@ const KonfiPointsSystem = () => {
           setDeleteItem(jahrgang);
           setShowDeleteModal(true);
         }}
-        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 flex items-center gap-1"
+        className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 flex items-center gap-1 text-xs"
         >
-        <Trash2 className="w-4 h-4" />
-        Löschen
+        <Trash2 className="w-3 h-3" />
+        Del
         </button>
         </div>
         </div>
@@ -3110,10 +3171,11 @@ const KonfiPointsSystem = () => {
         ...settings,
         target_gottesdienst: e.target.value
       })}
-      min="1"
+      min="0"
       max="50"
       className="w-full p-2 border rounded-lg"
       />
+      <p className="text-xs text-gray-600 mt-1">0 = Ziel wird nicht angezeigt</p>
       </div>
       
       <div className="p-4 bg-green-50 rounded-lg">
@@ -3125,10 +3187,11 @@ const KonfiPointsSystem = () => {
         ...settings,
         target_gemeinde: e.target.value
       })}
-      min="1"
+      min="0"
       max="50"
       className="w-full p-2 border rounded-lg"
       />
+      <p className="text-xs text-gray-600 mt-1">0 = Ziel wird nicht angezeigt</p>
       </div>
       </div>
       
@@ -3205,7 +3268,7 @@ const KonfiPointsSystem = () => {
       </div>
     )}
     
-    {/* KONFI DETAIL VIEW - WITH BADGES */}
+    {/* KONFI DETAIL VIEW - WITH CONDITIONAL TARGETS */}
     {currentView === 'konfi-detail' && selectedKonfi && (
       <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-lg p-6">
@@ -3250,35 +3313,42 @@ const KonfiPointsSystem = () => {
       </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-      <div className="bg-blue-50 p-4 rounded-lg">
-      <h3 className="font-bold text-blue-800 mb-2">Gottesdienstliche Aktivitäten</h3>
-      <div className="text-3xl font-bold text-blue-600 mb-2">
-      {selectedKonfi.points.gottesdienst}/{settings.target_gottesdienst}
-      </div>
-      <div className="w-full bg-gray-200 rounded-full h-4">
-      <div 
-      className={`h-4 rounded-full transition-all ${getProgressColor(selectedKonfi.points.gottesdienst, settings.target_gottesdienst)}`}
-      style={{ width: `${Math.min((selectedKonfi.points.gottesdienst / parseInt(settings.target_gottesdienst)) * 100, 100)}%` }}
-      ></div>
-      </div>
-      </div>
+      {/* Progress bars - Conditional Display */}
+      {(showGottesdienstTarget || showGemeindeTarget) && (
+        <div className={`grid gap-6 mb-6 ${showGottesdienstTarget && showGemeindeTarget ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+        {showGottesdienstTarget && (
+          <div className="bg-blue-50 p-4 rounded-lg">
+          <h3 className="font-bold text-blue-800 mb-2">Gottesdienstliche Aktivitäten</h3>
+          <div className="text-3xl font-bold text-blue-600 mb-2">
+          {selectedKonfi.points.gottesdienst}/{settings.target_gottesdienst}
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-4">
+          <div 
+          className={`h-4 rounded-full transition-all ${getProgressColor(selectedKonfi.points.gottesdienst, settings.target_gottesdienst)}`}
+          style={{ width: `${Math.min((selectedKonfi.points.gottesdienst / parseInt(settings.target_gottesdienst)) * 100, 100)}%` }}
+          ></div>
+          </div>
+          </div>
+        )}
+        
+        {showGemeindeTarget && (
+          <div className="bg-green-50 p-4 rounded-lg">
+          <h3 className="font-bold text-green-800 mb-2">Gemeindliche Aktivitäten</h3>
+          <div className="text-3xl font-bold text-green-600 mb-2">
+          {selectedKonfi.points.gemeinde}/{settings.target_gemeinde}
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-4">
+          <div 
+          className={`h-4 rounded-full transition-all ${getProgressColor(selectedKonfi.points.gemeinde, settings.target_gemeinde)}`}
+          style={{ width: `${Math.min((selectedKonfi.points.gemeinde / parseInt(settings.target_gemeinde)) * 100, 100)}%` }}
+          ></div>
+          </div>
+          </div>
+        )}
+        </div>
+      )}
       
-      <div className="bg-green-50 p-4 rounded-lg">
-      <h3 className="font-bold text-green-800 mb-2">Gemeindliche Aktivitäten</h3>
-      <div className="text-3xl font-bold text-green-600 mb-2">
-      {selectedKonfi.points.gemeinde}/{settings.target_gemeinde}
-      </div>
-      <div className="w-full bg-gray-200 rounded-full h-4">
-      <div 
-      className={`h-4 rounded-full transition-all ${getProgressColor(selectedKonfi.points.gemeinde, settings.target_gemeinde)}`}
-      style={{ width: `${Math.min((selectedKonfi.points.gemeinde / parseInt(settings.target_gemeinde)) * 100, 100)}%` }}
-      ></div>
-      </div>
-      </div>
-      </div>
-      
-      {/* Badges for this Konfi - ADMIN VIEW */}
+      {/* Badges for this Konfi */}
       {selectedKonfi.badges && selectedKonfi.badges.length > 0 && (
         <div className="bg-yellow-50 p-4 rounded-lg mb-6">
         <h3 className="font-bold text-yellow-800 mb-3 flex items-center gap-2">
