@@ -683,12 +683,14 @@ const BadgeModal = ({
 };
 
 // Request Management Modal
+// Request Management Modal
 const RequestManagementModal = ({ 
   show, 
   onClose, 
   request,
   onUpdateStatus, 
-  loading 
+  loading,
+  onShowImage  // NEU HINZUFÜGEN
 }) => {
   const [status, setStatus] = useState(request?.status || 'pending');
   const [adminComment, setAdminComment] = useState(request?.admin_comment || '');
@@ -725,7 +727,7 @@ const RequestManagementModal = ({
     {request.photo_filename && (
       <div className="text-center">
       <button 
-      onClick={() => showImage(request.id, `Foto für ${request.activity_name}`)}
+      onClick={() => onShowImage(request.id, `Foto für ${request.activity_name}`)}
       className="bg-blue-100 text-blue-700 px-3 py-2 rounded hover:bg-blue-200 flex items-center gap-2 mx-auto"
       >
       <Camera className="w-4 h-4" />
@@ -2455,6 +2457,7 @@ const KonfiPointsSystem = () => {
     request={selectedRequest}
     onUpdateStatus={handleUpdateRequestStatus}
     loading={loading}
+    onShowImage={showImage}
     />
     <BonusPointsModal 
     show={showBonusModal}
