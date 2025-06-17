@@ -110,7 +110,6 @@ const CRITERIA_TYPES = {
   category_activities: { label: "Kategorie-Aktivitäten", description: "Aktivitäten aus bestimmter Kategorie" }, // NEU
   time_based: { label: "Zeitbasiert", description: "Aktivitäten in einem Zeitraum" },
   streak: { label: "Serie", description: "Aufeinanderfolgende Aktivitäten" },
-  special_achievement: { label: "Spezielle Leistung", description: "Besondere Kombination oder Leistung" }
 };
 
 // Badge checking function - FIXED: No additional DB connections
