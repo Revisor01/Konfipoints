@@ -682,12 +682,14 @@ const BadgeModal = ({
   );
 };
 
+const [showImageModal, setShowImageModal] = useState(false);
+const [currentImage, setCurrentImage] = useState(null);
+
 // Function to show image
 const showImage = (requestId, title) => {
   setCurrentImage({ url: `${API_BASE_URL}/activity-requests/${requestId}/photo`, title });
   setShowImageModal(true);
 };
-
 // Request Management Modal
 const RequestManagementModal = ({ 
   show, 
@@ -967,11 +969,7 @@ const KonfiPointsSystem = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteItem, setDeleteItem] = useState(null);
   const [deleteType, setDeleteType] = useState('');
-  
-  const [showImageModal, setShowImageModal] = useState(false);
-  const [currentImage, setCurrentImage] = useState(null);
 
-  
   // New: Badge and Request modals
   const [showBadgeModal, setShowBadgeModal] = useState(false);
   const [editBadge, setEditBadge] = useState(null);
