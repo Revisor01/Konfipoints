@@ -253,7 +253,73 @@ db.serialize(() => {
   )`);
 
   console.log('✅ Database schema ensured');
-
+  
+  // === DATABASE MIGRATIONS ===
+  console.log('🔄 Running database migrations...');
+  
+  // Migration 1: Add confirmation_date to jahrgaenge table
+  db.all("PRAGMA table_info(jahrgaenge)", (err, columns) => {
+    if (err) {
+      console.error('Migration check error:', err);
+    } else {
+      const hasConfirmationDate = columns.some(col => col.name === 'confirmation_date');
+      
+      if (!hasConfirmationDate) {
+        console.log('⚡ Migration 1: Adding confirmation_date column to jahrgaenge table...');
+        db.run("ALTER TABLE jahrgaenge ADD COLUMN confirmation_date DATE", (err) => {
+          if (err) {
+            console.error('Migration 1 error:', err);
+          } else {
+            console.log('✅ Migration 1: confirmation_date column added');
+            
+            // Set default dates for existing jahrgänge
+            db.run(`UPDATE jahrgaenge SET confirmation_date = 
+                  CASE 
+                    WHEN name LIKE '%2024%' THEN '2025-05-11'
+                    WHEN name LIKE '%2025%' THEN '2026-05-10'  
+                    WHEN name LIKE '%2026%' THEN '2027-05-09'
+                    WHEN name LIKE '%2027%' THEN '2028-05-14'
+                    ELSE NULL 
+                  END 
+                  WHERE confirmation_date IS NULL`, (err) => {
+                if (err) {
+                  console.error('Default dates error:', err);
+                } else {
+                  console.log('✅ Migration 1: Default confirmation dates set');
+                }
+              });
+          }
+        });
+      } else {
+        console.log('✅ Migration 1: confirmation_date column already exists');
+      }
+    }
+  });
+  
+  // Migration 2: Add is_special to activities table (if not exists)
+  db.all("PRAGMA table_info(activities)", (err, columns) => {
+    if (err) {
+      console.error('Migration 2 check error:', err);
+    } else {
+      const hasIsSpecial = columns.some(col => col.name === 'is_special');
+      
+      if (!hasIsSpecial) {
+        console.log('⚡ Migration 2: Adding is_special column to activities table...');
+        db.run("ALTER TABLE activities ADD COLUMN is_special BOOLEAN DEFAULT 0", (err) => {
+          if (err) {
+            console.error('Migration 2 error:', err);
+          } else {
+            console.log('✅ Migration 2: is_special column added');
+          }
+        });
+      } else {
+        console.log('✅ Migration 2: is_special column already exists');
+      }
+    }
+  });
+  
+  console.log('✅ Database migrations completed');
+  
   // Only insert default data for new database
   if (!dbExists) {
     console.log('📝 Inserting default data...');
@@ -261,21 +327,25 @@ db.serialize(() => {
     // Insert default admin
     const adminPassword = bcrypt.hashSync('pastor2025', 10);
     db.run("INSERT INTO admins (username, display_name, password_hash) VALUES (?, ?, ?)", 
-           ['admin', 'Pastor Administrator', adminPassword]);
+      ['admin', 'Pastor Administrator', adminPassword]);
     console.log('✅ Default admin created: username=admin, password=pastor2025');
-
+    
     // Insert default settings
     db.run("INSERT INTO settings (key, value) VALUES (?, ?)", ['target_gottesdienst', '10']);
     db.run("INSERT INTO settings (key, value) VALUES (?, ?)", ['target_gemeinde', '10']);
     console.log('✅ Default settings created');
-
-    // Insert default jahrgänge
-    const defaultJahrgaenge = ['2024/25', '2025/26', '2026/27'];
-    defaultJahrgaenge.forEach(jahrgang => {
-      db.run("INSERT INTO jahrgaenge (name) VALUES (?)", [jahrgang]);
+    
+    // Insert default jahrgänge WITH confirmation dates
+    const defaultJahrgaenge = [
+      ['2024/25', '2025-05-11'],
+      ['2025/26', '2026-05-10'], 
+      ['2026/27', '2027-05-09']
+    ];
+    defaultJahrgaenge.forEach(([name, confirmationDate]) => {
+      db.run("INSERT INTO jahrgaenge (name, confirmation_date) VALUES (?, ?)", [name, confirmationDate]);
     });
-    console.log('✅ Default Jahrgänge created');
-
+    console.log('✅ Default Jahrgänge created with confirmation dates');
+    
     // Insert default activities
     const defaultActivities = [
       ['Sonntagsgottesdienst', 2, 'gottesdienst', 'sonntagsgottesdienst'],
@@ -294,7 +364,7 @@ db.serialize(() => {
       db.run("INSERT INTO activities (name, points, type, category) VALUES (?, ?, ?, ?)", [name, points, type, category]);
     });
     console.log('✅ Default activities created');
-
+    
     // Insert default badges
     const defaultBadges = [
       ['Starter', '🥉', 'Erste 5 Punkte gesammelt', 'total_points', 5, null],
@@ -310,7 +380,7 @@ db.serialize(() => {
         [name, icon, description, criteria_type, criteria_value, criteria_extra, 1, 1]);
     });
     console.log('✅ Default badges created');
-
+    
     // Create some default konfis after jahrgänge are created
     setTimeout(() => {
       const defaultKonfis = [
@@ -330,11 +400,11 @@ db.serialize(() => {
             const username = name.toLowerCase().replace(' ', '.');
             
             db.run("INSERT INTO konfis (name, jahrgang_id, username, password_hash, password_plain) VALUES (?, ?, ?, ?, ?)", 
-                   [name, jahrgangRow.id, username, hashedPassword, password], function(err) {
-              if (!err) {
-                console.log(`✅ Konfi created: ${name} - Username: ${username} - Password: ${password}`);
-              }
-            });
+              [name, jahrgangRow.id, username, hashedPassword, password], function(err) {
+                if (!err) {
+                  console.log(`✅ Konfi created: ${name} - Username: ${username} - Password: ${password}`);
+                }
+              });
           }
         });
       });
