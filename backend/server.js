@@ -113,8 +113,7 @@ const CRITERIA_TYPES = {
   special_achievement: { label: "Spezielle Leistung", description: "Besondere Kombination oder Leistung" }
 };
 
-// Badge checking function - NEU HINZUFÜGEN
-// Badge checking function - KOMPLETT MIT KATEGORIEN
+// Badge checking function - FIXED: No additional DB connections
 const checkAndAwardBadges = async (konfiId) => {
   return new Promise((resolve, reject) => {
     // Get all active badges
@@ -147,9 +146,20 @@ const checkAndAwardBadges = async (konfiId) => {
           if (err) return reject(err);
           
           const alreadyEarned = earned.map(e => e.badge_id);
+          let badgesProcessed = 0;
+          
+          if (badges.length === 0) {
+            return resolve(0);
+          }
           
           badges.forEach(badge => {
-            if (alreadyEarned.includes(badge.id)) return;
+            if (alreadyEarned.includes(badge.id)) {
+              badgesProcessed++;
+              if (badgesProcessed === badges.length) {
+                finalizeBadges();
+              }
+              return;
+            }
             
             let earned = false;
             const criteria = JSON.parse(badge.criteria_extra || '{}');
@@ -157,19 +167,23 @@ const checkAndAwardBadges = async (konfiId) => {
             switch (badge.criteria_type) {
               case 'total_points':
                 earned = (konfi.gottesdienst_points + konfi.gemeinde_points) >= badge.criteria_value;
+                processBadgeResult();
                 break;
               
               case 'gottesdienst_points':
                 earned = konfi.gottesdienst_points >= badge.criteria_value;
+                processBadgeResult();
                 break;
               
               case 'gemeinde_points':
                 earned = konfi.gemeinde_points >= badge.criteria_value;
+                processBadgeResult();
                 break;
               
               case 'both_categories':
                 earned = konfi.gottesdienst_points >= badge.criteria_value && 
                 konfi.gemeinde_points >= badge.criteria_value;
+                processBadgeResult();
                 break;
               
               case 'activity_combination':
@@ -178,27 +192,29 @@ const checkAndAwardBadges = async (konfiId) => {
                   const required = criteria.required_activities;
                   earned = required.every(req => activities.includes(req));
                 }
+                processBadgeResult();
                 break;
               
               case 'category_activities':
                 if (criteria.required_category && konfi.activity_ids) {
-                  // Count activities in specific category
+                  // Use existing DB connection instead of creating new one
                   const categoryCountQuery = `
                     SELECT COUNT(*) as count FROM konfi_activities ka 
                     JOIN activities a ON ka.activity_id = a.id 
                     WHERE ka.konfi_id = ? AND a.category = ?
                   `;
                   
-                  // Synchrone Abfrage für Badge-Checking
-                  const db2 = new (require('sqlite3').verbose().Database)(require('path').join(__dirname, 'data', 'konfi.db'));
-                  try {
-                    const result = db2.prepare(categoryCountQuery).get(konfiId, criteria.required_category);
-                    earned = result && result.count >= badge.criteria_value;
-                    db2.close();
-                  } catch (e) {
-                    console.error('Category badge check error:', e);
-                    earned = false;
-                  }
+                  db.get(categoryCountQuery, [konfiId, criteria.required_category], (err, result) => {
+                    if (err) {
+                      console.error('Category badge check error:', err);
+                      earned = false;
+                    } else {
+                      earned = result && result.count >= badge.criteria_value;
+                    }
+                    processBadgeResult();
+                  });
+                } else {
+                  processBadgeResult();
                 }
                 break;
               
@@ -215,43 +231,58 @@ const checkAndAwardBadges = async (konfiId) => {
                   
                   earned = recentCount >= badge.criteria_value;
                 }
+                processBadgeResult();
                 break;
               
               case 'activity_count':
                 const activityCount = konfi.activity_ids ? konfi.activity_ids.split(',').length : 0;
                 earned = activityCount >= badge.criteria_value;
+                processBadgeResult();
                 break;
               
               case 'unique_activities':
                 const uniqueCount = konfi.activity_ids ? 
                 new Set(konfi.activity_ids.split(',')).size : 0;
                 earned = uniqueCount >= badge.criteria_value;
+                processBadgeResult();
+                break;
+              
+              default:
+                processBadgeResult();
                 break;
             }
             
-            if (earned) {
-              earnedBadgeIds.push(badge.id);
-              newBadges++;
+            function processBadgeResult() {
+              if (earned) {
+                earnedBadgeIds.push(badge.id);
+                newBadges++;
+              }
+              badgesProcessed++;
+              if (badgesProcessed === badges.length) {
+                finalizeBadges();
+              }
             }
           });
           
-          // Award new badges
-          if (earnedBadgeIds.length > 0) {
-            const insertPromises = earnedBadgeIds.map(badgeId => {
-              return new Promise((resolve, reject) => {
-                db.run("INSERT INTO konfi_badges (konfi_id, badge_id) VALUES (?, ?)", 
-                  [konfiId, badgeId], function(err) {
-                    if (err) reject(err);
-                    else resolve();
-                  });
+          function finalizeBadges() {
+            // Award new badges
+            if (earnedBadgeIds.length > 0) {
+              const insertPromises = earnedBadgeIds.map(badgeId => {
+                return new Promise((resolve, reject) => {
+                  db.run("INSERT INTO konfi_badges (konfi_id, badge_id) VALUES (?, ?)", 
+                    [konfiId, badgeId], function(err) {
+                      if (err) reject(err);
+                      else resolve();
+                    });
+                });
               });
-            });
-            
-            Promise.all(insertPromises)
-            .then(() => resolve(newBadges))
-            .catch(reject);
-          } else {
-            resolve(newBadges);
+              
+              Promise.all(insertPromises)
+              .then(() => resolve(newBadges))
+              .catch(reject);
+            } else {
+              resolve(newBadges);
+            }
           }
         });
       });

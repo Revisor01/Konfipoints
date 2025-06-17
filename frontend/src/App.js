@@ -63,70 +63,128 @@ const getConfirmationCountdown = (confirmationDate) => {
   };
 };
 
-// Enhanced Badge Display Component with hidden badge support
-const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = false }) => {
+// Enhanced Badge Display Component with progress tracking
+const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = false, konfiData = null }) => {
   const earnedBadgeIds = earnedBadges.map(b => b.id || b.badge_id);
   
-  // Filter badges - show hidden ones only if earned (unless admin)
+  // Calculate badge progress for konfi view
+  const calculateBadgeProgress = (badge) => {
+    if (!konfiData || earnedBadgeIds.includes(badge.id)) return null;
+    
+    const criteria = badge.criteria_extra ? JSON.parse(badge.criteria_extra) : {};
+    let current = 0;
+    let total = badge.criteria_value;
+    let description = '';
+    
+    switch (badge.criteria_type) {
+      case 'total_points':
+        current = konfiData.points.gottesdienst + konfiData.points.gemeinde;
+        description = `${current}/${total} Punkte`;
+        break;
+      case 'gottesdienst_points':
+        current = konfiData.points.gottesdienst;
+        description = `${current}/${total} Gottesdienst-Punkte`;
+        break;
+      case 'gemeinde_points':
+        current = konfiData.points.gemeinde;
+        description = `${current}/${total} Gemeinde-Punkte`;
+        break;
+      case 'both_categories':
+        current = Math.min(konfiData.points.gottesdienst, konfiData.points.gemeinde);
+        description = `${konfiData.points.gottesdienst}/${total} G, ${konfiData.points.gemeinde}/${total} Gem`;
+        break;
+      case 'activity_count':
+        current = konfiData.activities ? konfiData.activities.length : 0;
+        description = `${current}/${total} Aktivitäten`;
+        break;
+      case 'unique_activities':
+        const uniqueActivities = konfiData.activities ? 
+        new Set(konfiData.activities.map(a => a.name)).size : 0;
+        current = uniqueActivities;
+        description = `${current}/${total} verschiedene`;
+        break;
+      default:
+        return null;
+    }
+    
+    return { current, total, description, percentage: Math.min((current / total) * 100, 100) };
+  };
+  
+  // Filter badges
   const visibleBadges = badges.filter(badge => {
-    if (isAdmin) return true; // Admins see all badges
-    if (!badge.is_hidden) return true; // Always show non-hidden badges
-    return earnedBadgeIds.includes(badge.id); // Show hidden badges only if earned
+    if (isAdmin) return true;
+    if (!badge.is_hidden) return true;
+    return earnedBadgeIds.includes(badge.id);
   });
   
   return (
     <div className="space-y-4">
-      {showProgress && (
-        <div className="text-center text-sm text-gray-600">
-          <span className="font-bold">{earnedBadges.length}</span> von <span className="font-bold">{visibleBadges.length}</span> Badges erhalten
-          {!isAdmin && badges.some(b => b.is_hidden && !earnedBadgeIds.includes(b.id)) && (
-            <div className="text-xs text-purple-600 mt-1">
-              🎭 Versteckte Badges werden erst bei Erreichen angezeigt
-            </div>
-          )}
+    {showProgress && (
+      <div className="text-center text-sm text-gray-600">
+      <span className="font-bold">{earnedBadges.length}</span> von <span className="font-bold">{visibleBadges.length}</span> Badges erhalten
+      {!isAdmin && badges.some(b => b.is_hidden && !earnedBadgeIds.includes(b.id)) && (
+        <div className="text-xs text-purple-600 mt-1">
+        🎭 Versteckte Badges werden erst bei Erreichen angezeigt
         </div>
       )}
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-        {visibleBadges.map(badge => {
-          const isEarned = earnedBadgeIds.includes(badge.id);
-          const isHidden = badge.is_hidden;
-          
-          return (
-            <div 
-              key={badge.id} 
-              className={`p-3 rounded-lg text-center border-2 transition-all ${
-                isEarned 
-                  ? isHidden 
-                    ? 'bg-purple-50 border-purple-400 shadow-md' 
-                    : 'bg-yellow-50 border-yellow-400 shadow-md'
-                  : 'bg-gray-50 border-gray-200 opacity-60'
-              }`}
-              title={badge.description}
-            >
-              <div className="text-2xl mb-1">
-                {isEarned && isHidden ? '🎭' : badge.icon}
-              </div>
-              <div className={`text-xs font-bold ${
-                isEarned 
-                  ? isHidden ? 'text-purple-800' : 'text-yellow-800' 
-                  : 'text-gray-500'
-              }`}>
-                {badge.name}
-              </div>
-              {isEarned && (
-                <div className={`text-xs mt-1 ${isHidden ? 'text-purple-600' : 'text-yellow-600'}`}>
-                  ✓ {isHidden ? 'Geheim erreicht!' : 'Erhalten'}
-                </div>
-              )}
-              {isAdmin && isHidden && !isEarned && (
-                <div className="text-xs text-purple-500 mt-1">
-                  🎭 Versteckt
-                </div>
-              )}
-            </div>
-          );
-        })}
       </div>
+    )}
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+    {visibleBadges.map(badge => {
+      const isEarned = earnedBadgeIds.includes(badge.id);
+      const isHidden = badge.is_hidden;
+      const progress = !isAdmin && konfiData ? calculateBadgeProgress(badge) : null;
+      
+      return (
+        <div 
+        key={badge.id} 
+        className={`p-3 rounded-lg text-center border-2 transition-all ${
+          isEarned 
+          ? isHidden 
+          ? 'bg-purple-50 border-purple-400 shadow-md' 
+          : 'bg-yellow-50 border-yellow-400 shadow-md'
+          : 'bg-gray-50 border-gray-200 opacity-60'
+        }`}
+        title={badge.description}
+        >
+        <div className="text-2xl mb-1">
+        {isEarned && isHidden ? '🎭' : badge.icon}
+        </div>
+        <div className={`text-xs font-bold mb-1 leading-tight break-words ${
+          isEarned 
+          ? isHidden ? 'text-purple-800' : 'text-yellow-800' 
+          : 'text-gray-500'
+        }`}>
+        {badge.name}
+        </div>
+        
+        {isEarned ? (
+          <div className={`text-xs mt-1 ${isHidden ? 'text-purple-600' : 'text-yellow-600'}`}>
+          ✓ {isHidden ? 'Geheim!' : 'Erhalten'}
+          </div>
+        ) : progress ? (
+          <div className="mt-2">
+          <div className="text-xs text-gray-600 mb-1">
+          {progress.description}
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-1">
+          <div 
+          className="bg-blue-500 h-1 rounded-full transition-all"
+          style={{ width: `${progress.percentage}%` }}
+          ></div>
+          </div>
+          </div>
+        ) : (
+          isAdmin && isHidden && (
+            <div className="text-xs text-purple-500 mt-1">
+            🎭 Versteckt
+            </div>
+          )
+        )}
+        </div>
+      );
+    })}
+    </div>
     </div>
   );
 };
@@ -1484,11 +1542,16 @@ const KonfiPointsSystem = () => {
   // Navigation items - KÜRZERE TITEL
   const navigationItems = user?.type === 'admin' ? [
     { id: 'overview', label: 'Übersicht', icon: Users },
-    { id: 'requests', label: 'Anträge', icon: Clock },
+    { 
+      id: 'requests', 
+      label: 'Anträge', 
+      icon: Clock,
+      notification: activityRequests.filter(r => r.status === 'pending').length
+    },
     { id: 'manage-konfis', label: 'Konfis', icon: UserPlus },
     { id: 'manage-activities', label: 'Aktionen', icon: Calendar },
-    { id: 'manage-badges', label: 'Badges', icon: Award },
     { id: 'manage-jahrgaenge', label: 'Jahrgänge', icon: BookOpen },
+    { id: 'manage-badges', label: 'Badges', icon: Award },
     { id: 'settings', label: 'Einstellungen', icon: Settings }
   ] : [
     { id: 'konfi-dashboard', label: 'Dashboard', icon: BarChart3 },
@@ -2145,26 +2208,31 @@ const KonfiPointsSystem = () => {
         {/* Navigation */}
         <div className="bg-white border-b">
           <div className="max-w-4xl mx-auto px-4">
-            {/* Desktop Navigation */}
-            <nav className="hidden sm:flex gap-6">
-              {navigationItems.map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => {
-                    setCurrentView(id);
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
-                    currentView === id 
-                      ? 'border-blue-500 text-blue-600' 
-                      : 'border-transparent text-gray-600 hover:text-blue-600'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  {label}
-                </button>
-              ))}
-            </nav>
+      {/* Desktop Navigation */}
+      <nav className="hidden sm:flex gap-6">
+      {navigationItems.map(({ id, label, icon: Icon, notification }) => (
+        <button
+        key={id}
+        onClick={() => {
+          setCurrentView(id);
+          setMobileMenuOpen(false);
+        }}
+        className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors relative ${
+          currentView === id 
+          ? 'border-blue-500 text-blue-600' 
+          : 'border-transparent text-gray-600 hover:text-blue-600'
+        }`}
+        >
+        <Icon className="w-4 h-4" />
+        {label}
+        {notification > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+          {notification}
+          </span>
+        )}
+        </button>
+      ))}
+      </nav>
             
             {/* Mobile Navigation */}
             {mobileMenuOpen && (
@@ -2314,7 +2382,10 @@ const KonfiPointsSystem = () => {
             )}
             <div>
             <div className="font-medium">{activity.name}</div>
-            <div className="text-sm text-gray-600">{formatDate(activity.date)}</div>
+            <div className="text-sm text-gray-600">
+            {formatDate(activity.date)}
+            {activity.category && ` • ${activity.category}`}
+            </div>
             </div>
             </div>
             <span className="font-bold text-orange-600">+{activity.points}</span>
@@ -2671,7 +2742,7 @@ const KonfiPointsSystem = () => {
     {currentView === 'overview' && (
       <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-lg p-6">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
       <h2 className="text-xl font-bold text-gray-800">Punkteübersicht</h2>
       <div className="relative">
       <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
@@ -2684,26 +2755,111 @@ const KonfiPointsSystem = () => {
       />
       </div>
       </div>
+      
       <div className="grid gap-4">
       {filteredKonfis.map(konfi => (
         <div 
         key={konfi.id} 
-        className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+        className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer bg-white"
         onClick={() => loadKonfiDetails(konfi.id)}
         >
         <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
-        <div>
-        <h3 className="font-bold text-lg">{konfi.name}</h3>
-        <p className="text-sm text-gray-600">
+        <div className="flex-1">
+        <h3 className="font-bold text-lg text-blue-600 hover:text-blue-800 cursor-pointer">
+        {konfi.name}
+        </h3>
+        <p className="text-sm text-gray-600 mb-2">
         Jahrgang: {konfi.jahrgang} | Username: {konfi.username}
         </p>
+        
+        {/* Password display */}
+        <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
+        <span>Passwort:</span>
+        {passwordVisibility[konfi.id] ? (
+          <span className="font-mono">{konfi.password}</span>
+        ) : (
+          <span>••••••••••</span>
+        )}
+        <button
+        onClick={(e) => {
+          e.stopPropagation();
+          togglePasswordVisibility(konfi.id);
+        }}
+        className="text-blue-500 hover:text-blue-700"
+        >
+        {passwordVisibility[konfi.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+        </button>
+        <button
+        onClick={(e) => {
+          e.stopPropagation();
+          copyToClipboard(konfi.password, konfi.id);
+        }}
+        className="text-blue-500 hover:text-blue-700"
+        >
+        {copiedPassword === konfi.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+        </button>
+        </div>
+        
+        {/* Badges */}
         {konfi.badges && konfi.badges.length > 0 && (
           <p className="text-sm text-yellow-600 flex items-center gap-1">
           <Award className="w-3 h-3" />
           {konfi.badges.length} Badge(s) erreicht
           </p>
         )}
+        
+        {/* Action Buttons */}
+        <div className="flex flex-wrap gap-2 mt-3">
+        <button
+        onClick={(e) => {
+          e.stopPropagation();
+          regeneratePassword(konfi.id);
+        }}
+        className="bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600 flex items-center gap-1 text-sm"
+        >
+        <RefreshCw className="w-3 h-3" />
+        Passwort
+        </button>
+        <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setEditType('konfi');
+          setEditItem(konfi);
+          setShowEditModal(true);
+        }}
+        className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 flex items-center gap-1 text-sm"
+        >
+        <Edit className="w-3 h-3" />
+        Bearbeiten
+        </button>
+        <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setBonusKonfiId(konfi.id);
+          setShowBonusModal(true);
+        }}
+        className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 flex items-center gap-1 text-sm"
+        >
+        <Gift className="w-3 h-3" />
+        Bonus
+        </button>
+        <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setDeleteType('konfi');
+          setDeleteItem(konfi);
+          setShowDeleteModal(true);
+        }}
+        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 flex items-center gap-1 text-sm"
+        >
+        <Trash2 className="w-3 h-3" />
+        Löschen
+        </button>
         </div>
+        </div>
+        
+        {/* Points display */}
+        <div className="flex gap-6 lg:flex-col lg:items-end">
         <div className="flex gap-4">
         {showGottesdienstTarget && (
           <div className="text-center">
@@ -2729,10 +2885,11 @@ const KonfiPointsSystem = () => {
         </div>
         </div>
         </div>
+        </div>
         
-        {/* Progress bars - Conditional Display */}
+        {/* Progress bars */}
         {(showGottesdienstTarget || showGemeindeTarget) && (
-          <div className="mt-3 space-y-2">
+          <div className="mt-4 space-y-2">
           {showGottesdienstTarget && (
             <div>
             <div className="flex justify-between text-xs text-gray-600 mb-1">
@@ -2784,55 +2941,40 @@ const KonfiPointsSystem = () => {
         </div>
       ) : (
         activityRequests.filter(r => r.status === 'pending').map(request => (
-          <div key={request.id} className="border-2 border-yellow-200 bg-yellow-50 rounded-lg p-4">
-          <div className="flex flex-col gap-3">
-          <div className="flex justify-between items-start">
+          <div key={request.id} className="border-2 border-yellow-200 bg-yellow-50 rounded-lg p-3">
+          <div className="flex justify-between items-center">
           <div className="flex-1">
-          <h3 className="font-bold">{request.konfi_name}</h3>
-          <p className="text-sm text-gray-700">
-          <strong>{request.activity_name}</strong> ({request.activity_points} Punkte)
-          </p>
-          <p className="text-xs text-gray-600">
-          {formatDate(request.requested_date)}
-          </p>
+          <div className="flex items-center gap-3">
+          <div>
+          <span className="font-bold">{request.konfi_name}</span>
+          <span className="mx-2">•</span>
+          <span className="font-medium">{request.activity_name}</span>
+          <span className="text-sm text-gray-600">({request.activity_points} Punkte)</span>
+          <span className="mx-2">•</span>
+          <span className="text-sm text-gray-600">{formatDate(request.requested_date)}</span>
           </div>
-          <div className="flex gap-2">
+          </div>
+          {request.comment && (
+            <p className="text-xs text-gray-700 italic mt-1">"{request.comment}"</p>
+          )}
+          </div>
+          
+          <div className="flex items-center gap-2">
           {request.photo_filename && (
             <button 
             onClick={() => showImage(request.id, `Foto für ${request.activity_name}`)}
             className="bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 flex items-center gap-1 text-xs"
             >
             <Camera className="w-3 h-3" />
-            Foto
             </button>
           )}
-          <button
-          onClick={() => {
-            setSelectedRequest(request);
-            setShowRequestManagementModal(true);
-          }}
-          className="bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200 flex items-center gap-1 text-xs"
-          >
-          <Edit className="w-3 h-3" />
-          Bearbeiten
-          </button>
-          </div>
-          </div>
           
-          {request.comment && (
-            <p className="text-xs text-gray-700 italic bg-white p-2 rounded">
-            "{request.comment}"
-            </p>
-          )}
-          
-          <div className="flex gap-2">
           <button
           onClick={() => handleUpdateRequestStatus(request.id, 'approved')}
           disabled={loading}
-          className="bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600 disabled:opacity-50 flex items-center gap-1 text-sm"
+          className="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600 disabled:opacity-50 flex items-center gap-1 text-xs"
           >
           <CheckCircle className="w-3 h-3" />
-          Schnell-Genehmigung
           </button>
           
           <button
@@ -2843,10 +2985,19 @@ const KonfiPointsSystem = () => {
             }
           }}
           disabled={loading}
-          className="bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 disabled:opacity-50 flex items-center gap-1 text-sm"
+          className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 disabled:opacity-50 flex items-center gap-1 text-xs"
           >
           <XCircle className="w-3 h-3" />
-          Schnell-Ablehnung
+          </button>
+          
+          <button
+          onClick={() => {
+            setSelectedRequest(request);
+            setShowRequestManagementModal(true);
+          }}
+          className="bg-gray-500 text-white px-2 py-1 rounded hover:bg-gray-600 flex items-center gap-1 text-xs"
+          >
+          <Edit className="w-3 h-3" />
           </button>
           </div>
           </div>
@@ -2855,9 +3006,9 @@ const KonfiPointsSystem = () => {
       )}
       </div>
       
-      {/* Recent processed requests - ERWEITERT */}
+      {/* Recent processed requests */}
       <div className="mt-8">
-      <h3 className="text-lg font-bold mb-4">Alle bearbeiteten Anträge</h3>
+      <h3 className="text-lg font-bold mb-4">Bearbeitete Anträge</h3>
       <div className="space-y-2">
       {activityRequests.filter(r => r.status !== 'pending').slice(0, 10).map(request => (
         <div key={request.id} className="flex justify-between items-center p-2 bg-gray-50 rounded text-sm">
@@ -3241,7 +3392,7 @@ const KonfiPointsSystem = () => {
       value={newJahrgangName}
       onChange={(e) => setNewJahrgangName(e.target.value)}
       placeholder="z.B. 2025/26"
-      className="p-2 border rounded-lg"
+      className="p-{/* ADMIN OVERVIEW */}2 border rounded-lg"
       />
       <input
       type="date"
