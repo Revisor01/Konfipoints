@@ -11,8 +11,8 @@ services:
       - NODE_ENV=production
       - JWT_SECRET=konfi-secret-super-secure-2025
     volumes:
-      - konfi_data:/app/data
-      - konfi_uploads:/app/uploads 
+      - ./data:/app/data        # 🔄 GEÄNDERT: Lokaler Mount
+      - ./uploads:/app/uploads  # 🔄 GEÄNDERT: Lokaler Mount
     restart: unless-stopped
     networks:
       - konfi-network
@@ -30,10 +30,6 @@ services:
       - konfi-network
     environment:
       - REACT_APP_API_URL=/api  # Über Reverse Proxy
-
-volumes:
-  konfi_data:
-  konfi_uploads:
 
 networks:
   konfi-network:

@@ -2,13 +2,16 @@
 
 BACKUP_DIR="./backups"
 DATE=$(date +%Y%m%d_%H%M%S)
-BACKUP_FILE="konfi_backup_$DATE.db"
+BACKUP_FILE="konfi_backup_$DATE.tar.gz"
 
-echo "💾 Erstelle Backup..."
+echo "💾 Erstelle vollständiges Backup..."
 mkdir -p $BACKUP_DIR
 
-docker-compose exec -T backend sqlite3 /app/data/konfi.db ".backup /app/data/$BACKUP_FILE"
-docker cp $(docker-compose ps -q backend):/app/data/$BACKUP_FILE $BACKUP_DIR/
-docker-compose exec -T backend rm /app/data/$BACKUP_FILE
+# Komplettes Backup von Datenbank + Bildern
+tar -czf $BACKUP_DIR/$BACKUP_FILE \
+    --exclude='./backups' \
+    ./data ./uploads
 
 echo "✅ Backup erstellt: $BACKUP_DIR/$BACKUP_FILE"
+echo "📁 Enthält: Datenbank + alle Bilder"
+echo "📏 Größe: $(du -h $BACKUP_DIR/$BACKUP_FILE | cut -f1)"

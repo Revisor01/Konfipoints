@@ -416,6 +416,7 @@ const ActivityRequestModal = ({
 };
 
 // Enhanced Badge Management Modal
+// Enhanced Badge Management Modal - MIT KATEGORIEN
 const BadgeModal = ({ 
   show, 
   onClose, 
@@ -435,6 +436,20 @@ const BadgeModal = ({
     is_active: true,
     is_hidden: false
   });
+  
+  const [categories, setCategories] = useState([]);
+  
+  // Load categories when modal opens
+  useEffect(() => {
+    if (show) {
+      api.get('/activity-categories').then(res => {
+        setCategories(res.data);
+      }).catch(err => {
+        console.error('Error loading categories:', err);
+        setCategories([]);
+      });
+    }
+  }, [show]);
   
   useEffect(() => {
     if (badge) {
@@ -474,49 +489,72 @@ const BadgeModal = ({
       case 'activity_combination':
         return (
           <div>
-            <label className="block text-sm font-medium mb-1">Erforderliche Aktivitäten</label>
-            <div className="space-y-2 max-h-32 overflow-y-auto border rounded p-2">
-              {activities.map(activity => (
-                <label key={activity.id} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={(formData.criteria_extra.required_activities || []).includes(activity.name)}
-                    onChange={(e) => {
-                      const current = formData.criteria_extra.required_activities || [];
-                      const updated = e.target.checked 
-                        ? [...current, activity.name]
-                        : current.filter(name => name !== activity.name);
-                      setFormData({
-                        ...formData,
-                        criteria_extra: { ...formData.criteria_extra, required_activities: updated }
-                      });
-                    }}
-                  />
-                  <span className="text-sm">{activity.name}</span>
-                </label>
-              ))}
-            </div>
+          <label className="block text-sm font-medium mb-1">Erforderliche Aktivitäten</label>
+          <div className="space-y-2 max-h-32 overflow-y-auto border rounded p-2">
+          {activities.map(activity => (
+            <label key={activity.id} className="flex items-center gap-2">
+            <input
+            type="checkbox"
+            checked={(formData.criteria_extra.required_activities || []).includes(activity.name)}
+            onChange={(e) => {
+              const current = formData.criteria_extra.required_activities || [];
+              const updated = e.target.checked 
+              ? [...current, activity.name]
+              : current.filter(name => name !== activity.name);
+              setFormData({
+                ...formData,
+                criteria_extra: { ...formData.criteria_extra, required_activities: updated }
+              });
+            }}
+            />
+            <span className="text-sm">{activity.name}</span>
+            </label>
+          ))}
+          </div>
+          </div>
+        );
+      
+      case 'category_activities':
+        return (
+          <div>
+          <label className="block text-sm font-medium mb-1">Kategorie wählen</label>
+          <select
+          value={formData.criteria_extra.required_category || ''}
+          onChange={(e) => setFormData({
+            ...formData,
+            criteria_extra: { ...formData.criteria_extra, required_category: e.target.value }
+          })}
+          className="w-full p-2 border rounded"
+          >
+          <option value="">Kategorie wählen...</option>
+          {categories.map(category => (
+            <option key={category} value={category}>{category}</option>
+          ))}
+          </select>
+          <p className="text-xs text-gray-500 mt-1">
+          {formData.criteria_value} Aktivitäten aus Kategorie "{formData.criteria_extra.required_category || '...'}"
+          </p>
           </div>
         );
       
       case 'time_based':
         return (
           <div>
-            <label className="block text-sm font-medium mb-1">Zeitraum (Tage)</label>
-            <input
-              type="number"
-              value={formData.criteria_extra.days || 7}
-              onChange={(e) => setFormData({
-                ...formData,
-                criteria_extra: { ...formData.criteria_extra, days: parseInt(e.target.value) || 7 }
-              })}
-              className="w-full p-2 border rounded"
-              min="1"
-              max="365"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              {formData.criteria_value} Aktivitäten in {formData.criteria_extra.days || 7} Tagen
-            </p>
+          <label className="block text-sm font-medium mb-1">Zeitraum (Tage)</label>
+          <input
+          type="number"
+          value={formData.criteria_extra.days || 7}
+          onChange={(e) => setFormData({
+            ...formData,
+            criteria_extra: { ...formData.criteria_extra, days: parseInt(e.target.value) || 7 }
+          })}
+          className="w-full p-2 border rounded"
+          min="1"
+          max="365"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+          {formData.criteria_value} Aktivitäten in {formData.criteria_extra.days || 7} Tagen
+          </p>
           </div>
         );
       
@@ -527,120 +565,120 @@ const BadgeModal = ({
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <h3 className="text-lg font-bold mb-4">
-          {badge ? 'Badge bearbeiten' : 'Neues Badge erstellen'}
-        </h3>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1">Name *</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                className="w-full p-2 border rounded"
-                placeholder="z.B. All-Rounder"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Icon *</label>
-              <input
-                type="text"
-                value={formData.icon}
-                onChange={(e) => setFormData({...formData, icon: e.target.value})}
-                className="w-full p-2 border rounded"
-                placeholder="🏆"
-                required
-              />
-            </div>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium mb-1">Beschreibung</label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({...formData, description: e.target.value})}
-              className="w-full p-2 border rounded"
-              rows="2"
-              placeholder="z.B. Drei verschiedene Aktivitäten in einer Woche"
-            />
-          </div>
-          
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1">Kriterium *</label>
-              <select
-                value={formData.criteria_type}
-                onChange={(e) => setFormData({...formData, criteria_type: e.target.value})}
-                className="w-full p-2 border rounded"
-                required
-              >
-                <option value="">Kriterium wählen...</option>
-                {Object.entries(criteriaTypes).map(([key, type]) => (
-                  <option key={key} value={key}>{type.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Wert *</label>
-              <input
-                type="number"
-                value={formData.criteria_value}
-                onChange={(e) => setFormData({...formData, criteria_value: parseInt(e.target.value) || 1})}
-                className="w-full p-2 border rounded"
-                min="1"
-                required
-              />
-            </div>
-          </div>
-          
-          {renderExtraFields()}
-          
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={formData.is_active}
-                onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
-                id="is-active"
-              />
-              <label htmlFor="is-active" className="text-sm">Badge aktiv</label>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={formData.is_hidden}
-                onChange={(e) => setFormData({...formData, is_hidden: e.target.checked})}
-                id="is-hidden"
-              />
-              <label htmlFor="is-hidden" className="text-sm">Verstecktes Badge (erscheint erst bei Erreichen)</label>
-            </div>
-          </div>
-          
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={loading}
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50 flex items-center gap-2"
-            >
-              {loading && <Loader className="w-4 h-4 animate-spin" />}
-              <Save className="w-4 h-4" />
-              {badge ? 'Aktualisieren' : 'Erstellen'}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-            >
-              Abbrechen
-            </button>
-          </div>
-        </form>
-      </div>
+    <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+    <h3 className="text-lg font-bold mb-4">
+    {badge ? 'Badge bearbeiten' : 'Neues Badge erstellen'}
+    </h3>
+    
+    <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="grid grid-cols-2 gap-3">
+    <div>
+    <label className="block text-sm font-medium mb-1">Name *</label>
+    <input
+    type="text"
+    value={formData.name}
+    onChange={(e) => setFormData({...formData, name: e.target.value})}
+    className="w-full p-2 border rounded"
+    placeholder="z.B. All-Rounder"
+    required
+    />
+    </div>
+    <div>
+    <label className="block text-sm font-medium mb-1">Icon *</label>
+    <input
+    type="text"
+    value={formData.icon}
+    onChange={(e) => setFormData({...formData, icon: e.target.value})}
+    className="w-full p-2 border rounded"
+    placeholder="🏆"
+    required
+    />
+    </div>
+    </div>
+    
+    <div>
+    <label className="block text-sm font-medium mb-1">Beschreibung</label>
+    <textarea
+    value={formData.description}
+    onChange={(e) => setFormData({...formData, description: e.target.value})}
+    className="w-full p-2 border rounded"
+    rows="2"
+    placeholder="z.B. Drei verschiedene Aktivitäten in einer Woche"
+    />
+    </div>
+    
+    <div className="grid grid-cols-2 gap-3">
+    <div>
+    <label className="block text-sm font-medium mb-1">Kriterium *</label>
+    <select
+    value={formData.criteria_type}
+    onChange={(e) => setFormData({...formData, criteria_type: e.target.value})}
+    className="w-full p-2 border rounded"
+    required
+    >
+    <option value="">Kriterium wählen...</option>
+    {Object.entries(criteriaTypes).map(([key, type]) => (
+      <option key={key} value={key}>{type.label}</option>
+    ))}
+    </select>
+    </div>
+    <div>
+    <label className="block text-sm font-medium mb-1">Wert *</label>
+    <input
+    type="number"
+    value={formData.criteria_value}
+    onChange={(e) => setFormData({...formData, criteria_value: parseInt(e.target.value) || 1})}
+    className="w-full p-2 border rounded"
+    min="1"
+    required
+    />
+    </div>
+    </div>
+    
+    {renderExtraFields()}
+    
+    <div className="space-y-2">
+    <div className="flex items-center gap-2">
+    <input
+    type="checkbox"
+    checked={formData.is_active}
+    onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
+    id="is-active"
+    />
+    <label htmlFor="is-active" className="text-sm">Badge aktiv</label>
+    </div>
+    
+    <div className="flex items-center gap-2">
+    <input
+    type="checkbox"
+    checked={formData.is_hidden}
+    onChange={(e) => setFormData({...formData, is_hidden: e.target.checked})}
+    id="is-hidden"
+    />
+    <label htmlFor="is-hidden" className="text-sm">Verstecktes Badge (erscheint erst bei Erreichen)</label>
+    </div>
+    </div>
+    
+    <div className="flex gap-2">
+    <button
+    type="submit"
+    disabled={loading}
+    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50 flex items-center gap-2"
+    >
+    {loading && <Loader className="w-4 h-4 animate-spin" />}
+    <Save className="w-4 h-4" />
+    {badge ? 'Aktualisieren' : 'Erstellen'}
+    </button>
+    <button
+    type="button"
+    onClick={onClose}
+    className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+    >
+    Abbrechen
+    </button>
+    </div>
+    </form>
+    </div>
     </div>
   );
 };

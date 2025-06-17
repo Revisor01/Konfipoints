@@ -107,12 +107,14 @@ const CRITERIA_TYPES = {
   unique_activities: { label: "Verschiedene Aktivitäten", description: "Anzahl unterschiedlicher Aktivitäten" },
   both_categories: { label: "Beide Kategorien", description: "Mindestpunkte in beiden Bereichen" },
   activity_combination: { label: "Aktivitäts-Kombination", description: "Spezifische Kombination von Aktivitäten" },
+  category_activities: { label: "Kategorie-Aktivitäten", description: "Aktivitäten aus bestimmter Kategorie" }, // NEU
   time_based: { label: "Zeitbasiert", description: "Aktivitäten in einem Zeitraum" },
   streak: { label: "Serie", description: "Aufeinanderfolgende Aktivitäten" },
   special_achievement: { label: "Spezielle Leistung", description: "Besondere Kombination oder Leistung" }
 };
 
 // Badge checking function - NEU HINZUFÜGEN
+// Badge checking function - KOMPLETT MIT KATEGORIEN
 const checkAndAwardBadges = async (konfiId) => {
   return new Promise((resolve, reject) => {
     // Get all active badges
@@ -124,6 +126,7 @@ const checkAndAwardBadges = async (konfiId) => {
         SELECT k.*,
                 GROUP_CONCAT(DISTINCT ka.activity_id) as activity_ids,
                 GROUP_CONCAT(DISTINCT a.name) as activity_names,
+                GROUP_CONCAT(DISTINCT a.category) as activity_categories,
                 GROUP_CONCAT(ka.completed_date) as activity_dates
         FROM konfis k
         LEFT JOIN konfi_activities ka ON k.id = ka.konfi_id
@@ -174,6 +177,28 @@ const checkAndAwardBadges = async (konfiId) => {
                   const activities = konfi.activity_names.split(',');
                   const required = criteria.required_activities;
                   earned = required.every(req => activities.includes(req));
+                }
+                break;
+              
+              case 'category_activities':
+                if (criteria.required_category && konfi.activity_ids) {
+                  // Count activities in specific category
+                  const categoryCountQuery = `
+                    SELECT COUNT(*) as count FROM konfi_activities ka 
+                    JOIN activities a ON ka.activity_id = a.id 
+                    WHERE ka.konfi_id = ? AND a.category = ?
+                  `;
+                  
+                  // Synchrone Abfrage für Badge-Checking
+                  const db2 = new (require('sqlite3').verbose().Database)(require('path').join(__dirname, 'data', 'konfi.db'));
+                  try {
+                    const result = db2.prepare(categoryCountQuery).get(konfiId, criteria.required_category);
+                    earned = result && result.count >= badge.criteria_value;
+                    db2.close();
+                  } catch (e) {
+                    console.error('Category badge check error:', e);
+                    earned = false;
+                  }
                 }
                 break;
               
@@ -240,7 +265,7 @@ app.get('/api/badge-criteria-types', verifyToken, (req, res) => {
 });
 
 // Add image viewing endpoint
-app.get('/api/activity-requests/:id/photo', verifyToken, (req, res) => {
+app.get('/api/activity-requests/:id/photo', (req, res) => {
   const requestId = req.params.id;
   
   db.get("SELECT photo_filename FROM activity_requests WHERE id = ?", [requestId], (err, request) => {
@@ -675,42 +700,54 @@ app.get('/api/badge-criteria-types', verifyToken, (req, res) => {
   res.json(CRITERIA_TYPES);
 });
 
+// Get activity categories for badges
+app.get('/api/activity-categories', verifyToken, (req, res) => {
+  db.all("SELECT DISTINCT category FROM activities WHERE category IS NOT NULL AND category != '' ORDER BY category", [], (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    const categories = rows.map(row => row.category);
+    res.json(categories);
+  });
+});
+
 // Create badge (admin only)
 app.post('/api/badges', verifyToken, (req, res) => {
   if (req.user.type !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
   }
-  const { name, icon, description, criteria_type, criteria_value, criteria_extra } = req.body;
+  const { name, icon, description, criteria_type, criteria_value, criteria_extra, is_hidden } = req.body;
   
   if (!name || !icon || !criteria_type || !criteria_value) {
     return res.status(400).json({ error: 'Name, icon, criteria type and value are required' });
   }
-
+  
   const extraJson = criteria_extra ? JSON.stringify(criteria_extra) : null;
-
-  db.run("INSERT INTO custom_badges (name, icon, description, criteria_type, criteria_value, criteria_extra, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)",
-         [name, icon, description, criteria_type, criteria_value, extraJson, req.user.id],
-         function(err) {
-           if (err) return res.status(500).json({ error: 'Database error' });
-           res.json({ id: this.lastID, name, icon, description, criteria_type, criteria_value, criteria_extra: extraJson });
-         });
+  const hiddenFlag = is_hidden ? 1 : 0; // BOOLEAN ZU INTEGER
+  
+  db.run("INSERT INTO custom_badges (name, icon, description, criteria_type, criteria_value, criteria_extra, is_hidden, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    [name, icon, description, criteria_type, criteria_value, extraJson, hiddenFlag, req.user.id],
+    function(err) {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      res.json({ id: this.lastID, name, icon, description, criteria_type, criteria_value, criteria_extra: extraJson, is_hidden: hiddenFlag });
+    });
 });
 
-// Update badge (admin only)
+// Update badge (admin only) - BOOLEAN FIX
 app.put('/api/badges/:id', verifyToken, (req, res) => {
   if (req.user.type !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
   }
-  const { name, icon, description, criteria_type, criteria_value, criteria_extra, is_active } = req.body;
+  const { name, icon, description, criteria_type, criteria_value, criteria_extra, is_active, is_hidden } = req.body;
   
   const extraJson = criteria_extra ? JSON.stringify(criteria_extra) : null;
-
-  db.run("UPDATE custom_badges SET name = ?, icon = ?, description = ?, criteria_type = ?, criteria_value = ?, criteria_extra = ?, is_active = ? WHERE id = ?",
-         [name, icon, description, criteria_type, criteria_value, extraJson, is_active, req.params.id],
-         function(err) {
-           if (err) return res.status(500).json({ error: 'Database error' });
-           res.json({ message: 'Badge updated successfully' });
-         });
+  const activeFlag = is_active ? 1 : 0; // BOOLEAN ZU INTEGER
+  const hiddenFlag = is_hidden ? 1 : 0; // BOOLEAN ZU INTEGER
+  
+  db.run("UPDATE custom_badges SET name = ?, icon = ?, description = ?, criteria_type = ?, criteria_value = ?, criteria_extra = ?, is_active = ?, is_hidden = ? WHERE id = ?",
+    [name, icon, description, criteria_type, criteria_value, extraJson, activeFlag, hiddenFlag, req.params.id],
+    function(err) {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      res.json({ message: 'Badge updated successfully' });
+    });
 });
 
 // Delete badge (admin only)
