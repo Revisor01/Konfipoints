@@ -1,16 +1,37 @@
 // server.js
+console.log('🚀 Starting Konfi Points API...');
+console.log('Node version:', process.version);
+console.log('Platform:', process.platform);
+
 const express = require('express');
+console.log('✅ Express loaded');
+
 const cors = require('cors');
+console.log('✅ CORS loaded');
+
 const bcrypt = require('bcrypt');
+console.log('✅ bcrypt loaded');
+
 const jwt = require('jsonwebtoken');
+console.log('✅ JWT loaded');
+
+console.log('📊 Loading SQLite3...');
 const sqlite3 = require('sqlite3').verbose();
+console.log('✅ SQLite3 loaded');
+
 const path = require('path');
 const fs = require('fs');
+console.log('✅ Core modules loaded');
+
+console.log('📁 Loading Multer...');
 const multer = require('multer');
+console.log('✅ Multer loaded');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'konfi-secret-2025';
+
+console.log('🔧 Setting up middleware...');
 
 // Middleware
 app.use(cors({
