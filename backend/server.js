@@ -1316,7 +1316,7 @@ app.get('/api/konfis', verifyToken, (req, res) => {
   });
 });
 
-// Get single konfi (admin or konfi themselves) - WITH ADMIN TRACKING
+// Get single konfi (admin or konfi themselves) - WITH ADMIN TRACKING AND BADGES
 app.get('/api/konfis/:id', verifyToken, (req, res) => {
   const konfiId = parseInt(req.params.id, 10);
   
@@ -1368,6 +1368,14 @@ app.get('/api/konfis/:id', verifyToken, (req, res) => {
       ORDER BY bp.completed_date DESC
     `;
     
+    // Get badges for this konfi
+    const badgesQuery = `
+      SELECT cb.*, kb.earned_at FROM custom_badges cb
+      JOIN konfi_badges kb ON cb.id = kb.badge_id
+      WHERE kb.konfi_id = ?
+      ORDER BY kb.earned_at DESC
+    `;
+    
     db.all(activitiesQuery, [konfiId], (err, activities) => {
       if (err) {
         console.error('Database error loading activities for konfi', konfiId, ':', err);
@@ -1380,23 +1388,31 @@ app.get('/api/konfis/:id', verifyToken, (req, res) => {
           return res.status(500).json({ error: 'Database error loading bonus points: ' + err.message });
         }
         
-        const konfi = {
-          id: konfiRow.id,
-          name: konfiRow.name,
-          username: konfiRow.username,
-          password: konfiRow.password_plain,
-          jahrgang: konfiRow.jahrgang_name,
-          jahrgang_id: konfiRow.jahrgang_id,
-          confirmation_date: konfiRow.confirmation_date,
-          points: {
-            gottesdienst: konfiRow.gottesdienst_points || 0,
-            gemeinde: konfiRow.gemeinde_points || 0
-          },
-          activities: activities || [],
-          bonusPoints: bonusPoints || []
-        };
-        
-        res.json(konfi);
+        db.all(badgesQuery, [konfiId], (err, badges) => {
+          if (err) {
+            console.error('Database error loading badges for konfi', konfiId, ':', err);
+            return res.status(500).json({ error: 'Database error loading badges: ' + err.message });
+          }
+          
+          const konfi = {
+            id: konfiRow.id,
+            name: konfiRow.name,
+            username: konfiRow.username,
+            password: konfiRow.password_plain,
+            jahrgang: konfiRow.jahrgang_name,
+            jahrgang_id: konfiRow.jahrgang_id,
+            confirmation_date: konfiRow.confirmation_date,
+            points: {
+              gottesdienst: konfiRow.gottesdienst_points || 0,
+              gemeinde: konfiRow.gemeinde_points || 0
+            },
+            activities: activities || [],
+            bonusPoints: bonusPoints || [],
+            badges: badges || []
+          };
+          
+          res.json(konfi);
+        });
       });
     });
   });

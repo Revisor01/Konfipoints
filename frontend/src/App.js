@@ -63,7 +63,6 @@ const getConfirmationCountdown = (confirmationDate) => {
   };
 };
 
-// Badge Display Component
 // Enhanced Badge Display Component with hidden badge support
 const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = false }) => {
   const earnedBadgeIds = earnedBadges.map(b => b.id || b.badge_id);
@@ -77,174 +76,211 @@ const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = fal
   
   return (
     <div className="space-y-4">
-    {showProgress && (
-      <div className="text-center text-sm text-gray-600">
-      <span className="font-bold">{earnedBadges.length}</span> von <span className="font-bold">{visibleBadges.length}</span> Badges erhalten
-      {!isAdmin && badges.some(b => b.is_hidden && !earnedBadgeIds.includes(b.id)) && (
-        <div className="text-xs text-purple-600 mt-1">
-        🎭 Versteckte Badges werden erst bei Erreichen angezeigt
+      {showProgress && (
+        <div className="text-center text-sm text-gray-600">
+          <span className="font-bold">{earnedBadges.length}</span> von <span className="font-bold">{visibleBadges.length}</span> Badges erhalten
+          {!isAdmin && badges.some(b => b.is_hidden && !earnedBadgeIds.includes(b.id)) && (
+            <div className="text-xs text-purple-600 mt-1">
+              🎭 Versteckte Badges werden erst bei Erreichen angezeigt
+            </div>
+          )}
         </div>
       )}
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+        {visibleBadges.map(badge => {
+          const isEarned = earnedBadgeIds.includes(badge.id);
+          const isHidden = badge.is_hidden;
+          
+          return (
+            <div 
+              key={badge.id} 
+              className={`p-3 rounded-lg text-center border-2 transition-all ${
+                isEarned 
+                  ? isHidden 
+                    ? 'bg-purple-50 border-purple-400 shadow-md' 
+                    : 'bg-yellow-50 border-yellow-400 shadow-md'
+                  : 'bg-gray-50 border-gray-200 opacity-60'
+              }`}
+              title={badge.description}
+            >
+              <div className="text-2xl mb-1">
+                {isEarned && isHidden ? '🎭' : badge.icon}
+              </div>
+              <div className={`text-xs font-bold ${
+                isEarned 
+                  ? isHidden ? 'text-purple-800' : 'text-yellow-800' 
+                  : 'text-gray-500'
+              }`}>
+                {badge.name}
+              </div>
+              {isEarned && (
+                <div className={`text-xs mt-1 ${isHidden ? 'text-purple-600' : 'text-yellow-600'}`}>
+                  ✓ {isHidden ? 'Geheim erreicht!' : 'Erhalten'}
+                </div>
+              )}
+              {isAdmin && isHidden && !isEarned && (
+                <div className="text-xs text-purple-500 mt-1">
+                  🎭 Versteckt
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
-    )}
-    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-    {visibleBadges.map(badge => {
-      const isEarned = earnedBadgeIds.includes(badge.id);
-      const isHidden = badge.is_hidden;
-      
-      return (
-        <div 
-        key={badge.id} 
-        className={`p-3 rounded-lg text-center border-2 transition-all ${
-          isEarned 
-          ? isHidden 
-          ? 'bg-purple-50 border-purple-400 shadow-md' 
-          : 'bg-yellow-50 border-yellow-400 shadow-md'
-          : 'bg-gray-50 border-gray-200 opacity-60'
-        }`}
-        title={badge.description}
-        >
-        <div className="text-2xl mb-1">
-        {isEarned && isHidden ? '🎭' : badge.icon}
-        </div>
-        <div className={`text-xs font-bold ${
-          isEarned 
-          ? isHidden ? 'text-purple-800' : 'text-yellow-800' 
-          : 'text-gray-500'
-        }`}>
-        {badge.name}
-        </div>
-        {isEarned && (
-          <div className={`text-xs mt-1 ${isHidden ? 'text-purple-600' : 'text-yellow-600'}`}>
-          ✓ {isHidden ? 'Geheim erreicht!' : 'Erhalten'}
-          </div>
-        )}
-        {isAdmin && isHidden && !isEarned && (
-          <div className="text-xs text-purple-500 mt-1">
-          🎭 Versteckt
-          </div>
-        )}
-        </div>
-      );
-    })}
-    </div>
     </div>
   );
 };
 
-// Image Popup Component
+// Image Popup Component - FIXED
 const ImageModal = ({ show, onClose, imageUrl, title }) => {
   if (!show) return null;
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-lg p-4 max-w-4xl max-h-[90vh] overflow-hidden">
-    <div className="flex justify-between items-center mb-4">
-    <h3 className="text-lg font-bold">{title}</h3>
-    <button
-    onClick={onClose}
-    className="text-gray-500 hover:text-gray-700"
-    >
-    <X className="w-6 h-6" />
-    </button>
-    </div>
-    <div className="max-h-[70vh] overflow-auto">
-    <img 
-    src={imageUrl} 
-    alt={title}
-    className="max-w-full h-auto rounded"
-    onError={(e) => {
-      e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5CaWxkIG5pY2h0IGdlZnVuZGVuPC90ZXh0Pjwvc3ZnPg==';
-    }}
-    />
-    </div>
-    </div>
+      <div className="bg-white rounded-lg p-4 max-w-4xl max-h-[90vh] overflow-hidden">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold">{title}</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+        <div className="max-h-[70vh] overflow-auto">
+          <img 
+            src={imageUrl} 
+            alt={title}
+            className="max-w-full h-auto rounded"
+            onError={(e) => {
+              e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5CaWxkIG5pY2h0IGdlZnVuZGVuPC90ZXh0Pjwvc3ZnPg==';
+            }}
+          />
+        </div>
+      </div>
     </div>
   );
 };
 
-// Enhanced Ranking Component
+// Enhanced Ranking Component - IMPROVED DESIGN
 const EnhancedRankingDisplay = ({ ranking, isAdmin = false }) => {
   if (isAdmin) {
     return (
       <div className="space-y-3">
-      {ranking.map((konfi, index) => {
-        const position = index + 1;
-        const isTop3 = position <= 3;
-        
-        return (
-          <div 
-          key={konfi.id || index} 
-          className={`flex items-center justify-between p-4 rounded-lg border-2 transition-all ${
-            isTop3 
-            ? position === 1 ? 'bg-yellow-50 border-yellow-400 shadow-lg' 
-            : position === 2 ? 'bg-gray-50 border-gray-400 shadow-md'
-            : 'bg-orange-50 border-orange-400 shadow-md'
-            : 'bg-white border-gray-200'
-          }`}
-          >
-          <div className="flex items-center gap-4">
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg ${
-            position === 1 ? 'bg-yellow-400 text-yellow-900' 
-            : position === 2 ? 'bg-gray-400 text-gray-900'
-            : position === 3 ? 'bg-orange-400 text-orange-900'
-            : 'bg-blue-100 text-blue-800'
-          }`}>
-          {position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : position}
-          </div>
+        {ranking.map((konfi, index) => {
+          const position = index + 1;
+          const isTop3 = position <= 3;
           
-          <div>
-          <h3 className="font-bold text-lg">{konfi.name}</h3>
-          <div className="flex items-center gap-4 text-sm text-gray-600">
-          <span>Gottesdienst: {konfi.gottesdienst || 0}</span>
-          <span>Gemeinde: {konfi.gemeinde || 0}</span>
-          </div>
-          </div>
-          </div>
-          
-          <div className="text-right">
-          <div className="text-2xl font-bold text-purple-600">
-          {konfi.points}
-          </div>
-          <div className="text-sm text-gray-500">Punkte</div>
-          </div>
-          </div>
-        );
-      })}
+          return (
+            <div 
+              key={konfi.id || index} 
+              className={`flex items-center justify-between p-4 rounded-lg border-2 transition-all ${
+                isTop3 
+                  ? position === 1 ? 'bg-yellow-50 border-yellow-400 shadow-lg' 
+                    : position === 2 ? 'bg-gray-50 border-gray-400 shadow-md'
+                    : 'bg-orange-50 border-orange-400 shadow-md'
+                  : 'bg-white border-gray-200'
+              }`}
+            >
+              <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg ${
+                  position === 1 ? 'bg-yellow-400 text-yellow-900' 
+                    : position === 2 ? 'bg-gray-400 text-gray-900'
+                    : position === 3 ? 'bg-orange-400 text-orange-900'
+                    : 'bg-blue-100 text-blue-800'
+                }`}>
+                  {position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : position}
+                </div>
+                
+                <div>
+                  <h3 className="font-bold text-lg">{konfi.name}</h3>
+                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <span>Gottesdienst: {konfi.gottesdienst || 0}</span>
+                    <span>Gemeinde: {konfi.gemeinde || 0}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="text-right">
+                <div className="text-2xl font-bold text-purple-600">
+                  {konfi.points}
+                </div>
+                <div className="text-sm text-gray-500">Punkte</div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     );
   } else {
-    // Konfi view - anonymized
+    // Konfi view - IMPROVED STYLE like Zeit los zur konfi
     return (
-      <div className="text-center space-y-4">
-      <div className="bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-xl p-6">
-      <div className="text-4xl font-bold mb-2">
-      #{ranking.myPosition}
-      </div>
-      <div className="text-lg">
-      von {ranking.totalKonfis} Konfis
-      </div>
-      <div className="text-sm opacity-90 mt-2">
-      Mit {ranking.myPoints} Punkten
-      </div>
-      </div>
-      
-      {ranking.topScores && (
-        <div className="bg-white rounded-lg p-4">
-        <h4 className="font-bold mb-3">Top 3 Punktestände</h4>
-        <div className="flex justify-center gap-6">
-        {ranking.topScores.slice(0, 3).map((score, index) => (
-          <div key={index} className="text-center">
-          <div className="text-2xl mb-1">
-          {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
+      <div className="text-center space-y-6">
+        {/* Main Position Card */}
+        <div className="bg-gradient-to-br from-purple-600 via-blue-600 to-purple-800 text-white rounded-2xl p-8 shadow-xl">
+          <div className="mb-4">
+            <div className="text-6xl font-bold mb-2 text-yellow-300">
+              #{ranking.myPosition}
+            </div>
+            <div className="text-xl font-semibold opacity-90">
+              von {ranking.totalKonfis} Konfis
+            </div>
           </div>
-          <div className="font-bold">{score}</div>
-          <div className="text-xs text-gray-500">Punkte</div>
+          
+          <div className="bg-white/20 rounded-xl p-4 backdrop-blur-sm">
+            <div className="text-3xl font-bold text-yellow-300 mb-1">
+              {ranking.myPoints}
+            </div>
+            <div className="text-sm opacity-90">Punkte erreicht</div>
           </div>
-        ))}
         </div>
-        </div>
-      )}
+
+        {/* Top 3 Podium */}
+        {ranking.topScores && (
+          <div className="bg-white rounded-2xl p-6 shadow-lg">
+            <h4 className="font-bold text-lg mb-6 text-gray-800">🏆 Top 3 Bestenliste</h4>
+            <div className="flex justify-center items-end gap-4">
+              {/* 2nd Place */}
+              {ranking.topScores[1] && (
+                <div className="text-center">
+                  <div className="bg-gray-200 rounded-lg p-4 mb-2 h-16 flex items-end">
+                    <div className="w-full text-center">
+                      <div className="text-2xl mb-1">🥈</div>
+                    </div>
+                  </div>
+                  <div className="font-bold text-lg text-gray-700">{ranking.topScores[1]}</div>
+                  <div className="text-xs text-gray-500">Punkte</div>
+                </div>
+              )}
+              
+              {/* 1st Place */}
+              {ranking.topScores[0] && (
+                <div className="text-center">
+                  <div className="bg-yellow-200 rounded-lg p-4 mb-2 h-20 flex items-end">
+                    <div className="w-full text-center">
+                      <div className="text-3xl mb-1">🥇</div>
+                    </div>
+                  </div>
+                  <div className="font-bold text-xl text-yellow-700">{ranking.topScores[0]}</div>
+                  <div className="text-xs text-gray-500">Punkte</div>
+                </div>
+              )}
+              
+              {/* 3rd Place */}
+              {ranking.topScores[2] && (
+                <div className="text-center">
+                  <div className="bg-orange-200 rounded-lg p-4 mb-2 h-12 flex items-end">
+                    <div className="w-full text-center">
+                      <div className="text-xl mb-1">🥉</div>
+                    </div>
+                  </div>
+                  <div className="font-bold text-lg text-orange-700">{ranking.topScores[2]}</div>
+                  <div className="text-xs text-gray-500">Punkte</div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -379,7 +415,6 @@ const ActivityRequestModal = ({
   );
 };
 
-// Badge Management Modal
 // Enhanced Badge Management Modal
 const BadgeModal = ({ 
   show, 
@@ -439,49 +474,49 @@ const BadgeModal = ({
       case 'activity_combination':
         return (
           <div>
-          <label className="block text-sm font-medium mb-1">Erforderliche Aktivitäten</label>
-          <div className="space-y-2 max-h-32 overflow-y-auto border rounded p-2">
-          {activities.map(activity => (
-            <label key={activity.id} className="flex items-center gap-2">
-            <input
-            type="checkbox"
-            checked={(formData.criteria_extra.required_activities || []).includes(activity.name)}
-            onChange={(e) => {
-              const current = formData.criteria_extra.required_activities || [];
-              const updated = e.target.checked 
-              ? [...current, activity.name]
-              : current.filter(name => name !== activity.name);
-              setFormData({
-                ...formData,
-                criteria_extra: { ...formData.criteria_extra, required_activities: updated }
-              });
-            }}
-            />
-            <span className="text-sm">{activity.name}</span>
-            </label>
-          ))}
-          </div>
+            <label className="block text-sm font-medium mb-1">Erforderliche Aktivitäten</label>
+            <div className="space-y-2 max-h-32 overflow-y-auto border rounded p-2">
+              {activities.map(activity => (
+                <label key={activity.id} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={(formData.criteria_extra.required_activities || []).includes(activity.name)}
+                    onChange={(e) => {
+                      const current = formData.criteria_extra.required_activities || [];
+                      const updated = e.target.checked 
+                        ? [...current, activity.name]
+                        : current.filter(name => name !== activity.name);
+                      setFormData({
+                        ...formData,
+                        criteria_extra: { ...formData.criteria_extra, required_activities: updated }
+                      });
+                    }}
+                  />
+                  <span className="text-sm">{activity.name}</span>
+                </label>
+              ))}
+            </div>
           </div>
         );
       
       case 'time_based':
         return (
           <div>
-          <label className="block text-sm font-medium mb-1">Zeitraum (Tage)</label>
-          <input
-          type="number"
-          value={formData.criteria_extra.days || 7}
-          onChange={(e) => setFormData({
-            ...formData,
-            criteria_extra: { ...formData.criteria_extra, days: parseInt(e.target.value) || 7 }
-          })}
-          className="w-full p-2 border rounded"
-          min="1"
-          max="365"
-          />
-          <p className="text-xs text-gray-500 mt-1">
-          {formData.criteria_value} Aktivitäten in {formData.criteria_extra.days || 7} Tagen
-          </p>
+            <label className="block text-sm font-medium mb-1">Zeitraum (Tage)</label>
+            <input
+              type="number"
+              value={formData.criteria_extra.days || 7}
+              onChange={(e) => setFormData({
+                ...formData,
+                criteria_extra: { ...formData.criteria_extra, days: parseInt(e.target.value) || 7 }
+              })}
+              className="w-full p-2 border rounded"
+              min="1"
+              max="365"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              {formData.criteria_value} Aktivitäten in {formData.criteria_extra.days || 7} Tagen
+            </p>
           </div>
         );
       
@@ -492,120 +527,120 @@ const BadgeModal = ({
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-    <h3 className="text-lg font-bold mb-4">
-    {badge ? 'Badge bearbeiten' : 'Neues Badge erstellen'}
-    </h3>
-    
-    <form onSubmit={handleSubmit} className="space-y-4">
-    <div className="grid grid-cols-2 gap-3">
-    <div>
-    <label className="block text-sm font-medium mb-1">Name *</label>
-    <input
-    type="text"
-    value={formData.name}
-    onChange={(e) => setFormData({...formData, name: e.target.value})}
-    className="w-full p-2 border rounded"
-    placeholder="z.B. All-Rounder"
-    required
-    />
-    </div>
-    <div>
-    <label className="block text-sm font-medium mb-1">Icon *</label>
-    <input
-    type="text"
-    value={formData.icon}
-    onChange={(e) => setFormData({...formData, icon: e.target.value})}
-    className="w-full p-2 border rounded"
-    placeholder="🏆"
-    required
-    />
-    </div>
-    </div>
-    
-    <div>
-    <label className="block text-sm font-medium mb-1">Beschreibung</label>
-    <textarea
-    value={formData.description}
-    onChange={(e) => setFormData({...formData, description: e.target.value})}
-    className="w-full p-2 border rounded"
-    rows="2"
-    placeholder="z.B. Drei verschiedene Aktivitäten in einer Woche"
-    />
-    </div>
-    
-    <div className="grid grid-cols-2 gap-3">
-    <div>
-    <label className="block text-sm font-medium mb-1">Kriterium *</label>
-    <select
-    value={formData.criteria_type}
-    onChange={(e) => setFormData({...formData, criteria_type: e.target.value})}
-    className="w-full p-2 border rounded"
-    required
-    >
-    <option value="">Kriterium wählen...</option>
-    {Object.entries(criteriaTypes).map(([key, type]) => (
-      <option key={key} value={key}>{type.label}</option>
-    ))}
-    </select>
-    </div>
-    <div>
-    <label className="block text-sm font-medium mb-1">Wert *</label>
-    <input
-    type="number"
-    value={formData.criteria_value}
-    onChange={(e) => setFormData({...formData, criteria_value: parseInt(e.target.value) || 1})}
-    className="w-full p-2 border rounded"
-    min="1"
-    required
-    />
-    </div>
-    </div>
-    
-    {renderExtraFields()}
-    
-    <div className="space-y-2">
-    <div className="flex items-center gap-2">
-    <input
-    type="checkbox"
-    checked={formData.is_active}
-    onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
-    id="is-active"
-    />
-    <label htmlFor="is-active" className="text-sm">Badge aktiv</label>
-    </div>
-    
-    <div className="flex items-center gap-2">
-    <input
-    type="checkbox"
-    checked={formData.is_hidden}
-    onChange={(e) => setFormData({...formData, is_hidden: e.target.checked})}
-    id="is-hidden"
-    />
-    <label htmlFor="is-hidden" className="text-sm">Verstecktes Badge (erscheint erst bei Erreichen)</label>
-    </div>
-    </div>
-    
-    <div className="flex gap-2">
-    <button
-    type="submit"
-    disabled={loading}
-    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50 flex items-center gap-2"
-    >
-    {loading && <Loader className="w-4 h-4 animate-spin" />}
-    <Save className="w-4 h-4" />
-    {badge ? 'Aktualisieren' : 'Erstellen'}
-    </button>
-    <button
-    type="button"
-    onClick={onClose}
-    className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-    >
-    Abbrechen
-    </button>
-    </div>
-    </form>
-    </div>
+      <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <h3 className="text-lg font-bold mb-4">
+          {badge ? 'Badge bearbeiten' : 'Neues Badge erstellen'}
+        </h3>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Name *</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                className="w-full p-2 border rounded"
+                placeholder="z.B. All-Rounder"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Icon *</label>
+              <input
+                type="text"
+                value={formData.icon}
+                onChange={(e) => setFormData({...formData, icon: e.target.value})}
+                className="w-full p-2 border rounded"
+                placeholder="🏆"
+                required
+              />
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Beschreibung</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({...formData, description: e.target.value})}
+              className="w-full p-2 border rounded"
+              rows="2"
+              placeholder="z.B. Drei verschiedene Aktivitäten in einer Woche"
+            />
+          </div>
+          
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Kriterium *</label>
+              <select
+                value={formData.criteria_type}
+                onChange={(e) => setFormData({...formData, criteria_type: e.target.value})}
+                className="w-full p-2 border rounded"
+                required
+              >
+                <option value="">Kriterium wählen...</option>
+                {Object.entries(criteriaTypes).map(([key, type]) => (
+                  <option key={key} value={key}>{type.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Wert *</label>
+              <input
+                type="number"
+                value={formData.criteria_value}
+                onChange={(e) => setFormData({...formData, criteria_value: parseInt(e.target.value) || 1})}
+                className="w-full p-2 border rounded"
+                min="1"
+                required
+              />
+            </div>
+          </div>
+          
+          {renderExtraFields()}
+          
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={formData.is_active}
+                onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
+                id="is-active"
+              />
+              <label htmlFor="is-active" className="text-sm">Badge aktiv</label>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={formData.is_hidden}
+                onChange={(e) => setFormData({...formData, is_hidden: e.target.checked})}
+                id="is-hidden"
+              />
+              <label htmlFor="is-hidden" className="text-sm">Verstecktes Badge (erscheint erst bei Erreichen)</label>
+            </div>
+          </div>
+          
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={loading}
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50 flex items-center gap-2"
+            >
+              {loading && <Loader className="w-4 h-4 animate-spin" />}
+              <Save className="w-4 h-4" />
+              {badge ? 'Aktualisieren' : 'Erstellen'}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+            >
+              Abbrechen
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };
@@ -622,11 +657,12 @@ const RequestStatusBadge = ({ status }) => {
   
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
-    <Icon className="w-3 h-3" />
-    {config.label}
+      <Icon className="w-3 h-3" />
+      {config.label}
     </span>
   );
 };
+
 // Statistics Dashboard
 const StatisticsDashboard = ({ konfiData, allStats, badges }) => {
   const countdown = getConfirmationCountdown(konfiData.confirmation_date);
@@ -635,81 +671,69 @@ const StatisticsDashboard = ({ konfiData, allStats, badges }) => {
   
   return (
     <div className="space-y-6">
-    {/* Countdown */}
-    {countdown && countdown.isUpcoming && (
-      <div className="bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-xl p-6 text-center">
-      <h2 className="text-2xl font-bold mb-2">🎯 MEIN KONFI-JAHR</h2>
-      <div className="text-lg">
-      Noch <span className="font-bold text-3xl">{countdown.totalDays}</span> Tage 
-      bis zur Konfirmation
-      <div className="text-sm opacity-90 mt-1">
-      ({countdown.weeks} Wochen, {countdown.remainingDays} Tage)
-      </div>
-      </div>
-      </div>
-    )}
-    
-    {/* Ranking */}
-    {allStats.myPosition && (
-      <div className="bg-white rounded-xl shadow-lg p-6">
-      <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-      <Trophy className="w-6 h-6 text-yellow-500" />
-      MEINE POSITION
-      </h3>
-      <div className="text-center">
-      <div className="text-4xl font-bold text-blue-600 mb-2">
-      #{allStats.myPosition}
-      </div>
-      <div className="text-gray-600">
-      von {allStats.totalKonfis} Konfis mit {allStats.myPoints} Punkten
-      </div>
-      {allStats.topScores && (
-        <div className="mt-4 text-sm text-gray-500">
-        Top 3: {allStats.topScores.join(', ')} Punkte
+      {/* Countdown */}
+      {countdown && countdown.isUpcoming && (
+        <div className="bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-xl p-6 text-center">
+          <h2 className="text-2xl font-bold mb-2">🎯 MEIN KONFI-JAHR</h2>
+          <div className="text-lg">
+            Noch <span className="font-bold text-3xl">{countdown.totalDays}</span> Tage 
+            bis zur Konfirmation
+            <div className="text-sm opacity-90 mt-1">
+              ({countdown.weeks} Wochen, {countdown.remainingDays} Tage)
+            </div>
+          </div>
         </div>
       )}
-      </div>
-      </div>
-    )}
-    
-    {/* Badges */}
-    <div className="bg-white rounded-xl shadow-lg p-6">
-    <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-    <Award className="w-6 h-6 text-yellow-500" />
-    MEINE BADGES
-    </h3>
-    <BadgeDisplay badges={availableBadges} earnedBadges={earnedBadges} />
-    </div>
-    
-    {/* Overall Statistics */}
-    {allStats.totalPoints && (
+      
+      {/* Ranking */}
+      {allStats.myPosition && (
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <Trophy className="w-6 h-6 text-yellow-500" />
+            MEINE POSITION
+          </h3>
+          <EnhancedRankingDisplay ranking={allStats} isAdmin={false} />
+        </div>
+      )}
+      
+      {/* Badges */}
       <div className="bg-white rounded-xl shadow-lg p-6">
-      <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-      <BarChart3 className="w-6 h-6 text-green-500" />
-      GEMEINDE-STATISTIKEN
-      </h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="bg-blue-50 p-4 rounded">
-      <div className="text-2xl font-bold text-blue-600">{allStats.totalPoints.total || 0}</div>
-      <div className="text-sm text-gray-600">Punkte insgesamt gesammelt</div>
+        <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+          <Award className="w-6 h-6 text-yellow-500" />
+          MEINE BADGES
+        </h3>
+        <BadgeDisplay badges={availableBadges} earnedBadges={earnedBadges} />
       </div>
-      <div className="bg-green-50 p-4 rounded">
-      <div className="text-lg font-bold text-green-600">
-      {allStats.mostPopularActivity?.name || 'Noch keine Daten'}
-      </div>
-      <div className="text-sm text-gray-600">Beliebteste Aktivität</div>
-      </div>
-      <div className="bg-purple-50 p-4 rounded">
-      <div className="text-2xl font-bold text-purple-600">{allStats.totalActivities?.count || 0}</div>
-      <div className="text-sm text-gray-600">Aktivitäten absolviert</div>
-      </div>
-      <div className="bg-orange-50 p-4 rounded">
-      <div className="text-2xl font-bold text-orange-600">{allStats.totalKonfis || 0}</div>
-      <div className="text-sm text-gray-600">Aktive Konfis</div>
-      </div>
-      </div>
-      </div>
-    )}
+      
+      {/* Overall Statistics */}
+      {allStats.totalPoints && (
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <BarChart3 className="w-6 h-6 text-green-500" />
+            GEMEINDE-STATISTIKEN
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-blue-50 p-4 rounded">
+              <div className="text-2xl font-bold text-blue-600">{allStats.totalPoints.total || 0}</div>
+              <div className="text-sm text-gray-600">Punkte insgesamt gesammelt</div>
+            </div>
+            <div className="bg-green-50 p-4 rounded">
+              <div className="text-lg font-bold text-green-600">
+                {allStats.mostPopularActivity?.name || 'Noch keine Daten'}
+              </div>
+              <div className="text-sm text-gray-600">Beliebteste Aktivität</div>
+            </div>
+            <div className="bg-purple-50 p-4 rounded">
+              <div className="text-2xl font-bold text-purple-600">{allStats.totalActivities?.count || 0}</div>
+              <div className="text-sm text-gray-600">Aktivitäten absolviert</div>
+            </div>
+            <div className="bg-orange-50 p-4 rounded">
+              <div className="text-2xl font-bold text-orange-600">{allStats.totalKonfis || 0}</div>
+              <div className="text-sm text-gray-600">Aktive Konfis</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -793,9 +817,9 @@ const KonfiPointsSystem = () => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [currentImage, setCurrentImage] = useState(null);
   
-  // Function to show image
+  // Function to show image - FIXED
   const showImage = (filename, title) => {
-    setCurrentImage({ url: `/uploads/${filename}`, title });
+    setCurrentImage({ url: `${API_BASE_URL}/activity-requests/${filename}/photo`, title });
     setShowImageModal(true);
   };
   
@@ -1085,9 +1109,9 @@ const KonfiPointsSystem = () => {
     setLoading(true);
     try {
       const apiRoute = type === 'activity' ? 'activities' : 
-      type === 'konfi' ? 'konfis' :
-      type === 'jahrgang' ? 'jahrgaenge' :
-      type === 'admin' ? 'admins' : type + 's';
+        type === 'konfi' ? 'konfis' :
+        type === 'jahrgang' ? 'jahrgaenge' :
+        type === 'admin' ? 'admins' : type + 's';
       
       await api.delete(`/${apiRoute}/${id}`);
       await loadData();
@@ -1126,7 +1150,7 @@ const KonfiPointsSystem = () => {
       
       await loadData();
       if (selectedKonfi && selectedKonfi.id === parseInt(konfiId)) {
-        loadKonfiDetails(konfiId);
+        await loadKonfiDetails(konfiId);
       }
       
       let successMsg = 'Aktivität erfolgreich zugeordnet';
@@ -1147,7 +1171,7 @@ const KonfiPointsSystem = () => {
       await api.delete(`/konfis/${konfiId}/activities/${recordId}`);
       await loadData();
       if (selectedKonfi && selectedKonfi.id === parseInt(konfiId)) {
-        loadKonfiDetails(konfiId);
+        await loadKonfiDetails(konfiId);
       }
       setSuccess('Aktivität erfolgreich entfernt');
     } catch (err) {
@@ -1174,7 +1198,7 @@ const KonfiPointsSystem = () => {
       
       await loadData();
       if (selectedKonfi && selectedKonfi.id === bonusKonfiId) {
-        loadKonfiDetails(bonusKonfiId);
+        await loadKonfiDetails(bonusKonfiId);
       }
       setShowBonusModal(false);
       setBonusDescription('');
@@ -1200,7 +1224,7 @@ const KonfiPointsSystem = () => {
       await api.delete(`/konfis/${konfiId}/bonus-points/${bonusId}`);
       await loadData();
       if (selectedKonfi && selectedKonfi.id === parseInt(konfiId)) {
-        loadKonfiDetails(konfiId);
+        await loadKonfiDetails(konfiId);
       }
       setSuccess('Zusatzpunkte erfolgreich entfernt');
     } catch (err) {
@@ -1275,16 +1299,16 @@ const KonfiPointsSystem = () => {
   const filteredKonfis = konfis.filter(konfi => {
     const matchesJahrgang = selectedJahrgang === 'alle' || konfi.jahrgang === selectedJahrgang;
     const matchesSearch = searchTerm === '' || 
-    konfi.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    konfi.username.toLowerCase().includes(searchTerm.toLowerCase());
+      konfi.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      konfi.username.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesJahrgang && matchesSearch;
   });
   
   const filteredAssignKonfis = konfis.filter(konfi => {
     const matchesJahrgang = selectedJahrgang === 'alle' || konfi.jahrgang === selectedJahrgang;
     const matchesSearch = assignSearchTerm === '' || 
-    konfi.name.toLowerCase().includes(assignSearchTerm.toLowerCase()) ||
-    konfi.username.toLowerCase().includes(assignSearchTerm.toLowerCase());
+      konfi.name.toLowerCase().includes(assignSearchTerm.toLowerCase()) ||
+      konfi.username.toLowerCase().includes(assignSearchTerm.toLowerCase());
     return matchesJahrgang && matchesSearch;
   });
   
@@ -1339,75 +1363,75 @@ const KonfiPointsSystem = () => {
     
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-      <h3 className="text-lg font-bold mb-4">
-      Zusatzpunkte vergeben für {konfi?.name}
-      </h3>
-      
-      <div className="mb-3">
-      <label className="block text-sm font-medium mb-1">Beschreibung</label>
-      <input
-      type="text"
-      value={description}
-      onChange={(e) => setDescription(e.target.value)}
-      className="w-full p-2 border rounded"
-      placeholder="z.B. Besondere Hilfe bei Gemeindefest"
-      autoFocus
-      />
-      </div>
-      
-      <div className="mb-3">
-      <label className="block text-sm font-medium mb-1">Punkte</label>
-      <input
-      type="number"
-      value={points}
-      onChange={(e) => setPoints(parseInt(e.target.value) || 1)}
-      min="1"
-      max="10"
-      className="w-full p-2 border rounded"
-      />
-      </div>
-      
-      <div className="mb-3">
-      <label className="block text-sm font-medium mb-1">Typ</label>
-      <select
-      value={type}
-      onChange={(e) => setType(e.target.value)}
-      className="w-full p-2 border rounded"
-      >
-      <option value="gottesdienst">Gottesdienstlich</option>
-      <option value="gemeinde">Gemeindlich</option>
-      </select>
-      </div>
-      
-      <div className="mb-4">
-      <label className="block text-sm font-medium mb-1">Datum</label>
-      <input
-      type="date"
-      value={date}
-      onChange={(e) => setDate(e.target.value)}
-      className="w-full p-2 border rounded"
-      />
-      </div>
-      
-      <div className="flex gap-2">
-      <button
-      onClick={onSubmit}
-      disabled={loading}
-      className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 disabled:opacity-50 flex items-center gap-2"
-      >
-      {loading && <Loader className="w-4 h-4 animate-spin" />}
-      <Gift className="w-4 h-4" />
-      Vergeben
-      </button>
-      <button
-      onClick={onClose}
-      className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-      >
-      Abbrechen
-      </button>
-      </div>
-      </div>
+        <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <h3 className="text-lg font-bold mb-4">
+            Zusatzpunkte vergeben für {konfi?.name}
+          </h3>
+          
+          <div className="mb-3">
+            <label className="block text-sm font-medium mb-1">Beschreibung</label>
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full p-2 border rounded"
+              placeholder="z.B. Besondere Hilfe bei Gemeindefest"
+              autoFocus
+            />
+          </div>
+          
+          <div className="mb-3">
+            <label className="block text-sm font-medium mb-1">Punkte</label>
+            <input
+              type="number"
+              value={points}
+              onChange={(e) => setPoints(parseInt(e.target.value) || 1)}
+              min="1"
+              max="10"
+              className="w-full p-2 border rounded"
+            />
+          </div>
+          
+          <div className="mb-3">
+            <label className="block text-sm font-medium mb-1">Typ</label>
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              className="w-full p-2 border rounded"
+            >
+              <option value="gottesdienst">Gottesdienstlich</option>
+              <option value="gemeinde">Gemeindlich</option>
+            </select>
+          </div>
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Datum</label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full p-2 border rounded"
+            />
+          </div>
+          
+          <div className="flex gap-2">
+            <button
+              onClick={onSubmit}
+              disabled={loading}
+              className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 disabled:opacity-50 flex items-center gap-2"
+            >
+              {loading && <Loader className="w-4 h-4 animate-spin" />}
+              <Gift className="w-4 h-4" />
+              Vergeben
+            </button>
+            <button
+              onClick={onClose}
+              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+            >
+              Abbrechen
+            </button>
+          </div>
+        </div>
       </div>
     );
   };
@@ -1424,58 +1448,58 @@ const KonfiPointsSystem = () => {
     
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-      <h3 className="text-lg font-bold mb-4">Neuen Admin hinzufügen</h3>
-      
-      <div className="space-y-3">
-      <div>
-      <label className="block text-sm font-medium mb-1">Benutzername</label>
-      <input
-      type="text"
-      value={adminForm.username}
-      onChange={(e) => setAdminForm({...adminForm, username: e.target.value})}
-      className="w-full p-2 border rounded"
-      autoFocus
-      />
-      </div>
-      <div>
-      <label className="block text-sm font-medium mb-1">Anzeigename</label>
-      <input
-      type="text"
-      value={adminForm.display_name}
-      onChange={(e) => setAdminForm({...adminForm, display_name: e.target.value})}
-      className="w-full p-2 border rounded"
-      />
-      </div>
-      <div>
-      <label className="block text-sm font-medium mb-1">Passwort</label>
-      <input
-      type="password"
-      value={adminForm.password}
-      onChange={(e) => setAdminForm({...adminForm, password: e.target.value})}
-      className="w-full p-2 border rounded"
-      />
-      </div>
-      </div>
-      
-      <div className="flex gap-2 mt-4">
-      <button
-      onClick={onSubmit}
-      disabled={loading}
-      className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50 flex items-center gap-2"
-      >
-      {loading && <Loader className="w-4 h-4 animate-spin" />}
-      <Plus className="w-4 h-4" />
-      Hinzufügen
-      </button>
-      <button
-      onClick={onClose}
-      className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-      >
-      Abbrechen
-      </button>
-      </div>
-      </div>
+        <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <h3 className="text-lg font-bold mb-4">Neuen Admin hinzufügen</h3>
+          
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Benutzername</label>
+              <input
+                type="text"
+                value={adminForm.username}
+                onChange={(e) => setAdminForm({...adminForm, username: e.target.value})}
+                className="w-full p-2 border rounded"
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Anzeigename</label>
+              <input
+                type="text"
+                value={adminForm.display_name}
+                onChange={(e) => setAdminForm({...adminForm, display_name: e.target.value})}
+                className="w-full p-2 border rounded"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Passwort</label>
+              <input
+                type="password"
+                value={adminForm.password}
+                onChange={(e) => setAdminForm({...adminForm, password: e.target.value})}
+                className="w-full p-2 border rounded"
+              />
+            </div>
+          </div>
+          
+          <div className="flex gap-2 mt-4">
+            <button
+              onClick={onSubmit}
+              disabled={loading}
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50 flex items-center gap-2"
+            >
+              {loading && <Loader className="w-4 h-4 animate-spin" />}
+              <Plus className="w-4 h-4" />
+              Hinzufügen
+            </button>
+            <button
+              onClick={onClose}
+              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+            >
+              Abbrechen
+            </button>
+          </div>
+        </div>
       </div>
     );
   };
@@ -1488,55 +1512,55 @@ const KonfiPointsSystem = () => {
     
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-      <h3 className="text-lg font-bold mb-4">
-      {passwordType === 'admin' ? 'Admin-Anmeldung' : 'Konfi-Anmeldung'}
-      </h3>
-      
-      <input
-      type="text"
-      value={username}
-      onChange={(e) => setUsername(e.target.value)}
-      className="w-full p-2 border rounded mb-3"
-      placeholder={passwordType === 'admin' ? 'Benutzername' : 'Benutzername (z.B. anna.mueller)'}
-      />
-      
-      <input
-      type="password"
-      value={password}
-      onChange={(e) => setPassword(e.target.value)}
-      className="w-full p-2 border rounded mb-4"
-      placeholder="Passwort"
-      onKeyPress={(e) => e.key === 'Enter' && handleLogin(username, password, passwordType)}
-      />
-      
-      {passwordType === 'konfi' && (
-        <p className="text-sm text-gray-600 mb-3">
-        <BookOpen className="w-4 h-4 inline mr-1" />
-        Passwort-Format: z.B. "Roemer11,1" oder "Johannes3,16"
-        </p>
-      )}
-      
-      <div className="flex gap-2">
-      <button
-      onClick={() => handleLogin(username, password, passwordType)}
-      disabled={loading}
-      className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50 flex items-center gap-2"
-      >
-      {loading && <Loader className="w-4 h-4 animate-spin" />}
-      Anmelden
-      </button>
-      <button
-      onClick={() => {
-        setShowPasswordModal(false);
-        setError('');
-      }}
-      className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-      >
-      Abbrechen
-      </button>
-      </div>
-      </div>
+        <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <h3 className="text-lg font-bold mb-4">
+            {passwordType === 'admin' ? 'Admin-Anmeldung' : 'Konfi-Anmeldung'}
+          </h3>
+          
+          <input
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="w-full p-2 border rounded mb-3"
+            placeholder={passwordType === 'admin' ? 'Benutzername' : 'Benutzername (z.B. anna.mueller)'}
+          />
+          
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full p-2 border rounded mb-4"
+            placeholder="Passwort"
+            onKeyPress={(e) => e.key === 'Enter' && handleLogin(username, password, passwordType)}
+          />
+          
+          {passwordType === 'konfi' && (
+            <p className="text-sm text-gray-600 mb-3">
+              <BookOpen className="w-4 h-4 inline mr-1" />
+              Passwort-Format: z.B. "Roemer11,1" oder "Johannes3,16"
+            </p>
+          )}
+          
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleLogin(username, password, passwordType)}
+              disabled={loading}
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50 flex items-center gap-2"
+            >
+              {loading && <Loader className="w-4 h-4 animate-spin" />}
+              Anmelden
+            </button>
+            <button
+              onClick={() => {
+                setShowPasswordModal(false);
+                setError('');
+              }}
+              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+            >
+              Abbrechen
+            </button>
+          </div>
+        </div>
       </div>
     );
   };
@@ -1579,164 +1603,164 @@ const KonfiPointsSystem = () => {
     
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-      <h3 className="text-lg font-bold mb-4">
-      {editType === 'konfi' && 'Konfi bearbeiten'}
-      {editType === 'activity' && 'Aktivität bearbeiten'}
-      {editType === 'jahrgang' && 'Jahrgang bearbeiten'}
-      {editType === 'admin' && 'Admin bearbeiten'}
-      </h3>
-      
-      {editType === 'konfi' && (
-        <div className="space-y-3">
-        <div>
-        <label className="block text-sm font-medium mb-1">Name</label>
-        <input
-        type="text"
-        value={formData.name || ''}
-        onChange={(e) => setFormData({...formData, name: e.target.value})}
-        className="w-full p-2 border rounded"
-        />
+        <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+          <h3 className="text-lg font-bold mb-4">
+            {editType === 'konfi' && 'Konfi bearbeiten'}
+            {editType === 'activity' && 'Aktivität bearbeiten'}
+            {editType === 'jahrgang' && 'Jahrgang bearbeiten'}
+            {editType === 'admin' && 'Admin bearbeiten'}
+          </h3>
+          
+          {editType === 'konfi' && (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium mb-1">Name</label>
+                <input
+                  type="text"
+                  value={formData.name || ''}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Jahrgang</label>
+                <select
+                  value={formData.jahrgang_id || ''}
+                  onChange={(e) => setFormData({...formData, jahrgang_id: e.target.value})}
+                  className="w-full p-2 border rounded"
+                >
+                  {jahrgaenge.map(j => (
+                    <option key={j.id} value={j.id}>{j.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+          
+          {editType === 'activity' && (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium mb-1">Name</label>
+                <input
+                  type="text"
+                  value={formData.name || ''}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Punkte</label>
+                <input
+                  type="number"
+                  value={formData.points || 1}
+                  onChange={(e) => setFormData({...formData, points: parseInt(e.target.value) || 1})}
+                  min="1"
+                  max="10"
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Typ</label>
+                <select
+                  value={formData.type || 'gottesdienst'}
+                  onChange={(e) => setFormData({...formData, type: e.target.value})}
+                  className="w-full p-2 border rounded"
+                >
+                  <option value="gottesdienst">Gottesdienstlich</option>
+                  <option value="gemeinde">Gemeindlich</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Kategorie</label>
+                <input
+                  type="text"
+                  value={formData.category || ''}
+                  onChange={(e) => setFormData({...formData, category: e.target.value})}
+                  className="w-full p-2 border rounded"
+                  placeholder="z.B. sonntagsgottesdienst"
+                />
+              </div>
+            </div>
+          )}
+          
+          {editType === 'jahrgang' && (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium mb-1">Name</label>
+                <input
+                  type="text"
+                  value={formData.name || ''}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="w-full p-2 border rounded"
+                  placeholder="z.B. 2025/26"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Konfirmationsdatum</label>
+                <input
+                  type="date"
+                  value={formData.confirmation_date || ''}
+                  onChange={(e) => setFormData({...formData, confirmation_date: e.target.value})}
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+            </div>
+          )}
+          
+          {editType === 'admin' && (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium mb-1">Benutzername</label>
+                <input
+                  type="text"
+                  value={formData.username || ''}
+                  onChange={(e) => setFormData({...formData, username: e.target.value})}
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Anzeigename</label>
+                <input
+                  type="text"
+                  value={formData.display_name || ''}
+                  onChange={(e) => setFormData({...formData, display_name: e.target.value})}
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Neues Passwort (optional)</label>
+                <input
+                  type="password"
+                  value={formData.password || ''}
+                  onChange={(e) => setFormData({...formData, password: e.target.value})}
+                  className="w-full p-2 border rounded"
+                  placeholder="Leer lassen für keine Änderung"
+                />
+              </div>
+            </div>
+          )}
+          
+          <div className="flex gap-2 mt-4">
+            <button
+              onClick={handleSave}
+              disabled={loading}
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50 flex items-center gap-2"
+            >
+              {loading && <Loader className="w-4 h-4 animate-spin" />}
+              <Save className="w-4 h-4" />
+              Speichern
+            </button>
+            <button
+              onClick={() => {
+                setShowEditModal(false);
+                setEditItem(null);
+              }}
+              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+            >
+              Abbrechen
+            </button>
+          </div>
         </div>
-        <div>
-        <label className="block text-sm font-medium mb-1">Jahrgang</label>
-        <select
-        value={formData.jahrgang_id || ''}
-        onChange={(e) => setFormData({...formData, jahrgang_id: e.target.value})}
-        className="w-full p-2 border rounded"
-        >
-        {jahrgaenge.map(j => (
-          <option key={j.id} value={j.id}>{j.name}</option>
-        ))}
-        </select>
-        </div>
-        </div>
-      )}
-      
-      {editType === 'activity' && (
-        <div className="space-y-3">
-        <div>
-        <label className="block text-sm font-medium mb-1">Name</label>
-        <input
-        type="text"
-        value={formData.name || ''}
-        onChange={(e) => setFormData({...formData, name: e.target.value})}
-        className="w-full p-2 border rounded"
-        />
-        </div>
-        <div>
-        <label className="block text-sm font-medium mb-1">Punkte</label>
-        <input
-        type="number"
-        value={formData.points || 1}
-        onChange={(e) => setFormData({...formData, points: parseInt(e.target.value) || 1})}
-        min="1"
-        max="10"
-        className="w-full p-2 border rounded"
-        />
-        </div>
-        <div>
-        <label className="block text-sm font-medium mb-1">Typ</label>
-        <select
-        value={formData.type || 'gottesdienst'}
-        onChange={(e) => setFormData({...formData, type: e.target.value})}
-        className="w-full p-2 border rounded"
-        >
-        <option value="gottesdienst">Gottesdienstlich</option>
-        <option value="gemeinde">Gemeindlich</option>
-        </select>
-        </div>
-        <div>
-        <label className="block text-sm font-medium mb-1">Kategorie</label>
-        <input
-        type="text"
-        value={formData.category || ''}
-        onChange={(e) => setFormData({...formData, category: e.target.value})}
-        className="w-full p-2 border rounded"
-        placeholder="z.B. sonntagsgottesdienst"
-        />
-        </div>
-        </div>
-      )}
-      
-      {editType === 'jahrgang' && (
-        <div className="space-y-3">
-        <div>
-        <label className="block text-sm font-medium mb-1">Name</label>
-        <input
-        type="text"
-        value={formData.name || ''}
-        onChange={(e) => setFormData({...formData, name: e.target.value})}
-        className="w-full p-2 border rounded"
-        placeholder="z.B. 2025/26"
-        />
-        </div>
-        <div>
-        <label className="block text-sm font-medium mb-1">Konfirmationsdatum</label>
-        <input
-        type="date"
-        value={formData.confirmation_date || ''}
-        onChange={(e) => setFormData({...formData, confirmation_date: e.target.value})}
-        className="w-full p-2 border rounded"
-        />
-        </div>
-        </div>
-      )}
-      
-      {editType === 'admin' && (
-        <div className="space-y-3">
-        <div>
-        <label className="block text-sm font-medium mb-1">Benutzername</label>
-        <input
-        type="text"
-        value={formData.username || ''}
-        onChange={(e) => setFormData({...formData, username: e.target.value})}
-        className="w-full p-2 border rounded"
-        />
-        </div>
-        <div>
-        <label className="block text-sm font-medium mb-1">Anzeigename</label>
-        <input
-        type="text"
-        value={formData.display_name || ''}
-        onChange={(e) => setFormData({...formData, display_name: e.target.value})}
-        className="w-full p-2 border rounded"
-        />
-        </div>
-        <div>
-        <label className="block text-sm font-medium mb-1">Neues Passwort (optional)</label>
-        <input
-        type="password"
-        value={formData.password || ''}
-        onChange={(e) => setFormData({...formData, password: e.target.value})}
-        className="w-full p-2 border rounded"
-        placeholder="Leer lassen für keine Änderung"
-        />
-        </div>
-        </div>
-      )}
-      
-      <div className="flex gap-2 mt-4">
-      <button
-      onClick={handleSave}
-      disabled={loading}
-      className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50 flex items-center gap-2"
-      >
-      {loading && <Loader className="w-4 h-4 animate-spin" />}
-      <Save className="w-4 h-4" />
-      Speichern
-      </button>
-      <button
-      onClick={() => {
-        setShowEditModal(false);
-        setEditItem(null);
-      }}
-      className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-      >
-      Abbrechen
-      </button>
-      </div>
-      </div>
       </div>
     );
   };
@@ -1746,77 +1770,77 @@ const KonfiPointsSystem = () => {
     
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-      <div className="flex items-center gap-3 mb-4">
-      <AlertTriangle className="w-8 h-8 text-red-500" />
-      <h3 className="text-lg font-bold">Löschen bestätigen</h3>
-      </div>
-      
-      <p className="text-gray-600 mb-4">
-      Sind Sie sicher, dass Sie <strong>{deleteItem?.name || deleteItem?.username}</strong> löschen möchten?
-      {deleteType === 'konfi' && ' Alle Aktivitäten und Punkte werden ebenfalls gelöscht.'}
-      {deleteType === 'jahrgang' && ' Dies ist nur möglich wenn keine Konfis zugeordnet sind.'}
-      {deleteType === 'activity' && ' Dies ist nur möglich wenn die Aktivität nie zugeordnet wurde.'}
-      </p>
-      
-      <div className="flex gap-2">
-      <button
-      onClick={() => handleDelete(deleteType, deleteItem.id)}
-      disabled={loading}
-      className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 disabled:opacity-50 flex items-center gap-2"
-      >
-      {loading && <Loader className="w-4 h-4 animate-spin" />}
-      <Trash2 className="w-4 h-4" />
-      Löschen
-      </button>
-      <button
-      onClick={() => {
-        setShowDeleteModal(false);
-        setDeleteItem(null);
-      }}
-      className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-      >
-      Abbrechen
-      </button>
-      </div>
-      </div>
+        <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="flex items-center gap-3 mb-4">
+            <AlertTriangle className="w-8 h-8 text-red-500" />
+            <h3 className="text-lg font-bold">Löschen bestätigen</h3>
+          </div>
+          
+          <p className="text-gray-600 mb-4">
+            Sind Sie sicher, dass Sie <strong>{deleteItem?.name || deleteItem?.username}</strong> löschen möchten?
+            {deleteType === 'konfi' && ' Alle Aktivitäten und Punkte werden ebenfalls gelöscht.'}
+            {deleteType === 'jahrgang' && ' Dies ist nur möglich wenn keine Konfis zugeordnet sind.'}
+            {deleteType === 'activity' && ' Dies ist nur möglich wenn die Aktivität nie zugeordnet wurde.'}
+          </p>
+          
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleDelete(deleteType, deleteItem.id)}
+              disabled={loading}
+              className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 disabled:opacity-50 flex items-center gap-2"
+            >
+              {loading && <Loader className="w-4 h-4 animate-spin" />}
+              <Trash2 className="w-4 h-4" />
+              Löschen
+            </button>
+            <button
+              onClick={() => {
+                setShowDeleteModal(false);
+                setDeleteItem(null);
+              }}
+              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+            >
+              Abbrechen
+            </button>
+          </div>
+        </div>
       </div>
     );
   };
   
   const LoginView = () => (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
-    <div className="bg-white rounded-xl shadow-xl p-8 w-full max-w-md">
-    <div className="text-center mb-8">
-    <Award className="w-16 h-16 text-blue-500 mx-auto mb-4" />
-    <h1 className="text-2xl font-bold text-gray-800">Konfi-Punkte-System</h1>
-    <p className="text-gray-600">Gemeinde Büsum, Neuenkirchen & Wesselburen</p>
-    </div>
-    
-    <div className="space-y-4">
-    <button
-    onClick={() => {
-      setPasswordType('admin');
-      setShowPasswordModal(true);
-    }}
-    className="w-full bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2"
-    >
-    <Settings className="w-5 h-5" />
-    Admin-Bereich
-    </button>
-    
-    <button
-    onClick={() => {
-      setPasswordType('konfi');
-      setShowPasswordModal(true);
-    }}
-    className="w-full bg-green-500 text-white py-3 px-4 rounded-lg hover:bg-green-600 flex items-center justify-center gap-2"
-    >
-    <Eye className="w-5 h-5" />
-    Meine Punkte ansehen
-    </button>
-    </div>
-    </div>
+      <div className="bg-white rounded-xl shadow-xl p-8 w-full max-w-md">
+        <div className="text-center mb-8">
+          <Award className="w-16 h-16 text-blue-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-800">Konfi-Punkte-System</h1>
+          <p className="text-gray-600">Gemeinde Büsum, Neuenkirchen & Wesselburen</p>
+        </div>
+        
+        <div className="space-y-4">
+          <button
+            onClick={() => {
+              setPasswordType('admin');
+              setShowPasswordModal(true);
+            }}
+            className="w-full bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2"
+          >
+            <Settings className="w-5 h-5" />
+            Admin-Bereich
+          </button>
+          
+          <button
+            onClick={() => {
+              setPasswordType('konfi');
+              setShowPasswordModal(true);
+            }}
+            className="w-full bg-green-500 text-white py-3 px-4 rounded-lg hover:bg-green-600 flex items-center justify-center gap-2"
+          >
+            <Eye className="w-5 h-5" />
+            Meine Punkte ansehen
+          </button>
+        </div>
+      </div>
     </div>
   );
   
@@ -1824,24 +1848,24 @@ const KonfiPointsSystem = () => {
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex flex-col">
-      <div className="flex-1">
-      <LoginView />
-      </div>
-      
-      <div className="bg-white border-t mt-auto">
-      <div className="max-w-md mx-auto px-4 py-3">
-      <div className="text-center text-xs text-gray-500">
-      © 2025 Pastor Simon Luthe • Konfi-Punkte-System v2.0.0
-      </div>
-      </div>
-      </div>
-      
-      <PasswordModal />
-      {error && (
-        <div className="fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50">
-        {error}
+        <div className="flex-1">
+          <LoginView />
         </div>
-      )}
+        
+        <div className="bg-white border-t mt-auto">
+          <div className="max-w-md mx-auto px-4 py-3">
+            <div className="text-center text-xs text-gray-500">
+              © 2025 Pastor Simon Luthe • Konfi-Punkte-System v2.0.0
+            </div>
+          </div>
+        </div>
+        
+        <PasswordModal />
+        {error && (
+          <div className="fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50">
+            {error}
+          </div>
+        )}
       </div>
     );
   }
@@ -1850,143 +1874,149 @@ const KonfiPointsSystem = () => {
   if (user.type === 'konfi') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex flex-col">
-      {/* Modals */}
-      <ActivityRequestModal 
-      show={showRequestModal}
-      onClose={() => setShowRequestModal(false)}
-      activities={activities}
-      onSubmit={handleCreateActivityRequest}
-      loading={loading}
-      />
-      
-      {/* Notifications */}
-      {error && (
-        <div className="fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50 max-w-sm">
-        {error}
-        <button onClick={() => setError('')} className="float-right ml-2 font-bold">×</button>
+        {/* Modals */}
+        <ActivityRequestModal 
+          show={showRequestModal}
+          onClose={() => setShowRequestModal(false)}
+          activities={activities}
+          onSubmit={handleCreateActivityRequest}
+          loading={loading}
+        />
+        <ImageModal 
+          show={showImageModal}
+          onClose={() => setShowImageModal(false)}
+          imageUrl={currentImage?.url}
+          title={currentImage?.title}
+        />
+        
+        {/* Notifications */}
+        {error && (
+          <div className="fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50 max-w-sm">
+            {error}
+            <button onClick={() => setError('')} className="float-right ml-2 font-bold">×</button>
+          </div>
+        )}
+        
+        {success && (
+          <div className="fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded z-50 max-w-sm">
+            {success}
+            <button onClick={() => setSuccess('')} className="float-right ml-2 font-bold">×</button>
+          </div>
+        )}
+        
+        {/* Header */}
+        <div className="bg-white shadow-sm border-b">
+          <div className="max-w-4xl mx-auto px-4 py-4">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <Award className="w-8 h-8 text-blue-500" />
+                <div>
+                  <h1 className="text-xl font-bold text-gray-800">Hallo {user.name}!</h1>
+                  <p className="text-sm text-gray-600">Jahrgang: {user.jahrgang}</p>
+                </div>
+              </div>
+              
+              {/* Desktop Controls */}
+              <div className="hidden sm:flex gap-2">
+                <button
+                  onClick={() => loadKonfiData(user.id)}
+                  disabled={loading}
+                  className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 disabled:opacity-50 flex items-center gap-2"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                  Aktualisieren
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 flex items-center gap-2"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Abmelden
+                </button>
+              </div>
+              
+              {/* Mobile Menu */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="sm:hidden bg-gray-100 p-2 rounded-lg"
+              >
+                {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
+            </div>
+            
+            {/* Mobile Controls */}
+            {mobileMenuOpen && (
+              <div className="sm:hidden mt-4 space-y-3 pb-4 border-t pt-4">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => loadKonfiData(user.id)}
+                    disabled={loading}
+                    className="flex-1 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    Aktualisieren
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="flex-1 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 flex items-center justify-center gap-2"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Abmelden
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      )}
-      
-      {success && (
-        <div className="fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded z-50 max-w-sm">
-        {success}
-        <button onClick={() => setSuccess('')} className="float-right ml-2 font-bold">×</button>
-        </div>
-      )}
-      
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-      <div className="max-w-4xl mx-auto px-4 py-4">
-      <div className="flex justify-between items-center">
-      <div className="flex items-center gap-3">
-      <Award className="w-8 h-8 text-blue-500" />
-      <div>
-      <h1 className="text-xl font-bold text-gray-800">Hallo {user.name}!</h1>
-      <p className="text-sm text-gray-600">Jahrgang: {user.jahrgang}</p>
-      </div>
-      </div>
-      
-      {/* Desktop Controls */}
-      <div className="hidden sm:flex gap-2">
-      <button
-      onClick={() => loadKonfiData(user.id)}
-      disabled={loading}
-      className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 disabled:opacity-50 flex items-center gap-2"
-      >
-      <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-      Aktualisieren
-      </button>
-      <button
-      onClick={handleLogout}
-      className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 flex items-center gap-2"
-      >
-      <LogOut className="w-4 h-4" />
-      Abmelden
-      </button>
-      </div>
-      
-      {/* Mobile Menu */}
-      <button
-      onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-      className="sm:hidden bg-gray-100 p-2 rounded-lg"
-      >
-      {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-      </button>
-      </div>
-      
-      {/* Mobile Controls */}
-      {mobileMenuOpen && (
-        <div className="sm:hidden mt-4 space-y-3 pb-4 border-t pt-4">
-        <div className="flex gap-2">
-        <button
-        onClick={() => loadKonfiData(user.id)}
-        disabled={loading}
-        className="flex-1 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-        Aktualisieren
-        </button>
-        <button
-        onClick={handleLogout}
-        className="flex-1 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 flex items-center justify-center gap-2"
-        >
-        <LogOut className="w-4 h-4" />
-        Abmelden
-        </button>
-        </div>
-        </div>
-      )}
-      </div>
-      </div>
-      
-      {/* Navigation */}
-      <div className="bg-white border-b">
-      <div className="max-w-4xl mx-auto px-4">
-      {/* Desktop Navigation */}
-      <nav className="hidden sm:flex gap-6">
-      {navigationItems.map(({ id, label, icon: Icon }) => (
-        <button
-        key={id}
-        onClick={() => {
-          setCurrentView(id);
-          setMobileMenuOpen(false);
-        }}
-        className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
-          currentView === id 
-          ? 'border-blue-500 text-blue-600' 
-          : 'border-transparent text-gray-600 hover:text-blue-600'
-        }`}
-        >
-        <Icon className="w-4 h-4" />
-        {label}
-        </button>
-      ))}
-      </nav>
-      
-      {/* Mobile Navigation */}
-      {mobileMenuOpen && (
-        <nav className="sm:hidden py-4">
-        <div className="grid grid-cols-1 gap-2">
-        {navigationItems.map(({ id, label, icon: Icon }) => (
-          <button
-          key={id}
-          onClick={() => {
-            setCurrentView(id);
-            setMobileMenuOpen(false);
-          }}
-          className={`flex items-center gap-2 px-3 py-3 rounded-lg transition-colors ${
-            currentView === id 
-            ? 'bg-blue-100 text-blue-600 border border-blue-300' 
-            : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
-          }`}
-          >
-          <Icon className="w-4 h-4" />
-          <span className="font-medium">{label}</span>
-          </button>
-        ))}
-        </div>
-        </nav>
-      )}
+        
+        {/* Navigation */}
+        <div className="bg-white border-b">
+          <div className="max-w-4xl mx-auto px-4">
+            {/* Desktop Navigation */}
+            <nav className="hidden sm:flex gap-6">
+              {navigationItems.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => {
+                    setCurrentView(id);
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
+                    currentView === id 
+                      ? 'border-blue-500 text-blue-600' 
+                      : 'border-transparent text-gray-600 hover:text-blue-600'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {label}
+                </button>
+              ))}
+            </nav>
+            
+            {/* Mobile Navigation */}
+            {mobileMenuOpen && (
+              <nav className="sm:hidden py-4">
+                <div className="grid grid-cols-1 gap-2">
+                  {navigationItems.map(({ id, label, icon: Icon }) => (
+                    <button
+                      key={id}
+                      onClick={() => {
+                        setCurrentView(id);
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`flex items-center gap-2 px-3 py-3 rounded-lg transition-colors ${
+                        currentView === id 
+                          ? 'bg-blue-100 text-blue-600 border border-blue-300' 
+                          : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                    <Icon className="w-4 h-4" />
+                    <span className="font-medium">{label}</span>
+                    </button>
+                  ))}
+              </div>
+              </nav>
+            )}
       </div>
       </div>
       
@@ -2002,9 +2032,9 @@ const KonfiPointsSystem = () => {
       {/* Konfi Dashboard */}
       {currentView === 'konfi-dashboard' && selectedKonfi && (
         <div className="space-y-6">
-        {/* Points Overview */}
+        {/* Points Overview - WITH SHADOWS */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-blue-50 p-6 rounded-xl">
+        <div className="bg-blue-50 p-6 rounded-xl shadow-lg">
         <h3 className="font-bold text-blue-800 mb-3 flex items-center gap-2">
         <BookOpen className="w-5 h-5" />
         Gottesdienstliche Aktivitäten
@@ -2026,7 +2056,7 @@ const KonfiPointsSystem = () => {
         )}
         </div>
         
-        <div className="bg-green-50 p-6 rounded-xl">
+        <div className="bg-green-50 p-6 rounded-xl shadow-lg">
         <h3 className="font-bold text-green-800 mb-3 flex items-center gap-2">
         <Heart className="w-5 h-5" />
         Gemeindliche Aktivitäten
@@ -2153,14 +2183,12 @@ const KonfiPointsSystem = () => {
             <div className="flex items-center gap-3">
             <RequestStatusBadge status={request.status} />
             {request.photo_filename && (
-              <a 
-              href={`/uploads/${request.photo_filename}`} 
-              target="_blank" 
-              rel="noopener noreferrer"
+              <button 
+              onClick={() => showImage(request.id, `Foto für ${request.activity_name}`)}
               className="text-blue-500 hover:text-blue-700"
               >
               <Camera className="w-4 h-4" />
-              </a>
+              </button>
             )}
             </div>
             </div>
@@ -2185,6 +2213,7 @@ const KonfiPointsSystem = () => {
           <BadgeDisplay 
           badges={badges.available} 
           earnedBadges={badges.earned || []} 
+          isAdmin={false}
           />
         ) : (
           <div className="text-center py-8">
@@ -2472,6 +2501,13 @@ const KonfiPointsSystem = () => {
         <p className="text-sm text-gray-600">
         Jahrgang: {konfi.jahrgang} | Username: {konfi.username}
         </p>
+        {/* Show badges count */}
+        {konfi.badges && konfi.badges.length > 0 && (
+          <p className="text-sm text-yellow-600 flex items-center gap-1">
+          <Award className="w-3 h-3" />
+          {konfi.badges.length} Badge(s) erreicht
+          </p>
+        )}
         </div>
         <div className="flex gap-4">
         <div className="text-center">
@@ -2563,7 +2599,7 @@ const KonfiPointsSystem = () => {
           <div className="flex flex-col sm:flex-row gap-3 items-start">
           {request.photo_filename && (
             <button 
-            onClick={() => showImage(request.photo_filename, `Foto für ${request.activity_name}`)}
+            onClick={() => showImage(request.id, `Foto für ${request.activity_name}`)}
             className="bg-blue-100 text-blue-700 px-3 py-2 rounded hover:bg-blue-200 flex items-center gap-2"
             >
             <Camera className="w-4 h-4" />
@@ -2598,14 +2634,22 @@ const KonfiPointsSystem = () => {
       )}
       </div>
       
-      {/* Recent processed requests */}
+      {/* Recent processed requests - WITH PHOTO VIEWING */}
       <div className="mt-8">
       <h3 className="text-lg font-bold mb-4">Kürzlich bearbeitet</h3>
       <div className="space-y-2">
       {activityRequests.filter(r => r.status !== 'pending').slice(0, 5).map(request => (
         <div key={request.id} className="flex justify-between items-center p-3 bg-gray-50 rounded">
-        <div>
+        <div className="flex items-center gap-3">
         <span className="font-medium">{request.konfi_name}</span> - {request.activity_name}
+        {request.photo_filename && (
+          <button 
+          onClick={() => showImage(request.id, `Foto für ${request.activity_name}`)}
+          className="text-blue-500 hover:text-blue-700"
+          >
+          <Camera className="w-4 h-4" />
+          </button>
+        )}
         </div>
         <RequestStatusBadge status={request.status} />
         </div>
@@ -2684,6 +2728,15 @@ const KonfiPointsSystem = () => {
         {copiedPassword === konfi.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
         </button>
         </div>
+        {/* Show badges for this konfi */}
+        {konfi.badges && konfi.badges.length > 0 && (
+          <div className="flex items-center gap-1 mt-2">
+          <Award className="w-3 h-3 text-yellow-500" />
+          <span className="text-xs text-yellow-600">
+          {konfi.badges.length} Badge(s): {konfi.badges.map(b => b.icon).join(' ')}
+          </span>
+          </div>
+        )}
         </div>
         <div className="flex flex-wrap gap-2">
         <span className="text-sm text-gray-600 px-2 py-1 bg-gray-100 rounded">
@@ -2896,6 +2949,11 @@ const KonfiPointsSystem = () => {
           <span className={`px-2 py-1 text-xs rounded ${badge.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
           {badge.is_active ? 'Aktiv' : 'Inaktiv'}
           </span>
+          {badge.is_hidden && (
+            <span className="px-2 py-1 text-xs rounded bg-purple-100 text-purple-800">
+            🎭 Versteckt
+            </span>
+          )}
           <button
           onClick={() => {
             setEditBadge(badge);
@@ -3109,7 +3167,7 @@ const KonfiPointsSystem = () => {
       </div>
     )}
     
-    {/* KONFI DETAIL VIEW */}
+    {/* KONFI DETAIL VIEW - WITH BADGES */}
     {currentView === 'konfi-detail' && selectedKonfi && (
       <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-lg p-6">
@@ -3181,6 +3239,25 @@ const KonfiPointsSystem = () => {
       </div>
       </div>
       </div>
+      
+      {/* Badges for this Konfi - ADMIN VIEW */}
+      {selectedKonfi.badges && selectedKonfi.badges.length > 0 && (
+        <div className="bg-yellow-50 p-4 rounded-lg mb-6">
+        <h3 className="font-bold text-yellow-800 mb-3 flex items-center gap-2">
+        <Award className="w-5 h-5" />
+        Erreichte Badges ({selectedKonfi.badges.length})
+        </h3>
+        <div className="grid grid-cols-4 md:grid-cols-6 gap-3">
+        {selectedKonfi.badges.map(badge => (
+          <div key={badge.id} className="text-center p-2 bg-white rounded border">
+          <div className="text-2xl mb-1">{badge.icon}</div>
+          <div className="text-xs font-bold">{badge.name}</div>
+          <div className="text-xs text-gray-500">{formatDate(badge.earned_at)}</div>
+          </div>
+        ))}
+        </div>
+        </div>
+      )}
       
       {/* Quick Activity Assignment */}
       <div className="bg-gray-50 p-4 rounded-lg mb-6">
