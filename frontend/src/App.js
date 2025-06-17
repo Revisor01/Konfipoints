@@ -63,52 +63,75 @@ const getConfirmationCountdown = (confirmationDate) => {
   };
 };
 
-// Enhanced Badge Display Component with progress tracking
+// Enhanced Badge Display Component - FIXED
 const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = false, konfiData = null }) => {
   const earnedBadgeIds = earnedBadges.map(b => b.id || b.badge_id);
   
-  // Calculate badge progress for konfi view
-  const calculateBadgeProgress = (badge) => {
-    if (!konfiData || earnedBadgeIds.includes(badge.id)) return null;
-    
-    const criteria = badge.criteria_extra ? JSON.parse(badge.criteria_extra) : {};
-    let current = 0;
-    let total = badge.criteria_value;
-    let description = '';
-    
-    switch (badge.criteria_type) {
-      case 'total_points':
-        current = konfiData.points.gottesdienst + konfiData.points.gemeinde;
-        description = `${current}/${total} Punkte`;
-        break;
-      case 'gottesdienst_points':
-        current = konfiData.points.gottesdienst;
-        description = `${current}/${total} Gottesdienst-Punkte`;
-        break;
-      case 'gemeinde_points':
-        current = konfiData.points.gemeinde;
-        description = `${current}/${total} Gemeinde-Punkte`;
-        break;
-      case 'both_categories':
-        current = Math.min(konfiData.points.gottesdienst, konfiData.points.gemeinde);
-        description = `${konfiData.points.gottesdienst}/${total} G, ${konfiData.points.gemeinde}/${total} Gem`;
-        break;
-      case 'activity_count':
-        current = konfiData.activities ? konfiData.activities.length : 0;
-        description = `${current}/${total} Aktivitäten`;
-        break;
-      case 'unique_activities':
-        const uniqueActivities = konfiData.activities ? 
-        new Set(konfiData.activities.map(a => a.name)).size : 0;
-        current = uniqueActivities;
-        description = `${current}/${total} verschiedene`;
-        break;
-      default:
-        return null;
-    }
-    
-    return { current, total, description, percentage: Math.min((current / total) * 100, 100) };
-  };
+  // Filter badges
+  const visibleBadges = badges.filter(badge => {
+    if (isAdmin) return true;
+    if (!badge.is_hidden) return true;
+    return earnedBadgeIds.includes(badge.id);
+  });
+  
+  return (
+    <div className="space-y-4">
+    {showProgress && (
+      <div className="text-center text-sm text-gray-600">
+      <span className="font-bold">{earnedBadges.length}</span> von <span className="font-bold">{visibleBadges.length}</span> Badges erhalten
+      {!isAdmin && badges.some(b => b.is_hidden && !earnedBadgeIds.includes(b.id)) && (
+        <div className="text-xs text-purple-600 mt-1">
+        🎭 Versteckte Badges werden erst bei Erreichen angezeigt
+        </div>
+      )}
+      </div>
+    )}
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+    {visibleBadges.map(badge => {
+      const isEarned = earnedBadgeIds.includes(badge.id);
+      const isHidden = badge.is_hidden;
+      
+      return (
+        <div 
+        key={badge.id} 
+        className={`p-3 rounded-lg text-center border-2 transition-all ${
+          isEarned 
+          ? isHidden 
+          ? 'bg-purple-50 border-purple-400 shadow-md' 
+          : 'bg-yellow-50 border-yellow-400 shadow-md'
+          : 'bg-gray-50 border-gray-200 opacity-60'
+        }`}
+        title={badge.description}
+        >
+        <div className="text-2xl mb-1">
+        {isEarned && isHidden ? '🎭' : badge.icon}
+        </div>
+        <div className={`text-xs font-bold mb-1 leading-tight break-words ${
+          isEarned 
+          ? isHidden ? 'text-purple-800' : 'text-yellow-800' 
+          : 'text-gray-500'
+        }`}>
+        {badge.name}
+        </div>
+        
+        {isEarned ? (
+          <div className={`text-xs mt-1 ${isHidden ? 'text-purple-600' : 'text-yellow-600'}`}>
+          ✓ {isHidden ? 'Geheim!' : 'Erhalten'}
+          </div>
+        ) : (
+          isAdmin && isHidden && (
+            <div className="text-xs text-purple-500 mt-1">
+            🎭 Versteckt
+            </div>
+          )
+        )}
+        </div>
+      );
+    })}
+    </div>
+    </div>
+  );
+};
   
   // Filter badges
   const visibleBadges = badges.filter(badge => {
@@ -2363,7 +2386,7 @@ const KonfiPointsSystem = () => {
         settings={settings}
         />
         
-        {/* Recent Activities */}
+        {/* Recent Activities mit Kategorien */}
         <div className="bg-white rounded-xl shadow-lg p-6">
         <h3 className="text-lg font-bold mb-4">Letzte Aktivitäten</h3>
         {(selectedKonfi.activities?.slice(0, 5) || []).length === 0 ? (
@@ -2384,7 +2407,11 @@ const KonfiPointsSystem = () => {
             <div className="font-medium">{activity.name}</div>
             <div className="text-sm text-gray-600">
             {formatDate(activity.date)}
-            {activity.category && ` • ${activity.category}`}
+            {activity.category && (
+              <span className="ml-2 px-2 py-0.5 bg-gray-200 text-gray-700 rounded text-xs">
+              {activity.category}
+              </span>
+            )}
             </div>
             </div>
             </div>
@@ -2738,14 +2765,14 @@ const KonfiPointsSystem = () => {
       </div>
     )}
     
-    {/* ADMIN OVERVIEW */}
+    {/* ADMIN OVERVIEW - KOMPAKT OHNE BUTTONS */}
     {currentView === 'overview' && (
       <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-lg p-6">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
       <h2 className="text-xl font-bold text-gray-800">Punkteübersicht</h2>
       <div className="relative">
-      <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+      <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
       <input
       type="text"
       value={searchTerm}
@@ -2756,114 +2783,37 @@ const KonfiPointsSystem = () => {
       </div>
       </div>
       
-      <div className="grid gap-4">
+      <div className="grid gap-3">
       {filteredKonfis.map(konfi => (
         <div 
         key={konfi.id} 
-        className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer bg-white"
+        className="border rounded-lg p-3 hover:shadow-md transition-shadow cursor-pointer bg-white hover:bg-blue-50"
         onClick={() => loadKonfiDetails(konfi.id)}
         >
-        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+        <div className="flex justify-between items-center">
         <div className="flex-1">
-        <h3 className="font-bold text-lg text-blue-600 hover:text-blue-800 cursor-pointer">
+        <div className="flex items-center gap-4">
+        <div>
+        <h3 className="font-bold text-lg text-blue-600 hover:text-blue-800">
         {konfi.name}
         </h3>
-        <p className="text-sm text-gray-600 mb-2">
-        Jahrgang: {konfi.jahrgang} | Username: {konfi.username}
-        </p>
-        
-        {/* Password display */}
-        <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-        <span>Passwort:</span>
-        {passwordVisibility[konfi.id] ? (
-          <span className="font-mono">{konfi.password}</span>
-        ) : (
-          <span>••••••••••</span>
-        )}
-        <button
-        onClick={(e) => {
-          e.stopPropagation();
-          togglePasswordVisibility(konfi.id);
-        }}
-        className="text-blue-500 hover:text-blue-700"
-        >
-        {passwordVisibility[konfi.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-        </button>
-        <button
-        onClick={(e) => {
-          e.stopPropagation();
-          copyToClipboard(konfi.password, konfi.id);
-        }}
-        className="text-blue-500 hover:text-blue-700"
-        >
-        {copiedPassword === konfi.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-        </button>
-        </div>
-        
-        {/* Badges */}
+        <p className="text-sm text-gray-600">
+        {konfi.jahrgang} | {konfi.username}
         {konfi.badges && konfi.badges.length > 0 && (
-          <p className="text-sm text-yellow-600 flex items-center gap-1">
-          <Award className="w-3 h-3" />
-          {konfi.badges.length} Badge(s) erreicht
-          </p>
+          <span className="ml-2 text-yellow-600">
+          <Award className="w-3 h-3 inline mr-1" />
+          {konfi.badges.length}
+          </span>
         )}
-        
-        {/* Action Buttons */}
-        <div className="flex flex-wrap gap-2 mt-3">
-        <button
-        onClick={(e) => {
-          e.stopPropagation();
-          regeneratePassword(konfi.id);
-        }}
-        className="bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600 flex items-center gap-1 text-sm"
-        >
-        <RefreshCw className="w-3 h-3" />
-        Passwort
-        </button>
-        <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setEditType('konfi');
-          setEditItem(konfi);
-          setShowEditModal(true);
-        }}
-        className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 flex items-center gap-1 text-sm"
-        >
-        <Edit className="w-3 h-3" />
-        Bearbeiten
-        </button>
-        <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setBonusKonfiId(konfi.id);
-          setShowBonusModal(true);
-        }}
-        className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 flex items-center gap-1 text-sm"
-        >
-        <Gift className="w-3 h-3" />
-        Bonus
-        </button>
-        <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setDeleteType('konfi');
-          setDeleteItem(konfi);
-          setShowDeleteModal(true);
-        }}
-        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 flex items-center gap-1 text-sm"
-        >
-        <Trash2 className="w-3 h-3" />
-        Löschen
-        </button>
+        </p>
+        </div>
         </div>
         </div>
         
-        {/* Points display */}
-        <div className="flex gap-6 lg:flex-col lg:items-end">
-        <div className="flex gap-4">
+        <div className="flex items-center gap-6">
         {showGottesdienstTarget && (
           <div className="text-center">
-          <div className="text-2xl font-bold text-blue-600">
+          <div className="text-xl font-bold text-blue-600">
           {konfi.points.gottesdienst}/{settings.target_gottesdienst}
           </div>
           <div className="text-xs text-gray-600">Gottesdienst</div>
@@ -2871,51 +2821,50 @@ const KonfiPointsSystem = () => {
         )}
         {showGemeindeTarget && (
           <div className="text-center">
-          <div className="text-2xl font-bold text-green-600">
+          <div className="text-xl font-bold text-green-600">
           {konfi.points.gemeinde}/{settings.target_gemeinde}
           </div>
           <div className="text-xs text-gray-600">Gemeinde</div>
           </div>
         )}
         <div className="text-center">
-        <div className="text-2xl font-bold text-purple-600">
+        <div className="text-xl font-bold text-purple-600">
         {konfi.points.gottesdienst + konfi.points.gemeinde}
         </div>
         <div className="text-xs text-gray-600">Gesamt</div>
         </div>
         </div>
         </div>
-        </div>
         
-        {/* Progress bars */}
+        {/* Kompakte Progress bars */}
         {(showGottesdienstTarget || showGemeindeTarget) && (
-          <div className="mt-4 space-y-2">
+          <div className="mt-2 space-y-1">
           {showGottesdienstTarget && (
-            <div>
-            <div className="flex justify-between text-xs text-gray-600 mb-1">
-            <span>Gottesdienst</span>
-            <span>{Math.round((konfi.points.gottesdienst / parseInt(settings.target_gottesdienst)) * 100)}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-600 w-20">Gottesdienst</span>
+            <div className="flex-1 bg-gray-200 rounded-full h-1.5">
             <div 
-            className={`h-2 rounded-full transition-all ${getProgressColor(konfi.points.gottesdienst, settings.target_gottesdienst)}`}
+            className={`h-1.5 rounded-full transition-all ${getProgressColor(konfi.points.gottesdienst, settings.target_gottesdienst)}`}
             style={{ width: `${Math.min((konfi.points.gottesdienst / parseInt(settings.target_gottesdienst)) * 100, 100)}%` }}
             ></div>
             </div>
+            <span className="text-xs text-gray-500 w-10">
+            {Math.round((konfi.points.gottesdienst / parseInt(settings.target_gottesdienst)) * 100)}%
+            </span>
             </div>
           )}
           {showGemeindeTarget && (
-            <div>
-            <div className="flex justify-between text-xs text-gray-600 mb-1">
-            <span>Gemeinde</span>
-            <span>{Math.round((konfi.points.gemeinde / parseInt(settings.target_gemeinde)) * 100)}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-600 w-20">Gemeinde</span>
+            <div className="flex-1 bg-gray-200 rounded-full h-1.5">
             <div 
-            className={`h-2 rounded-full transition-all ${getProgressColor(konfi.points.gemeinde, settings.target_gemeinde)}`}
+            className={`h-1.5 rounded-full transition-all ${getProgressColor(konfi.points.gemeinde, settings.target_gemeinde)}`}
             style={{ width: `${Math.min((konfi.points.gemeinde / parseInt(settings.target_gemeinde)) * 100, 100)}%` }}
             ></div>
             </div>
+            <span className="text-xs text-gray-500 w-10">
+            {Math.round((konfi.points.gemeinde / parseInt(settings.target_gemeinde)) * 100)}%
+            </span>
             </div>
           )}
           </div>
@@ -3088,20 +3037,19 @@ const KonfiPointsSystem = () => {
       </div>
       </div>
       
-      <div className="grid gap-3">
+      <div className="grid gap-2">
       {filteredKonfis.map(konfi => (
-        <div key={konfi.id} className="flex flex-col p-3 border rounded-lg gap-3">
+        <div key={konfi.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
         <div className="flex-1">
         <h3 className="font-bold">{konfi.name}</h3>
-        <p className="text-sm text-gray-600">
-        Jahrgang: {konfi.jahrgang} | Username: {konfi.username}
-        </p>
-        <div className="flex items-center gap-2 text-xs text-gray-500">
-        <span>Passwort:</span>
+        <div className="flex items-center gap-4 text-sm text-gray-600">
+        <span>{konfi.jahrgang}</span>
+        <span>{konfi.username}</span>
+        <div className="flex items-center gap-1">
         {passwordVisibility[konfi.id] ? (
-          <span className="font-mono">{konfi.password}</span>
+          <span className="font-mono text-xs">{konfi.password}</span>
         ) : (
-          <span>••••••••••</span>
+          <span className="text-xs">••••••••••</span>
         )}
         <button
         onClick={() => togglePasswordVisibility(konfi.id)}
@@ -3116,25 +3064,25 @@ const KonfiPointsSystem = () => {
         {copiedPassword === konfi.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
         </button>
         </div>
+        <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+        G:{konfi.points.gottesdienst} Gem:{konfi.points.gemeinde}
+        </span>
         {konfi.badges && konfi.badges.length > 0 && (
-          <div className="flex items-center gap-1 mt-1">
-          <Award className="w-3 h-3 text-yellow-500" />
-          <span className="text-xs text-yellow-600">
-          {konfi.badges.length} Badge(s): {konfi.badges.map(b => b.icon).join(' ')}
+          <span className="text-xs text-yellow-600 flex items-center gap-1">
+          <Award className="w-3 h-3" />
+          {konfi.badges.length}
           </span>
-          </div>
         )}
         </div>
-        <div className="flex flex-wrap gap-1">
-        <span className="text-xs text-gray-600 px-2 py-1 bg-gray-100 rounded">
-        G: {konfi.points.gottesdienst} | Gem: {konfi.points.gemeinde}
-        </span>
+        </div>
+        
+        <div className="flex items-center gap-1">
         <button
         onClick={() => regeneratePassword(konfi.id)}
-        className="bg-orange-500 text-white px-2 py-1 rounded hover:bg-orange-600 flex items-center gap-1 text-xs"
+        className="bg-orange-500 text-white px-2 py-1 rounded hover:bg-orange-600 text-xs"
+        title="Passwort regenerieren"
         >
         <RefreshCw className="w-3 h-3" />
-        PW
         </button>
         <button
         onClick={() => {
@@ -3142,17 +3090,17 @@ const KonfiPointsSystem = () => {
           setEditItem(konfi);
           setShowEditModal(true);
         }}
-        className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 flex items-center gap-1 text-xs"
+        className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 text-xs"
+        title="Bearbeiten"
         >
         <Edit className="w-3 h-3" />
-        Edit
         </button>
         <button
         onClick={() => loadKonfiDetails(konfi.id)}
-        className="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600 flex items-center gap-1 text-xs"
+        className="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600 text-xs"
+        title="Details"
         >
         <Eye className="w-3 h-3" />
-        Details
         </button>
         <button
         onClick={() => {
@@ -3160,10 +3108,10 @@ const KonfiPointsSystem = () => {
           setDeleteItem(konfi);
           setShowDeleteModal(true);
         }}
-        className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 flex items-center gap-1 text-xs"
+        className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 text-xs"
+        title="Löschen"
         >
         <Trash2 className="w-3 h-3" />
-        Del
         </button>
         </div>
         </div>

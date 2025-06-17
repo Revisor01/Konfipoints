@@ -239,6 +239,32 @@ const checkAndAwardBadges = async (konfiId) => {
                 processBadgeResult();
                 break;
               
+              case 'streak':
+                if (konfi.activity_dates) {
+                  const dates = konfi.activity_dates.split(',').map(d => new Date(d)).sort((a, b) => b - a);
+                  let currentStreak = 0;
+                  let lastDate = null;
+                  
+                  for (const date of dates) {
+                    if (!lastDate) {
+                      currentStreak = 1;
+                      lastDate = date;
+                    } else {
+                      const daysDiff = Math.floor((lastDate - date) / (1000 * 60 * 60 * 24));
+                      if (daysDiff <= 7) { // Wöchentliche Serie
+                        currentStreak++;
+                        lastDate = date;
+                      } else {
+                        break;
+                      }
+                    }
+                  }
+                  
+                  earned = currentStreak >= badge.criteria_value;
+                }
+                processBadgeResult();
+                break;
+              
               case 'unique_activities':
                 const uniqueCount = konfi.activity_ids ? 
                 new Set(konfi.activity_ids.split(',')).size : 0;
