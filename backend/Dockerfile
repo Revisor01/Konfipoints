@@ -1,14 +1,20 @@
-FROM node:18-alpine
+# backend/Dockerfile
+FROM node:18-bullseye
 
 WORKDIR /app
 
 # Install build dependencies for SQLite
-RUN apk add --no-cache python3 make g++
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    sqlite3 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies (use install instead of ci)
+# Install dependencies (rebuild native modules for Debian)
 RUN npm install --omit=dev
 
 # Copy source code
