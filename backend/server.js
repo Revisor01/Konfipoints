@@ -22,23 +22,7 @@ app.use(cors({
   ],
   credentials: true
 }));
-app.use(express.json({ 
-  limit: '10mb',
-  strict: true,
-  type: 'application/json'
-}));
-app.use(express.urlencoded({ 
-  extended: true, 
-  limit: '10mb' 
-}));
-
-// Add error handling for JSON parsing
-app.use((err, req, res, next) => {
-  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
-    return res.status(400).json({ error: 'Invalid JSON format' });
-  }
-  next(err);
-});
+app.use(express.json());
 
 // Uploads directory
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -49,49 +33,15 @@ if (!fs.existsSync(uploadsDir)) {
 // Serve uploaded files
 app.use('/uploads', express.static(uploadsDir));
 
-// Multer configuration for file uploads
-// SAFER Multer configuration for Docker
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    try {
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-      }
-      cb(null, uploadsDir);
-    } catch (error) {
-      console.error('Upload directory error:', error);
-      cb(error);
-    }
-  },
-  filename: (req, file, cb) => {
-    try {
-      const safeName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      cb(null, 'request-' + uniqueSuffix + '-' + safeName);
-    } catch (error) {
-      console.error('Filename generation error:', error);
-      cb(error);
-    }
-  }
-});
-
+// Simple multer setup
 const upload = multer({ 
-  storage: storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-    files: 1,
-    fields: 10
-  },
+  dest: uploadsDir,
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    try {
-      if (file.mimetype && file.mimetype.startsWith('image/')) {
-        cb(null, true);
-      } else {
-        cb(new Error('Only image files are allowed!'), false);
-      }
-    } catch (error) {
-      console.error('File filter error:', error);
-      cb(error, false);
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(null, false);
     }
   }
 });
@@ -118,11 +68,7 @@ const CRITERIA_TYPES = {
   gemeinde_points: { label: "Gemeinde-Punkte", description: "Mindestanzahl gemeindlicher Punkte" },
   activity_count: { label: "Aktivitäten-Anzahl", description: "Gesamtanzahl aller Aktivitäten" },
   unique_activities: { label: "Verschiedene Aktivitäten", description: "Anzahl unterschiedlicher Aktivitäten" },
-  specific_activity: { label: "Bestimmte Aktivität", description: "Anzahl einer bestimmten Aktivität" },
-  both_categories: { label: "Beide Kategorien", description: "Mindestpunkte in beiden Bereichen" },
-  month_points: { label: "Monatspunkte", description: "Punkte in einem Kalendermonat" },
-  week_points: { label: "Wochenpunkte", description: "Punkte in einer Woche" },
-  streak_days: { label: "Aktivitäts-Serie", description: "Tage hintereinander aktiv" }
+  both_categories: { label: "Beide Kategorien", description: "Mindestpunkte in beiden Bereichen" }
 };
 
 // Function to format date for German locale
@@ -166,22 +112,11 @@ if (!dbExists) {
   console.log('📊 Using existing database...');
 }
 
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Database connection error:', err);
-    process.exit(1);
-  }
-  console.log('✅ Database connected successfully');
-});
-
-// Add connection error handling
-db.on('error', (err) => {
-  console.error('Database error:', err);
-});
+const db = new sqlite3.Database(dbPath);
 
 // Initialize Database with correct schema
 db.serialize(() => {
-  // Existing tables
+  // Admins table
   db.run(`CREATE TABLE IF NOT EXISTS admins (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
@@ -189,14 +124,16 @@ db.serialize(() => {
     password_hash TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
-  
+
+  // Jahrgänge table
   db.run(`CREATE TABLE IF NOT EXISTS jahrgaenge (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT UNIQUE NOT NULL,
     confirmation_date DATE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
-  
+
+  // Konfis table
   db.run(`CREATE TABLE IF NOT EXISTS konfis (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -209,17 +146,18 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (jahrgang_id) REFERENCES jahrgaenge (id)
   )`);
-  
+
+  // Activities table
   db.run(`CREATE TABLE IF NOT EXISTS activities (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     points INTEGER NOT NULL,
     type TEXT NOT NULL CHECK (type IN ('gottesdienst', 'gemeinde')),
     category TEXT,
-    is_special BOOLEAN DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
-  
+
+  // Konfi Activities
   db.run(`CREATE TABLE IF NOT EXISTS konfi_activities (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     konfi_id INTEGER,
@@ -231,7 +169,8 @@ db.serialize(() => {
     FOREIGN KEY (activity_id) REFERENCES activities (id),
     FOREIGN KEY (admin_id) REFERENCES admins (id)
   )`);
-  
+
+  // Bonus Points
   db.run(`CREATE TABLE IF NOT EXISTS bonus_points (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     konfi_id INTEGER,
@@ -244,12 +183,13 @@ db.serialize(() => {
     FOREIGN KEY (konfi_id) REFERENCES konfis (id),
     FOREIGN KEY (admin_id) REFERENCES admins (id)
   )`);
-  
+
+  // Settings table
   db.run(`CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   )`);
-  
+
   // Badge system tables
   db.run(`CREATE TABLE IF NOT EXISTS custom_badges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -290,31 +230,32 @@ db.serialize(() => {
     FOREIGN KEY (activity_id) REFERENCES activities (id),
     FOREIGN KEY (approved_by) REFERENCES admins (id)
   )`);
-  
+
   console.log('✅ Database schema ensured');
-  
-  // Default data only for new database
+
+  // Only insert default data for new database
   if (!dbExists) {
     console.log('📝 Inserting default data...');
     
-    let adminPassword;
-    try {
-      adminPassword = bcrypt.hashSync('pastor2025', 10);
-    } catch (bcryptError) {
-      console.error('Bcrypt hash error:', bcryptError);
-      adminPassword = 'fallback-hash'; // This will never match, but prevents crash
-    }
+    // Insert default admin
+    const adminPassword = bcrypt.hashSync('pastor2025', 10);
     db.run("INSERT INTO admins (username, display_name, password_hash) VALUES (?, ?, ?)", 
-      ['admin', 'Pastor Administrator', adminPassword]);
-    
+           ['admin', 'Pastor Administrator', adminPassword]);
+    console.log('✅ Default admin created: username=admin, password=pastor2025');
+
+    // Insert default settings
     db.run("INSERT INTO settings (key, value) VALUES (?, ?)", ['target_gottesdienst', '10']);
     db.run("INSERT INTO settings (key, value) VALUES (?, ?)", ['target_gemeinde', '10']);
-    
+    console.log('✅ Default settings created');
+
+    // Insert default jahrgänge
     const defaultJahrgaenge = ['2024/25', '2025/26', '2026/27'];
     defaultJahrgaenge.forEach(jahrgang => {
       db.run("INSERT INTO jahrgaenge (name) VALUES (?)", [jahrgang]);
     });
-    
+    console.log('✅ Default Jahrgänge created');
+
+    // Insert default activities
     const defaultActivities = [
       ['Sonntagsgottesdienst', 2, 'gottesdienst', 'sonntagsgottesdienst'],
       ['Kindergottesdienst helfen', 3, 'gemeinde', 'kindergottesdienst'],
@@ -331,97 +272,56 @@ db.serialize(() => {
     defaultActivities.forEach(([name, points, type, category]) => {
       db.run("INSERT INTO activities (name, points, type, category) VALUES (?, ?, ?, ?)", [name, points, type, category]);
     });
-    
-    // Insert default badges synchronously - FIXED: REMOVED setTimeout
+    console.log('✅ Default activities created');
+
+    // Insert default badges
     const defaultBadges = [
-      ['Starter', '🥉', 'Erste 5 Punkte gesammelt', 'total_points', 5, null, 1],
-      ['Sammler', '🥈', 'Erste 10 Punkte gesammelt', 'total_points', 10, null, 1],
-      ['Zielerreichung', '🥇', 'Erste 20 Punkte erreicht', 'total_points', 20, null, 1],
-      ['Überflieger', '⭐', '25 Punkte gesammelt', 'total_points', 25, null, 1],
-      ['Gottesdienstgänger', '📖', '10 gottesdienstliche Punkte', 'gottesdienst_points', 10, null, 1],
-      ['Gemeindeheld', '🤝', '10 gemeindliche Punkte', 'gemeinde_points', 10, null, 1],
-      ['Ausgewogen', '⚖️', 'Beide Kategorien >= 10 Punkte', 'both_categories', 10, null, 1],
-      ['Vielseitig', '🔄', '5 verschiedene Aktivitäten', 'unique_activities', 5, null, 1],
-      ['Champion', '💎', '40+ Punkte gesammelt', 'total_points', 40, null, 1]
+      ['Starter', '🥉', 'Erste 5 Punkte gesammelt', 'total_points', 5, null],
+      ['Sammler', '🥈', 'Erste 10 Punkte gesammelt', 'total_points', 10, null],
+      ['Zielerreichung', '🥇', 'Erste 20 Punkte erreicht', 'total_points', 20, null],
+      ['Gottesdienstgänger', '📖', '10 gottesdienstliche Punkte', 'gottesdienst_points', 10, null],
+      ['Gemeindeheld', '🤝', '10 gemeindliche Punkte', 'gemeinde_points', 10, null],
+      ['Ausgewogen', '⚖️', 'Beide Kategorien >= 10 Punkte', 'both_categories', 10, null]
     ];
     
-    defaultBadges.forEach(([name, icon, description, criteria_type, criteria_value, criteria_extra, is_active]) => {
+    defaultBadges.forEach(([name, icon, description, criteria_type, criteria_value, criteria_extra]) => {
       db.run("INSERT INTO custom_badges (name, icon, description, criteria_type, criteria_value, criteria_extra, is_active, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", 
-        [name, icon, description, criteria_type, criteria_value, criteria_extra, is_active, 1]);
+        [name, icon, description, criteria_type, criteria_value, criteria_extra, 1, 1]);
     });
-    
-    console.log('✅ Default data created');
+    console.log('✅ Default badges created');
+
+    // Create some default konfis after jahrgänge are created
+    setTimeout(() => {
+      const defaultKonfis = [
+        ['Anna Mueller', '2025/26'],
+        ['Max Schmidt', '2025/26'],
+        ['Lisa Weber', '2024/25'],
+        ['Tom Hansen', '2025/26'],
+        ['Sarah Klein', '2024/25']
+      ];
+      
+      defaultKonfis.forEach(([name, jahrgang]) => {
+        // Get jahrgang ID
+        db.get("SELECT id FROM jahrgaenge WHERE name = ?", [jahrgang], (err, jahrgangRow) => {
+          if (jahrgangRow) {
+            const password = generateBiblicalPassword();
+            const hashedPassword = bcrypt.hashSync(password, 10);
+            const username = name.toLowerCase().replace(' ', '.');
+            
+            db.run("INSERT INTO konfis (name, jahrgang_id, username, password_hash, password_plain) VALUES (?, ?, ?, ?, ?)", 
+                   [name, jahrgangRow.id, username, hashedPassword, password], function(err) {
+              if (!err) {
+                console.log(`✅ Konfi created: ${name} - Username: ${username} - Password: ${password}`);
+              }
+            });
+          }
+        });
+      });
+    }, 1000);
+  } else {
+    console.log('✅ Existing database loaded');
   }
 });
-
-// FIXED Badge checking functions - simplified to avoid recursion
-const checkCustomBadge = (konfi, badge) => {
-  try {
-    const { criteria_type, criteria_value, criteria_extra } = badge;
-    const extra = criteria_extra ? JSON.parse(criteria_extra) : {};
-    
-    switch (criteria_type) {
-      case 'total_points':
-        return (konfi.points.gottesdienst + konfi.points.gemeinde) >= criteria_value;
-        
-      case 'gottesdienst_points':
-        return konfi.points.gottesdienst >= criteria_value;
-        
-      case 'gemeinde_points':
-        return konfi.points.gemeinde >= criteria_value;
-        
-      case 'activity_count':
-        return konfi.activities.length >= criteria_value;
-        
-      case 'unique_activities':
-        const uniqueCount = new Set(konfi.activities.map(a => a.name)).size;
-        return uniqueCount >= criteria_value;
-        
-      case 'specific_activity':
-        const activityCount = konfi.activities.filter(a => 
-          a.name === extra.activity_name
-        ).length;
-        return activityCount >= criteria_value;
-        
-      case 'both_categories':
-        return konfi.points.gottesdienst >= criteria_value && 
-               konfi.points.gemeinde >= criteria_value;
-               
-      default:
-        return false;
-    }
-  } catch (error) {
-    console.error('Error in checkCustomBadge:', error);
-    return false;
-  }
-};
-
-// FIXED: Simplified checkAllBadges to avoid infinite loops
-const checkAllBadges = async (konfiId) => {
-  return new Promise((resolve) => {
-    // Always resolve, never reject to avoid hanging
-    resolve([]);
-  });
-};
-
-const groupPointsByMonth = (activities) => {
-  const months = {};
-  activities.forEach(activity => {
-    const month = new Date(activity.date).toISOString().slice(0, 7); // YYYY-MM
-    months[month] = (months[month] || 0) + activity.points;
-  });
-  return Object.values(months);
-};
-
-const groupPointsByWeek = (activities) => {
-  const weeks = {};
-  activities.forEach(activity => {
-    const date = new Date(activity.date);
-    const week = `${date.getFullYear()}-W${Math.ceil(date.getDate() / 7)}`;
-    weeks[week] = (weeks[week] || 0) + activity.points;
-  });
-  return Object.values(weeks);
-};
 
 // Middleware to verify JWT
 const verifyToken = (req, res, next) => {
@@ -440,6 +340,7 @@ const verifyToken = (req, res, next) => {
 };
 
 // Routes
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Konfi Points API is running' });
@@ -454,15 +355,7 @@ app.post('/api/admin/login', (req, res) => {
       return res.status(500).json({ error: 'Database error' });
     }
     
-    let passwordValid = false;
-    try {
-      passwordValid = admin && bcrypt.compareSync(password, admin.password_hash);
-    } catch (bcryptError) {
-      console.error('Bcrypt error:', bcryptError);
-      passwordValid = false;
-    }
-    
-    if (!passwordValid) {
+    if (!admin || !bcrypt.compareSync(password, admin.password_hash)) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
@@ -505,11 +398,8 @@ app.get('/api/badges', verifyToken, (req, res) => {
   if (req.user.type !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
   }
-
   db.all("SELECT cb.*, a.display_name as created_by_name FROM custom_badges cb LEFT JOIN admins a ON cb.created_by = a.id ORDER BY cb.created_at DESC", [], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: 'Database error' });
-    }
+    if (err) return res.status(500).json({ error: 'Database error' });
     res.json(rows);
   });
 });
@@ -524,7 +414,6 @@ app.post('/api/badges', verifyToken, (req, res) => {
   if (req.user.type !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
   }
-
   const { name, icon, description, criteria_type, criteria_value, criteria_extra } = req.body;
   
   if (!name || !icon || !criteria_type || !criteria_value) {
@@ -536,21 +425,8 @@ app.post('/api/badges', verifyToken, (req, res) => {
   db.run("INSERT INTO custom_badges (name, icon, description, criteria_type, criteria_value, criteria_extra, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)",
          [name, icon, description, criteria_type, criteria_value, extraJson, req.user.id],
          function(err) {
-           if (err) {
-             return res.status(500).json({ error: 'Database error' });
-           }
-           
-           res.json({ 
-             id: this.lastID, 
-             name, 
-             icon, 
-             description,
-             criteria_type,
-             criteria_value,
-             criteria_extra: extraJson,
-             is_active: 1,
-             created_by: req.user.id
-           });
+           if (err) return res.status(500).json({ error: 'Database error' });
+           res.json({ id: this.lastID, name, icon, description, criteria_type, criteria_value, criteria_extra: extraJson });
          });
 });
 
@@ -559,23 +435,14 @@ app.put('/api/badges/:id', verifyToken, (req, res) => {
   if (req.user.type !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
   }
-
-  const badgeId = req.params.id;
   const { name, icon, description, criteria_type, criteria_value, criteria_extra, is_active } = req.body;
   
   const extraJson = criteria_extra ? JSON.stringify(criteria_extra) : null;
 
   db.run("UPDATE custom_badges SET name = ?, icon = ?, description = ?, criteria_type = ?, criteria_value = ?, criteria_extra = ?, is_active = ? WHERE id = ?",
-         [name, icon, description, criteria_type, criteria_value, extraJson, is_active, badgeId],
+         [name, icon, description, criteria_type, criteria_value, extraJson, is_active, req.params.id],
          function(err) {
-           if (err) {
-             return res.status(500).json({ error: 'Database error' });
-           }
-           
-           if (this.changes === 0) {
-             return res.status(404).json({ error: 'Badge not found' });
-           }
-           
+           if (err) return res.status(500).json({ error: 'Database error' });
            res.json({ message: 'Badge updated successfully' });
          });
 });
@@ -585,32 +452,46 @@ app.delete('/api/badges/:id', verifyToken, (req, res) => {
   if (req.user.type !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
   }
-
-  const badgeId = req.params.id;
-
-  // Delete related konfi_badges first
-  db.run("DELETE FROM konfi_badges WHERE badge_id = ?", [badgeId], (err) => {
-    if (err) {
-      return res.status(500).json({ error: 'Database error' });
-    }
-
-    db.run("DELETE FROM custom_badges WHERE id = ?", [badgeId], function(err) {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      
-      if (this.changes === 0) {
-        return res.status(404).json({ error: 'Badge not found' });
-      }
-      
+  db.run("DELETE FROM konfi_badges WHERE badge_id = ?", [req.params.id], (err) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    db.run("DELETE FROM custom_badges WHERE id = ?", [req.params.id], function(err) {
+      if (err) return res.status(500).json({ error: 'Database error' });
       res.json({ message: 'Badge deleted successfully' });
+    });
+  });
+});
+
+// Get konfi badges
+app.get('/api/konfis/:id/badges', verifyToken, (req, res) => {
+  const konfiId = req.params.id;
+  if (req.user.type === 'konfi' && req.user.id !== parseInt(konfiId)) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  const earnedQuery = `
+    SELECT cb.*, kb.earned_at FROM custom_badges cb
+    JOIN konfi_badges kb ON cb.id = kb.badge_id
+    WHERE kb.konfi_id = ? AND cb.is_active = 1
+    ORDER BY kb.earned_at DESC
+  `;
+  
+  db.all(earnedQuery, [konfiId], (err, earnedBadges) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    
+    db.all("SELECT * FROM custom_badges WHERE is_active = 1 ORDER BY criteria_value", [], (err, allBadges) => {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      res.json({ 
+        earned: earnedBadges, 
+        available: allBadges,
+        progress: `${earnedBadges.length}/${allBadges.length}`
+      });
     });
   });
 });
 
 // === ACTIVITY REQUESTS ===
 
-// Get activity requests (admin: all, konfi: own)
+// Get activity requests
 app.get('/api/activity-requests', verifyToken, (req, res) => {
   let query, params;
   
@@ -639,28 +520,19 @@ app.get('/api/activity-requests', verifyToken, (req, res) => {
   }
 
   db.all(query, params, (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: 'Database error' });
-    }
+    if (err) return res.status(500).json({ error: 'Database error' });
     res.json(rows);
   });
 });
 
-// Create activity request (konfi only)
+// Create activity request
 app.post('/api/activity-requests', upload.single('photo'), (req, res) => {
   const token = req.headers.authorization?.split(' ')[1];
-  if (!token) {
-    return res.status(401).json({ error: 'No token provided' });
-  }
+  if (!token) return res.status(401).json({ error: 'No token provided' });
 
   jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(401).json({ error: 'Invalid token' });
-    }
-
-    if (decoded.type !== 'konfi') {
-      return res.status(403).json({ error: 'Konfi access required' });
-    }
+    if (err) return res.status(401).json({ error: 'Invalid token' });
+    if (decoded.type !== 'konfi') return res.status(403).json({ error: 'Konfi access required' });
 
     const { activity_id, requested_date, comment } = req.body;
     const photo_filename = req.file ? req.file.filename : null;
@@ -672,15 +544,8 @@ app.post('/api/activity-requests', upload.single('photo'), (req, res) => {
     db.run("INSERT INTO activity_requests (konfi_id, activity_id, requested_date, comment, photo_filename) VALUES (?, ?, ?, ?, ?)",
            [decoded.id, activity_id, requested_date, comment, photo_filename],
            function(err) {
-             if (err) {
-               return res.status(500).json({ error: 'Database error' });
-             }
-             
-             res.json({ 
-               id: this.lastID,
-               message: 'Antrag erfolgreich gestellt',
-               photo_filename
-             });
+             if (err) return res.status(500).json({ error: 'Database error' });
+             res.json({ id: this.lastID, message: 'Antrag erfolgreich gestellt', photo_filename });
            });
   });
 });
@@ -701,43 +566,28 @@ app.put('/api/activity-requests/:id', verifyToken, (req, res) => {
   // Get request details first
   db.get("SELECT ar.*, a.points, a.type FROM activity_requests ar JOIN activities a ON ar.activity_id = a.id WHERE ar.id = ?", 
          [requestId], (err, request) => {
-    if (err) {
-      return res.status(500).json({ error: 'Database error' });
-    }
-    
-    if (!request) {
-      return res.status(404).json({ error: 'Request not found' });
-    }
+    if (err) return res.status(500).json({ error: 'Database error' });
+    if (!request) return res.status(404).json({ error: 'Request not found' });
 
     // Update request status
     db.run("UPDATE activity_requests SET status = ?, admin_comment = ?, approved_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
            [status, admin_comment, req.user.id, requestId], function(err) {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
+      if (err) return res.status(500).json({ error: 'Database error' });
 
-      // If approved, add activity and check badges
+      // If approved, add activity
       if (status === 'approved') {
         // Add to konfi_activities
         db.run("INSERT INTO konfi_activities (konfi_id, activity_id, admin_id, completed_date) VALUES (?, ?, ?, ?)",
                [request.konfi_id, request.activity_id, req.user.id, request.requested_date], 
                function(err) {
-          if (err) {
-            return res.status(500).json({ error: 'Database error adding activity' });
-          }
+          if (err) return res.status(500).json({ error: 'Database error adding activity' });
 
           // Update konfi points
           const pointField = request.type === 'gottesdienst' ? 'gottesdienst_points' : 'gemeinde_points';
           db.run(`UPDATE konfis SET ${pointField} = ${pointField} + ? WHERE id = ?`,
                  [request.points, request.konfi_id], (err) => {
-            if (err) {
-              return res.status(500).json({ error: 'Database error updating points' });
-            }
-
-            res.json({ 
-              message: 'Request approved and activity added',
-              newBadges: 0 // FIXED: Return 0 instead of calling checkAllBadges
-            });
+            if (err) return res.status(500).json({ error: 'Database error updating points' });
+            res.json({ message: 'Request approved and activity added', newBadges: 0 });
           });
         });
       } else {
@@ -761,14 +611,8 @@ app.delete('/api/activity-requests/:id', verifyToken, (req, res) => {
   }
 
   db.run(query, params, function(err) {
-    if (err) {
-      return res.status(500).json({ error: 'Database error' });
-    }
-    
-    if (this.changes === 0) {
-      return res.status(404).json({ error: 'Request not found' });
-    }
-    
+    if (err) return res.status(500).json({ error: 'Database error' });
+    if (this.changes === 0) return res.status(404).json({ error: 'Request not found' });
     res.json({ message: 'Request deleted successfully' });
   });
 });
@@ -819,9 +663,7 @@ app.get('/api/ranking', verifyToken, (req, res) => {
   `;
 
   db.all(query, [], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: 'Database error' });
-    }
+    if (err) return res.status(500).json({ error: 'Database error' });
 
     if (req.user.type === 'admin') {
       // Admins get full ranking
@@ -845,44 +687,7 @@ app.get('/api/ranking', verifyToken, (req, res) => {
   });
 });
 
-// Get konfi badges
-app.get('/api/konfis/:id/badges', verifyToken, (req, res) => {
-  const konfiId = req.params.id;
-  
-  // Check access
-  if (req.user.type === 'konfi' && req.user.id !== parseInt(konfiId)) {
-    return res.status(403).json({ error: 'Access denied' });
-  }
-
-  const query = `
-    SELECT cb.*, kb.earned_at
-    FROM custom_badges cb
-    JOIN konfi_badges kb ON cb.id = kb.badge_id
-    WHERE kb.konfi_id = ? AND cb.is_active = 1
-    ORDER BY kb.earned_at DESC
-  `;
-
-  db.all(query, [konfiId], (err, earnedBadges) => {
-    if (err) {
-      return res.status(500).json({ error: 'Database error' });
-    }
-
-    // Get all available badges
-    db.all("SELECT * FROM custom_badges WHERE is_active = 1 ORDER BY criteria_value", [], (err, allBadges) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-
-      res.json({
-        earned: earnedBadges,
-        available: allBadges,
-        progress: `${earnedBadges.length}/${allBadges.length}`
-      });
-    });
-  });
-});
-
-// ALLE RESTLICHEN ROUTES BLEIBEN UNVERÄNDERT...
+// === ADMIN MANAGEMENT ===
 
 // Get all admins
 app.get('/api/admins', verifyToken, (req, res) => {
@@ -980,10 +785,12 @@ app.delete('/api/admins/:id', verifyToken, (req, res) => {
 
   const adminId = req.params.id;
   
+  // Prevent deleting yourself
   if (parseInt(adminId) === req.user.id) {
     return res.status(400).json({ error: 'Cannot delete your own account' });
   }
 
+  // Check if this is the last admin
   db.get("SELECT COUNT(*) as count FROM admins", [], (err, row) => {
     if (err) {
       return res.status(500).json({ error: 'Database error' });
@@ -1006,6 +813,8 @@ app.delete('/api/admins/:id', verifyToken, (req, res) => {
     });
   });
 });
+
+// === JAHRGÄNGE MANAGEMENT ===
 
 // Get all jahrgänge
 app.get('/api/jahrgaenge', verifyToken, (req, res) => {
@@ -1082,6 +891,7 @@ app.delete('/api/jahrgaenge/:id', verifyToken, (req, res) => {
 
   const jahrgangId = req.params.id;
 
+  // Check if jahrgang has konfis
   db.get("SELECT COUNT(*) as count FROM konfis WHERE jahrgang_id = ?", [jahrgangId], (err, row) => {
     if (err) {
       return res.status(500).json({ error: 'Database error' });
@@ -1105,12 +915,15 @@ app.delete('/api/jahrgaenge/:id', verifyToken, (req, res) => {
   });
 });
 
+// === KONFIS MANAGEMENT ===
+
 // Get all konfis (admin only) - WITH ADMIN TRACKING
 app.get('/api/konfis', verifyToken, (req, res) => {
   if (req.user.type !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
   }
   
+  // Get basic konfi info with jahrgang
   const konfisQuery = `
     SELECT k.*, j.name as jahrgang_name, j.confirmation_date
     FROM konfis k
@@ -1124,6 +937,7 @@ app.get('/api/konfis', verifyToken, (req, res) => {
       return res.status(500).json({ error: 'Database error: ' + err.message });
     }
     
+    // Get all activities for all konfis
     const activitiesQuery = `
       SELECT ka.konfi_id, a.name, a.points, a.type, ka.completed_date as date, 
               COALESCE(adm.display_name, 'Unbekannt') as admin, ka.id
@@ -1133,6 +947,7 @@ app.get('/api/konfis', verifyToken, (req, res) => {
       ORDER BY ka.completed_date DESC
     `;
     
+    // Get all bonus points for all konfis
     const bonusQuery = `
       SELECT bp.konfi_id, bp.description, bp.points, bp.type, bp.completed_date as date,
               COALESCE(adm.display_name, 'Unbekannt') as admin, bp.id
@@ -1153,6 +968,7 @@ app.get('/api/konfis', verifyToken, (req, res) => {
           return res.status(500).json({ error: 'Database error: ' + err.message });
         }
         
+        // Group activities and bonus points by konfi_id
         const activitiesByKonfi = {};
         const bonusPointsByKonfi = {};
         
@@ -1184,6 +1000,7 @@ app.get('/api/konfis', verifyToken, (req, res) => {
           });
         });
         
+        // Build final result
         const konfis = konfisRows.map(row => ({
           id: row.id,
           name: row.name,
@@ -1210,6 +1027,7 @@ app.get('/api/konfis', verifyToken, (req, res) => {
 app.get('/api/konfis/:id', verifyToken, (req, res) => {
   const konfiId = parseInt(req.params.id, 10);
   
+  // Validate konfiId
   if (isNaN(konfiId)) {
     return res.status(400).json({ error: 'Invalid konfi ID' });
   }
@@ -1218,6 +1036,7 @@ app.get('/api/konfis/:id', verifyToken, (req, res) => {
     return res.status(403).json({ error: 'Access denied' });
   }
   
+  // Get basic konfi info
   const konfiQuery = `
     SELECT k.*, j.name as jahrgang_name, j.confirmation_date
     FROM konfis k
@@ -1232,10 +1051,10 @@ app.get('/api/konfis/:id', verifyToken, (req, res) => {
     }
     
     if (!konfiRow) {
-      console.log(`Konfi with ID ${konfiId} not found`);
       return res.status(404).json({ error: 'Konfi not found' });
     }
     
+    // Get activities separately
     const activitiesQuery = `
       SELECT a.name, a.points, a.type, ka.completed_date as date, 
               COALESCE(adm.display_name, 'Unbekannt') as admin, ka.id
@@ -1246,6 +1065,7 @@ app.get('/api/konfis/:id', verifyToken, (req, res) => {
       ORDER BY ka.completed_date DESC
     `;
     
+    // Get bonus points separately
     const bonusQuery = `
       SELECT bp.description, bp.points, bp.type, bp.completed_date as date,
               COALESCE(adm.display_name, 'Unbekannt') as admin, bp.id
@@ -1301,6 +1121,7 @@ app.post('/api/konfis', verifyToken, (req, res) => {
     return res.status(400).json({ error: 'Name and Jahrgang are required' });
   }
 
+  // Generate password and username
   const password = generateBiblicalPassword();
   const hashedPassword = bcrypt.hashSync(password, 10);
   const username = name.toLowerCase().replace(/\s+/g, '.').replace(/[^a-z.]/g, '');
@@ -1315,6 +1136,7 @@ app.post('/api/konfis', verifyToken, (req, res) => {
              return res.status(500).json({ error: 'Database error' });
            }
            
+           // Get jahrgang name
            db.get("SELECT name, confirmation_date FROM jahrgaenge WHERE id = ?", [jahrgang_id], (err, jahrgangRow) => {
              res.json({ 
                id: this.lastID, 
@@ -1345,6 +1167,7 @@ app.put('/api/konfis/:id', verifyToken, (req, res) => {
     return res.status(400).json({ error: 'Name and Jahrgang are required' });
   }
 
+  // Generate new username based on name
   const username = name.toLowerCase().replace(/\s+/g, '.').replace(/[^a-z.]/g, '');
 
   db.run("UPDATE konfis SET name = ?, jahrgang_id = ?, username = ? WHERE id = ?", 
@@ -1372,6 +1195,7 @@ app.delete('/api/konfis/:id', verifyToken, (req, res) => {
 
   const konfiId = req.params.id;
 
+  // Delete related records first
   db.serialize(() => {
     db.run("DELETE FROM konfi_activities WHERE konfi_id = ?", [konfiId]);
     db.run("DELETE FROM bonus_points WHERE konfi_id = ?", [konfiId]);
@@ -1390,6 +1214,8 @@ app.delete('/api/konfis/:id', verifyToken, (req, res) => {
     });
   });
 });
+
+// === ACTIVITIES MANAGEMENT ===
 
 // Get all activities
 app.get('/api/activities', verifyToken, (req, res) => {
@@ -1473,6 +1299,7 @@ app.delete('/api/activities/:id', verifyToken, (req, res) => {
 
   const activityId = req.params.id;
 
+  // Check if activity is used
   db.get("SELECT COUNT(*) as count FROM konfi_activities WHERE activity_id = ?", [activityId], (err, row) => {
     if (err) {
       return res.status(500).json({ error: 'Database error' });
@@ -1511,6 +1338,7 @@ app.post('/api/konfis/:id/activities', verifyToken, (req, res) => {
   
   const date = completed_date || new Date().toISOString().split('T')[0];
   
+  // Get activity details
   db.get("SELECT * FROM activities WHERE id = ?", [activityId], (err, activity) => {
     if (err) {
       return res.status(500).json({ error: 'Database error' });
@@ -1520,6 +1348,7 @@ app.post('/api/konfis/:id/activities', verifyToken, (req, res) => {
       return res.status(404).json({ error: 'Activity not found' });
     }
     
+    // Add activity to konfi WITH ADMIN TRACKING AND DATE
     db.run("INSERT INTO konfi_activities (konfi_id, activity_id, admin_id, completed_date) VALUES (?, ?, ?, ?)",
       [konfiId, activityId, req.user.id, date],
       function(err) {
@@ -1527,6 +1356,7 @@ app.post('/api/konfis/:id/activities', verifyToken, (req, res) => {
           return res.status(500).json({ error: 'Database error' });
         }
         
+        // Update konfi points
         const pointField = activity.type === 'gottesdienst' ? 'gottesdienst_points' : 'gemeinde_points';
         db.run(`UPDATE konfis SET ${pointField} = ${pointField} + ? WHERE id = ?`,
           [activity.points, konfiId],
@@ -1537,7 +1367,7 @@ app.post('/api/konfis/:id/activities', verifyToken, (req, res) => {
             
             res.json({ 
               message: 'Activity assigned successfully',
-              newBadges: 0, // FIXED: Return 0 instead of calling checkAllBadges
+              newBadges: 0,
               activity: {
                 name: activity.name,
                 points: activity.points,
@@ -1570,6 +1400,7 @@ app.post('/api/konfis/:id/bonus-points', verifyToken, (req, res) => {
   
   const date = completed_date || new Date().toISOString().split('T')[0];
   
+  // Add bonus points WITH ADMIN TRACKING AND DATE
   db.run("INSERT INTO bonus_points (konfi_id, points, type, description, admin_id, completed_date) VALUES (?, ?, ?, ?, ?, ?)",
     [konfiId, points, type, description, req.user.id, date],
     function(err) {
@@ -1577,6 +1408,7 @@ app.post('/api/konfis/:id/bonus-points', verifyToken, (req, res) => {
         return res.status(500).json({ error: 'Database error' });
       }
       
+      // Update konfi points
       const pointField = type === 'gottesdienst' ? 'gottesdienst_points' : 'gemeinde_points';
       db.run(`UPDATE konfis SET ${pointField} = ${pointField} + ? WHERE id = ?`,
         [points, konfiId],
@@ -1587,7 +1419,7 @@ app.post('/api/konfis/:id/bonus-points', verifyToken, (req, res) => {
           
           res.json({ 
             message: 'Bonus points assigned successfully',
-            newBadges: 0, // FIXED: Return 0 instead of calling checkAllBadges
+            newBadges: 0,
             bonusPoint: {
               description,
               points,
@@ -1609,6 +1441,7 @@ app.delete('/api/konfis/:id/activities/:recordId', verifyToken, (req, res) => {
   const konfiId = req.params.id;
   const recordId = req.params.recordId;
   
+  // Get activity details first to subtract points
   db.get("SELECT ka.id, ka.activity_id, a.points, a.type FROM konfi_activities ka JOIN activities a ON ka.activity_id = a.id WHERE ka.id = ? AND ka.konfi_id = ?", 
     [recordId, konfiId], (err, activityAssignment) => {
       if (err) {
@@ -1619,11 +1452,13 @@ app.delete('/api/konfis/:id/activities/:recordId', verifyToken, (req, res) => {
         return res.status(404).json({ error: 'Activity assignment not found' });
       }
       
+      // Remove the assignment
       db.run("DELETE FROM konfi_activities WHERE id = ?", [recordId], function(err) {
         if (err) {
           return res.status(500).json({ error: 'Database error' });
         }
         
+        // Update konfi points (subtract)
         const pointField = activityAssignment.type === 'gottesdienst' ? 'gottesdienst_points' : 'gemeinde_points';
         db.run(`UPDATE konfis SET ${pointField} = ${pointField} - ? WHERE id = ?`,
           [activityAssignment.points, konfiId],
@@ -1651,6 +1486,7 @@ app.delete('/api/konfis/:id/bonus-points/:bonusId', verifyToken, (req, res) => {
   const konfiId = req.params.id;
   const bonusId = req.params.bonusId;
 
+  // Get bonus points details first to subtract points
   db.get("SELECT * FROM bonus_points WHERE id = ? AND konfi_id = ?", [bonusId, konfiId], (err, bonusPoint) => {
     if (err) {
       return res.status(500).json({ error: 'Database error' });
@@ -1660,11 +1496,13 @@ app.delete('/api/konfis/:id/bonus-points/:bonusId', verifyToken, (req, res) => {
       return res.status(404).json({ error: 'Bonus points not found' });
     }
 
+    // Remove the bonus points
     db.run("DELETE FROM bonus_points WHERE id = ?", [bonusId], function(err) {
       if (err) {
         return res.status(500).json({ error: 'Database error' });
       }
 
+      // Update konfi points (subtract)
       const pointField = bonusPoint.type === 'gottesdienst' ? 'gottesdienst_points' : 'gemeinde_points';
       db.run(`UPDATE konfis SET ${pointField} = ${pointField} - ? WHERE id = ?`,
              [bonusPoint.points, konfiId],
@@ -1753,28 +1591,11 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-// Start server with error handling
-const server = app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, () => {
   console.log(`🚀 Konfi Points API running on port ${PORT}`);
   console.log(`📊 Database: ${dbPath}`);
   console.log(`🔐 Admin login: username=admin, password=pastor2025`);
   console.log(`📁 Uploads directory: ${uploadsDir}`);
-});
-
-server.on('error', (err) => {
-  console.error('Server error:', err);
-  process.exit(1);
-});
-
-// Handle uncaught exceptions
-process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err);
-  process.exit(1);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  process.exit(1);
 });
 
 // Graceful shutdown
