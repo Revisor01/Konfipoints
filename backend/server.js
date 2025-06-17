@@ -89,8 +89,156 @@ const CRITERIA_TYPES = {
   gemeinde_points: { label: "Gemeinde-Punkte", description: "Mindestanzahl gemeindlicher Punkte" },
   activity_count: { label: "Aktivitäten-Anzahl", description: "Gesamtanzahl aller Aktivitäten" },
   unique_activities: { label: "Verschiedene Aktivitäten", description: "Anzahl unterschiedlicher Aktivitäten" },
-  both_categories: { label: "Beide Kategorien", description: "Mindestpunkte in beiden Bereichen" }
+  both_categories: { label: "Beide Kategorien", description: "Mindestpunkte in beiden Bereichen" },
+  activity_combination: { label: "Aktivitäts-Kombination", description: "Spezifische Kombination von Aktivitäten" },
+  time_based: { label: "Zeitbasiert", description: "Aktivitäten in einem Zeitraum" },
+  streak: { label: "Serie", description: "Aufeinanderfolgende Aktivitäten" },
+  special_achievement: { label: "Spezielle Leistung", description: "Besondere Kombination oder Leistung" }
 };
+
+// Badge checking function - NEU HINZUFÜGEN
+const checkAndAwardBadges = async (konfiId) => {
+  return new Promise((resolve, reject) => {
+    // Get all active badges
+    db.all("SELECT * FROM custom_badges WHERE is_active = 1", [], (err, badges) => {
+      if (err) return reject(err);
+      
+      // Get konfi data with activities
+      const konfiQuery = `
+        SELECT k.*,
+                GROUP_CONCAT(DISTINCT ka.activity_id) as activity_ids,
+                GROUP_CONCAT(DISTINCT a.name) as activity_names,
+                GROUP_CONCAT(ka.completed_date) as activity_dates
+        FROM konfis k
+        LEFT JOIN konfi_activities ka ON k.id = ka.konfi_id
+        LEFT JOIN activities a ON ka.activity_id = a.id
+        WHERE k.id = ?
+        GROUP BY k.id
+      `;
+      
+      db.get(konfiQuery, [konfiId], (err, konfi) => {
+        if (err) return reject(err);
+        if (!konfi) return resolve(0);
+        
+        let newBadges = 0;
+        const earnedBadgeIds = [];
+        
+        // Get already earned badges
+        db.all("SELECT badge_id FROM konfi_badges WHERE konfi_id = ?", [konfiId], (err, earned) => {
+          if (err) return reject(err);
+          
+          const alreadyEarned = earned.map(e => e.badge_id);
+          
+          badges.forEach(badge => {
+            if (alreadyEarned.includes(badge.id)) return;
+            
+            let earned = false;
+            const criteria = JSON.parse(badge.criteria_extra || '{}');
+            
+            switch (badge.criteria_type) {
+              case 'total_points':
+                earned = (konfi.gottesdienst_points + konfi.gemeinde_points) >= badge.criteria_value;
+                break;
+              
+              case 'gottesdienst_points':
+                earned = konfi.gottesdienst_points >= badge.criteria_value;
+                break;
+              
+              case 'gemeinde_points':
+                earned = konfi.gemeinde_points >= badge.criteria_value;
+                break;
+              
+              case 'both_categories':
+                earned = konfi.gottesdienst_points >= badge.criteria_value && 
+                konfi.gemeinde_points >= badge.criteria_value;
+                break;
+              
+              case 'activity_combination':
+                if (criteria.required_activities && konfi.activity_names) {
+                  const activities = konfi.activity_names.split(',');
+                  const required = criteria.required_activities;
+                  earned = required.every(req => activities.includes(req));
+                }
+                break;
+              
+              case 'time_based':
+                if (criteria.days && konfi.activity_dates) {
+                  const dates = konfi.activity_dates.split(',');
+                  const now = new Date();
+                  const cutoff = new Date(now.getTime() - (criteria.days * 24 * 60 * 60 * 1000));
+                  
+                  const recentCount = dates.filter(dateStr => {
+                    const date = new Date(dateStr);
+                    return date >= cutoff;
+                  }).length;
+                  
+                  earned = recentCount >= badge.criteria_value;
+                }
+                break;
+              
+              case 'activity_count':
+                const activityCount = konfi.activity_ids ? konfi.activity_ids.split(',').length : 0;
+                earned = activityCount >= badge.criteria_value;
+                break;
+              
+              case 'unique_activities':
+                const uniqueCount = konfi.activity_ids ? 
+                new Set(konfi.activity_ids.split(',')).size : 0;
+                earned = uniqueCount >= badge.criteria_value;
+                break;
+            }
+            
+            if (earned) {
+              earnedBadgeIds.push(badge.id);
+              newBadges++;
+            }
+          });
+          
+          // Award new badges
+          if (earnedBadgeIds.length > 0) {
+            const insertPromises = earnedBadgeIds.map(badgeId => {
+              return new Promise((resolve, reject) => {
+                db.run("INSERT INTO konfi_badges (konfi_id, badge_id) VALUES (?, ?)", 
+                  [konfiId, badgeId], function(err) {
+                    if (err) reject(err);
+                    else resolve();
+                  });
+              });
+            });
+            
+            Promise.all(insertPromises)
+            .then(() => resolve(newBadges))
+            .catch(reject);
+          } else {
+            resolve(newBadges);
+          }
+        });
+      });
+    });
+  });
+};
+
+// Update the badge criteria types endpoint
+app.get('/api/badge-criteria-types', verifyToken, (req, res) => {
+  res.json(CRITERIA_TYPES); 
+});
+
+// Add image viewing endpoint
+app.get('/api/activity-requests/:id/photo', verifyToken, (req, res) => {
+  const requestId = req.params.id;
+  
+  db.get("SELECT photo_filename FROM activity_requests WHERE id = ?", [requestId], (err, request) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    if (!request || !request.photo_filename) return res.status(404).json({ error: 'Photo not found' });
+    
+    const photoPath = path.join(uploadsDir, request.photo_filename);
+    if (fs.existsSync(photoPath)) {
+      res.sendFile(photoPath);
+    } else {
+      res.status(404).json({ error: 'Photo file not found' });
+    }
+  });
+});
 
 // Function to format date for German locale
 function formatDate(dateString) {
@@ -320,6 +468,28 @@ db.serialize(() => {
   
   console.log('✅ Database migrations completed');
   
+  // Migration 3: Add is_hidden to custom_badges table
+  db.all("PRAGMA table_info(custom_badges)", (err, columns) => {
+    if (err) {
+      console.error('Migration 3 check error:', err);
+    } else {
+      const hasIsHidden = columns.some(col => col.name === 'is_hidden');
+      
+      if (!hasIsHidden) {
+        console.log('⚡ Migration 3: Adding is_hidden column to custom_badges table...');
+        db.run("ALTER TABLE custom_badges ADD COLUMN is_hidden BOOLEAN DEFAULT 0", (err) => {
+          if (err) {
+            console.error('Migration 3 error:', err);
+          } else {
+            console.log('✅ Migration 3: is_hidden column added');
+          }
+        });
+      } else {
+        console.log('✅ Migration 3: is_hidden column already exists');
+      }
+    }
+  });
+  
   // Only insert default data for new database
   if (!dbExists) {
     console.log('📝 Inserting default data...');
@@ -367,17 +537,22 @@ db.serialize(() => {
     
     // Insert default badges
     const defaultBadges = [
-      ['Starter', '🥉', 'Erste 5 Punkte gesammelt', 'total_points', 5, null],
-      ['Sammler', '🥈', 'Erste 10 Punkte gesammelt', 'total_points', 10, null],
-      ['Zielerreichung', '🥇', 'Erste 20 Punkte erreicht', 'total_points', 20, null],
-      ['Gottesdienstgänger', '📖', '10 gottesdienstliche Punkte', 'gottesdienst_points', 10, null],
-      ['Gemeindeheld', '🤝', '10 gemeindliche Punkte', 'gemeinde_points', 10, null],
-      ['Ausgewogen', '⚖️', 'Beide Kategorien >= 10 Punkte', 'both_categories', 10, null]
+      ['Starter', '🥉', 'Erste 5 Punkte gesammelt', 'total_points', 5, null, 1, 0],
+      ['Sammler', '🥈', 'Erste 10 Punkte gesammelt', 'total_points', 10, null, 1, 0],
+      ['Zielerreichung', '🥇', 'Erste 20 Punkte erreicht', 'total_points', 20, null, 1, 0],
+      ['Gottesdienstgänger', '📖', '10 gottesdienstliche Punkte', 'gottesdienst_points', 10, null, 1, 0],
+      ['Gemeindeheld', '🤝', '10 gemeindliche Punkte', 'gemeinde_points', 10, null, 1, 0],
+      ['Ausgewogen', '⚖️', 'Beide Kategorien >= 10 Punkte', 'both_categories', 10, null, 1, 0],
+      ['All-Rounder', '🏆', 'Sonntagsgottesdienst + Gemeindefest + Kindergottesdienst', 'activity_combination', 3, JSON.stringify({required_activities: ['Sonntagsgottesdienst', 'Gemeindefest helfen', 'Kindergottesdienst helfen']}), 1, 1],
+      ['Profi-Kirchgänger', '⭐', 'Sonntagsgottesdienst + Taizé + Jugendgottesdienst', 'activity_combination', 3, JSON.stringify({required_activities: ['Sonntagsgottesdienst', 'Taizé-Gottesdienst', 'Jugendgottesdienst']}), 1, 1],
+      ['Wochenend-Warrior', '🔥', '3 Aktivitäten in 7 Tagen', 'time_based', 3, JSON.stringify({days: 7}), 1, 1],
+      ['Aktivist', '⚡', '5 verschiedene Aktivitäten', 'unique_activities', 5, null, 1, 0],
+      ['Geheime Leistung', '🎭', 'Erreiche 25 Punkte in beiden Kategorien', 'both_categories', 25, null, 1, 1]
     ];
     
-    defaultBadges.forEach(([name, icon, description, criteria_type, criteria_value, criteria_extra]) => {
-      db.run("INSERT INTO custom_badges (name, icon, description, criteria_type, criteria_value, criteria_extra, is_active, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", 
-        [name, icon, description, criteria_type, criteria_value, criteria_extra, 1, 1]);
+    defaultBadges.forEach(([name, icon, description, criteria_type, criteria_value, criteria_extra, is_active, is_hidden]) => {
+      db.run("INSERT INTO custom_badges (name, icon, description, criteria_type, criteria_value, criteria_extra, is_active, is_hidden, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", 
+        [name, icon, description, criteria_type, criteria_value, criteria_extra, is_active, is_hidden, 1]);
     });
     console.log('✅ Default badges created');
     
@@ -642,50 +817,77 @@ app.post('/api/activity-requests', upload.single('photo'), (req, res) => {
 });
 
 // Update activity request status (admin only)
-app.put('/api/activity-requests/:id', verifyToken, (req, res) => {
+app.put('/api/activity-requests/:id', verifyToken, async (req, res) => {
   if (req.user.type !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
   }
-
+  
   const requestId = req.params.id;
   const { status, admin_comment } = req.body;
   
   if (!['pending', 'approved', 'rejected'].includes(status)) {
     return res.status(400).json({ error: 'Invalid status' });
   }
-
-  // Get request details first
-  db.get("SELECT ar.*, a.points, a.type FROM activity_requests ar JOIN activities a ON ar.activity_id = a.id WHERE ar.id = ?", 
-         [requestId], (err, request) => {
-    if (err) return res.status(500).json({ error: 'Database error' });
-    if (!request) return res.status(404).json({ error: 'Request not found' });
-
-    // Update request status
-    db.run("UPDATE activity_requests SET status = ?, admin_comment = ?, approved_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-           [status, admin_comment, req.user.id, requestId], function(err) {
-      if (err) return res.status(500).json({ error: 'Database error' });
-
-      // If approved, add activity
-      if (status === 'approved') {
-        // Add to konfi_activities
-        db.run("INSERT INTO konfi_activities (konfi_id, activity_id, admin_id, completed_date) VALUES (?, ?, ?, ?)",
-               [request.konfi_id, request.activity_id, req.user.id, request.requested_date], 
-               function(err) {
-          if (err) return res.status(500).json({ error: 'Database error adding activity' });
-
-          // Update konfi points
-          const pointField = request.type === 'gottesdienst' ? 'gottesdienst_points' : 'gemeinde_points';
-          db.run(`UPDATE konfis SET ${pointField} = ${pointField} + ? WHERE id = ?`,
-                 [request.points, request.konfi_id], (err) => {
-            if (err) return res.status(500).json({ error: 'Database error updating points' });
-            res.json({ message: 'Request approved and activity added', newBadges: 0 });
-          });
+  
+  try {
+    // Get request details first
+    const request = await new Promise((resolve, reject) => {
+      db.get("SELECT ar.*, a.points, a.type FROM activity_requests ar JOIN activities a ON ar.activity_id = a.id WHERE ar.id = ?", 
+        [requestId], (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
         });
-      } else {
-        res.json({ message: 'Request status updated' });
-      }
     });
-  });
+    
+    if (!request) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+    
+    // Update request status
+    await new Promise((resolve, reject) => {
+      db.run("UPDATE activity_requests SET status = ?, admin_comment = ?, approved_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        [status, admin_comment, req.user.id, requestId], function(err) {
+          if (err) reject(err);
+          else resolve();
+        });
+    });
+    
+    let newBadges = 0;
+    
+    // If approved, add activity
+    if (status === 'approved') {
+      // Add to konfi_activities
+      await new Promise((resolve, reject) => {
+        db.run("INSERT INTO konfi_activities (konfi_id, activity_id, admin_id, completed_date) VALUES (?, ?, ?, ?)",
+          [request.konfi_id, request.activity_id, req.user.id, request.requested_date], function(err) {
+            if (err) reject(err);
+            else resolve();
+          });
+      });
+      
+      // Update konfi points
+      const pointField = request.type === 'gottesdienst' ? 'gottesdienst_points' : 'gemeinde_points';
+      await new Promise((resolve, reject) => {
+        db.run(`UPDATE konfis SET ${pointField} = ${pointField} + ? WHERE id = ?`,
+          [request.points, request.konfi_id], (err) => {
+            if (err) reject(err);
+            else resolve();
+          });
+      });
+      
+      // Check and award badges - HIER PASSIERT DIE BADGE-ÜBERPRÜFUNG!
+      newBadges = await checkAndAwardBadges(request.konfi_id);
+    }
+    
+    res.json({ 
+      message: 'Request status updated', 
+      newBadges: newBadges 
+    });
+    
+  } catch (err) {
+    console.error('Error updating request status:', err);
+    res.status(500).json({ error: 'Database error: ' + err.message });
+  }
 });
 
 // Delete activity request
@@ -1415,7 +1617,7 @@ app.delete('/api/activities/:id', verifyToken, (req, res) => {
 });
 
 // Assign activity to konfi (admin only) - WITH ADMIN TRACKING AND DATE
-app.post('/api/konfis/:id/activities', verifyToken, (req, res) => {
+app.post('/api/konfis/:id/activities', verifyToken, async (req, res) => {
   if (req.user.type !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
   }
@@ -1429,51 +1631,61 @@ app.post('/api/konfis/:id/activities', verifyToken, (req, res) => {
   
   const date = completed_date || new Date().toISOString().split('T')[0];
   
-  // Get activity details
-  db.get("SELECT * FROM activities WHERE id = ?", [activityId], (err, activity) => {
-    if (err) {
-      return res.status(500).json({ error: 'Database error' });
-    }
+  try {
+    // Get activity details
+    const activity = await new Promise((resolve, reject) => {
+      db.get("SELECT * FROM activities WHERE id = ?", [activityId], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
     
     if (!activity) {
       return res.status(404).json({ error: 'Activity not found' });
     }
     
     // Add activity to konfi WITH ADMIN TRACKING AND DATE
-    db.run("INSERT INTO konfi_activities (konfi_id, activity_id, admin_id, completed_date) VALUES (?, ?, ?, ?)",
-      [konfiId, activityId, req.user.id, date],
-      function(err) {
-        if (err) {
-          return res.status(500).json({ error: 'Database error' });
-        }
-        
-        // Update konfi points
-        const pointField = activity.type === 'gottesdienst' ? 'gottesdienst_points' : 'gemeinde_points';
-        db.run(`UPDATE konfis SET ${pointField} = ${pointField} + ? WHERE id = ?`,
-          [activity.points, konfiId],
-          (err) => {
-            if (err) {
-              return res.status(500).json({ error: 'Database error updating points' });
-            }
-            
-            res.json({ 
-              message: 'Activity assigned successfully',
-              newBadges: 0,
-              activity: {
-                name: activity.name,
-                points: activity.points,
-                type: activity.type,
-                date: formatDate(date),
-                admin: req.user.display_name
-              }
-            });
-          });
-      });
-  });
+    await new Promise((resolve, reject) => {
+      db.run("INSERT INTO konfi_activities (konfi_id, activity_id, admin_id, completed_date) VALUES (?, ?, ?, ?)",
+        [konfiId, activityId, req.user.id, date], function(err) {
+          if (err) reject(err);
+          else resolve();
+        });
+    });
+    
+    // Update konfi points
+    const pointField = activity.type === 'gottesdienst' ? 'gottesdienst_points' : 'gemeinde_points';
+    await new Promise((resolve, reject) => {
+      db.run(`UPDATE konfis SET ${pointField} = ${pointField} + ? WHERE id = ?`,
+        [activity.points, konfiId], (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+    });
+    
+    // Check and award badges - HIER PASSIERT DIE BADGE-ÜBERPRÜFUNG!
+    const newBadges = await checkAndAwardBadges(konfiId);
+    
+    res.json({ 
+      message: 'Activity assigned successfully',
+      newBadges: newBadges,
+      activity: {
+        name: activity.name,
+        points: activity.points,
+        type: activity.type,
+        date: formatDate(date),
+        admin: req.user.display_name
+      }
+    });
+    
+  } catch (err) {
+    console.error('Error assigning activity:', err);
+    res.status(500).json({ error: 'Database error: ' + err.message });
+  }
 });
 
 // Add bonus points - WITH ADMIN TRACKING AND DATE
-app.post('/api/konfis/:id/bonus-points', verifyToken, (req, res) => {
+app.post('/api/konfis/:id/bonus-points', verifyToken, async (req, res) => {
   if (req.user.type !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
   }
@@ -1491,36 +1703,45 @@ app.post('/api/konfis/:id/bonus-points', verifyToken, (req, res) => {
   
   const date = completed_date || new Date().toISOString().split('T')[0];
   
-  // Add bonus points WITH ADMIN TRACKING AND DATE
-  db.run("INSERT INTO bonus_points (konfi_id, points, type, description, admin_id, completed_date) VALUES (?, ?, ?, ?, ?, ?)",
-    [konfiId, points, type, description, req.user.id, date],
-    function(err) {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      
-      // Update konfi points
-      const pointField = type === 'gottesdienst' ? 'gottesdienst_points' : 'gemeinde_points';
-      db.run(`UPDATE konfis SET ${pointField} = ${pointField} + ? WHERE id = ?`,
-        [points, konfiId],
-        (err) => {
-          if (err) {
-            return res.status(500).json({ error: 'Database error updating points' });
-          }
-          
-          res.json({ 
-            message: 'Bonus points assigned successfully',
-            newBadges: 0,
-            bonusPoint: {
-              description,
-              points,
-              type,
-              date: formatDate(date),
-              admin: req.user.display_name
-            }
-          });
+  try {
+    // Add bonus points WITH ADMIN TRACKING AND DATE
+    await new Promise((resolve, reject) => {
+      db.run("INSERT INTO bonus_points (konfi_id, points, type, description, admin_id, completed_date) VALUES (?, ?, ?, ?, ?, ?)",
+        [konfiId, points, type, description, req.user.id, date], function(err) {
+          if (err) reject(err);
+          else resolve();
         });
     });
+    
+    // Update konfi points
+    const pointField = type === 'gottesdienst' ? 'gottesdienst_points' : 'gemeinde_points';
+    await new Promise((resolve, reject) => {
+      db.run(`UPDATE konfis SET ${pointField} = ${pointField} + ? WHERE id = ?`,
+        [points, konfiId], (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+    });
+    
+    // Check and award badges - HIER PASSIERT DIE BADGE-ÜBERPRÜFUNG!
+    const newBadges = await checkAndAwardBadges(konfiId);
+    
+    res.json({ 
+      message: 'Bonus points assigned successfully',
+      newBadges: newBadges,
+      bonusPoint: {
+        description,
+        points,
+        type,
+        date: formatDate(date),
+        admin: req.user.display_name
+      }
+    });
+    
+  } catch (err) {
+    console.error('Error adding bonus points:', err);
+    res.status(500).json({ error: 'Database error: ' + err.message });
+  }
 });
 
 // Remove activity from konfi (admin only)

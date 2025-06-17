@@ -64,44 +64,190 @@ const getConfirmationCountdown = (confirmationDate) => {
 };
 
 // Badge Display Component
-const BadgeDisplay = ({ badges, earnedBadges, showProgress = true }) => {
+// Enhanced Badge Display Component with hidden badge support
+const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = false }) => {
   const earnedBadgeIds = earnedBadges.map(b => b.id || b.badge_id);
+  
+  // Filter badges - show hidden ones only if earned (unless admin)
+  const visibleBadges = badges.filter(badge => {
+    if (isAdmin) return true; // Admins see all badges
+    if (!badge.is_hidden) return true; // Always show non-hidden badges
+    return earnedBadgeIds.includes(badge.id); // Show hidden badges only if earned
+  });
   
   return (
     <div className="space-y-4">
-      {showProgress && (
-        <div className="text-center text-sm text-gray-600">
-          <span className="font-bold">{earnedBadges.length}</span> von <span className="font-bold">{badges.length}</span> Badges erhalten
+    {showProgress && (
+      <div className="text-center text-sm text-gray-600">
+      <span className="font-bold">{earnedBadges.length}</span> von <span className="font-bold">{visibleBadges.length}</span> Badges erhalten
+      {!isAdmin && badges.some(b => b.is_hidden && !earnedBadgeIds.includes(b.id)) && (
+        <div className="text-xs text-purple-600 mt-1">
+        🎭 Versteckte Badges werden erst bei Erreichen angezeigt
         </div>
       )}
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-        {badges.map(badge => {
-          const isEarned = earnedBadgeIds.includes(badge.id);
-          return (
-            <div 
-              key={badge.id} 
-              className={`p-3 rounded-lg text-center border-2 transition-all ${
-                isEarned 
-                  ? 'bg-yellow-50 border-yellow-400 shadow-md' 
-                  : 'bg-gray-50 border-gray-200 opacity-60'
-              }`}
-              title={badge.description}
-            >
-              <div className="text-2xl mb-1">{badge.icon}</div>
-              <div className={`text-xs font-bold ${isEarned ? 'text-yellow-800' : 'text-gray-500'}`}>
-                {badge.name}
-              </div>
-              {isEarned && (
-                <div className="text-xs text-yellow-600 mt-1">
-                  ✓ Erhalten
-                </div>
-              )}
-            </div>
-          );
-        })}
       </div>
+    )}
+    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+    {visibleBadges.map(badge => {
+      const isEarned = earnedBadgeIds.includes(badge.id);
+      const isHidden = badge.is_hidden;
+      
+      return (
+        <div 
+        key={badge.id} 
+        className={`p-3 rounded-lg text-center border-2 transition-all ${
+          isEarned 
+          ? isHidden 
+          ? 'bg-purple-50 border-purple-400 shadow-md' 
+          : 'bg-yellow-50 border-yellow-400 shadow-md'
+          : 'bg-gray-50 border-gray-200 opacity-60'
+        }`}
+        title={badge.description}
+        >
+        <div className="text-2xl mb-1">
+        {isEarned && isHidden ? '🎭' : badge.icon}
+        </div>
+        <div className={`text-xs font-bold ${
+          isEarned 
+          ? isHidden ? 'text-purple-800' : 'text-yellow-800' 
+          : 'text-gray-500'
+        }`}>
+        {badge.name}
+        </div>
+        {isEarned && (
+          <div className={`text-xs mt-1 ${isHidden ? 'text-purple-600' : 'text-yellow-600'}`}>
+          ✓ {isHidden ? 'Geheim erreicht!' : 'Erhalten'}
+          </div>
+        )}
+        {isAdmin && isHidden && !isEarned && (
+          <div className="text-xs text-purple-500 mt-1">
+          🎭 Versteckt
+          </div>
+        )}
+        </div>
+      );
+    })}
+    </div>
     </div>
   );
+};
+
+// Image Popup Component
+const ImageModal = ({ show, onClose, imageUrl, title }) => {
+  if (!show) return null;
+  
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-lg p-4 max-w-4xl max-h-[90vh] overflow-hidden">
+    <div className="flex justify-between items-center mb-4">
+    <h3 className="text-lg font-bold">{title}</h3>
+    <button
+    onClick={onClose}
+    className="text-gray-500 hover:text-gray-700"
+    >
+    <X className="w-6 h-6" />
+    </button>
+    </div>
+    <div className="max-h-[70vh] overflow-auto">
+    <img 
+    src={imageUrl} 
+    alt={title}
+    className="max-w-full h-auto rounded"
+    onError={(e) => {
+      e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5CaWxkIG5pY2h0IGdlZnVuZGVuPC90ZXh0Pjwvc3ZnPg==';
+    }}
+    />
+    </div>
+    </div>
+    </div>
+  );
+};
+
+// Enhanced Ranking Component
+const EnhancedRankingDisplay = ({ ranking, isAdmin = false }) => {
+  if (isAdmin) {
+    return (
+      <div className="space-y-3">
+      {ranking.map((konfi, index) => {
+        const position = index + 1;
+        const isTop3 = position <= 3;
+        
+        return (
+          <div 
+          key={konfi.id || index} 
+          className={`flex items-center justify-between p-4 rounded-lg border-2 transition-all ${
+            isTop3 
+            ? position === 1 ? 'bg-yellow-50 border-yellow-400 shadow-lg' 
+            : position === 2 ? 'bg-gray-50 border-gray-400 shadow-md'
+            : 'bg-orange-50 border-orange-400 shadow-md'
+            : 'bg-white border-gray-200'
+          }`}
+          >
+          <div className="flex items-center gap-4">
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg ${
+            position === 1 ? 'bg-yellow-400 text-yellow-900' 
+            : position === 2 ? 'bg-gray-400 text-gray-900'
+            : position === 3 ? 'bg-orange-400 text-orange-900'
+            : 'bg-blue-100 text-blue-800'
+          }`}>
+          {position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : position}
+          </div>
+          
+          <div>
+          <h3 className="font-bold text-lg">{konfi.name}</h3>
+          <div className="flex items-center gap-4 text-sm text-gray-600">
+          <span>Gottesdienst: {konfi.gottesdienst || 0}</span>
+          <span>Gemeinde: {konfi.gemeinde || 0}</span>
+          </div>
+          </div>
+          </div>
+          
+          <div className="text-right">
+          <div className="text-2xl font-bold text-purple-600">
+          {konfi.points}
+          </div>
+          <div className="text-sm text-gray-500">Punkte</div>
+          </div>
+          </div>
+        );
+      })}
+      </div>
+    );
+  } else {
+    // Konfi view - anonymized
+    return (
+      <div className="text-center space-y-4">
+      <div className="bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-xl p-6">
+      <div className="text-4xl font-bold mb-2">
+      #{ranking.myPosition}
+      </div>
+      <div className="text-lg">
+      von {ranking.totalKonfis} Konfis
+      </div>
+      <div className="text-sm opacity-90 mt-2">
+      Mit {ranking.myPoints} Punkten
+      </div>
+      </div>
+      
+      {ranking.topScores && (
+        <div className="bg-white rounded-lg p-4">
+        <h4 className="font-bold mb-3">Top 3 Punktestände</h4>
+        <div className="flex justify-center gap-6">
+        {ranking.topScores.slice(0, 3).map((score, index) => (
+          <div key={index} className="text-center">
+          <div className="text-2xl mb-1">
+          {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
+          </div>
+          <div className="font-bold">{score}</div>
+          <div className="text-xs text-gray-500">Punkte</div>
+          </div>
+        ))}
+        </div>
+        </div>
+      )}
+      </div>
+    );
+  }
 };
 
 // Activity Request Modal
@@ -234,6 +380,7 @@ const ActivityRequestModal = ({
 };
 
 // Badge Management Modal
+// Enhanced Badge Management Modal
 const BadgeModal = ({ 
   show, 
   onClose, 
@@ -250,9 +397,10 @@ const BadgeModal = ({
     criteria_type: '',
     criteria_value: 1,
     criteria_extra: {},
-    is_active: true
+    is_active: true,
+    is_hidden: false
   });
-
+  
   useEffect(() => {
     if (badge) {
       setFormData({
@@ -262,7 +410,8 @@ const BadgeModal = ({
         criteria_type: badge.criteria_type || '',
         criteria_value: badge.criteria_value || 1,
         criteria_extra: badge.criteria_extra ? JSON.parse(badge.criteria_extra) : {},
-        is_active: badge.is_active !== undefined ? badge.is_active : true
+        is_active: badge.is_active !== undefined ? badge.is_active : true,
+        is_hidden: badge.is_hidden !== undefined ? badge.is_hidden : false
       });
     } else {
       setFormData({
@@ -272,133 +421,176 @@ const BadgeModal = ({
         criteria_type: '',
         criteria_value: 1,
         criteria_extra: {},
-        is_active: true
+        is_active: true,
+        is_hidden: false
       });
     }
   }, [badge]);
-
+  
   if (!show) return null;
-
+  
   const handleSubmit = (e) => {
     e.preventDefault();
     onSubmit(formData);
   };
-
+  
   const renderExtraFields = () => {
-    if (formData.criteria_type === 'specific_activity') {
-      return (
-        <div>
-          <label className="block text-sm font-medium mb-1">Aktivität</label>
-          <select
-            value={formData.criteria_extra.activity_name || ''}
-            onChange={(e) => setFormData({
-              ...formData,
-              criteria_extra: { ...formData.criteria_extra, activity_name: e.target.value }
-            })}
-            className="w-full p-2 border rounded"
-          >
-            <option value="">Aktivität wählen...</option>
-            {activities.map(activity => (
-              <option key={activity.id} value={activity.name}>{activity.name}</option>
-            ))}
-          </select>
-        </div>
-      );
+    switch (formData.criteria_type) {
+      case 'activity_combination':
+        return (
+          <div>
+          <label className="block text-sm font-medium mb-1">Erforderliche Aktivitäten</label>
+          <div className="space-y-2 max-h-32 overflow-y-auto border rounded p-2">
+          {activities.map(activity => (
+            <label key={activity.id} className="flex items-center gap-2">
+            <input
+            type="checkbox"
+            checked={(formData.criteria_extra.required_activities || []).includes(activity.name)}
+            onChange={(e) => {
+              const current = formData.criteria_extra.required_activities || [];
+              const updated = e.target.checked 
+              ? [...current, activity.name]
+              : current.filter(name => name !== activity.name);
+              setFormData({
+                ...formData,
+                criteria_extra: { ...formData.criteria_extra, required_activities: updated }
+              });
+            }}
+            />
+            <span className="text-sm">{activity.name}</span>
+            </label>
+          ))}
+          </div>
+          </div>
+        );
+      
+      case 'time_based':
+        return (
+          <div>
+          <label className="block text-sm font-medium mb-1">Zeitraum (Tage)</label>
+          <input
+          type="number"
+          value={formData.criteria_extra.days || 7}
+          onChange={(e) => setFormData({
+            ...formData,
+            criteria_extra: { ...formData.criteria_extra, days: parseInt(e.target.value) || 7 }
+          })}
+          className="w-full p-2 border rounded"
+          min="1"
+          max="365"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+          {formData.criteria_value} Aktivitäten in {formData.criteria_extra.days || 7} Tagen
+          </p>
+          </div>
+        );
+      
+      default:
+        return null;
     }
-    return null;
   };
-
+  
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <h3 className="text-lg font-bold mb-4">
-          {badge ? 'Badge bearbeiten' : 'Neues Badge erstellen'}
-        </h3>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1">Name *</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                className="w-full p-2 border rounded"
-                placeholder="z.B. Starter"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Icon *</label>
-              <input
-                type="text"
-                value={formData.icon}
-                onChange={(e) => setFormData({...formData, icon: e.target.value})}
-                className="w-full p-2 border rounded"
-                placeholder="🥉"
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Beschreibung</label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({...formData, description: e.target.value})}
-              className="w-full p-2 border rounded"
-              rows="2"
-              placeholder="z.B. Erste 5 Punkte gesammelt"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1">Kriterium *</label>
-              <select
-                value={formData.criteria_type}
-                onChange={(e) => setFormData({...formData, criteria_type: e.target.value})}
-                className="w-full p-2 border rounded"
-                required
-              >
-                <option value="">Kriterium wählen...</option>
-                {Object.entries(criteriaTypes).map(([key, type]) => (
-                  <option key={key} value={key}>{type.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Wert *</label>
-              <input
-                type="number"
-                value={formData.criteria_value}
-                onChange={(e) => setFormData({...formData, criteria_value: parseInt(e.target.value) || 1})}
-                className="w-full p-2 border rounded"
-                min="1"
-                required
-              />
-            </div>
-          </div>
-
-          {renderExtraFields()}
-
-          {badge && (
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={formData.is_active}
-                onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
-                id="is-active"
-              />
-              <label htmlFor="is-active" className="text-sm">Badge aktiv</label>
-            </div>
-          )}
-
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={loading}
-    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600disabled:opacity-50 flex items-center gap-2"
+    <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+    <h3 className="text-lg font-bold mb-4">
+    {badge ? 'Badge bearbeiten' : 'Neues Badge erstellen'}
+    </h3>
+    
+    <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="grid grid-cols-2 gap-3">
+    <div>
+    <label className="block text-sm font-medium mb-1">Name *</label>
+    <input
+    type="text"
+    value={formData.name}
+    onChange={(e) => setFormData({...formData, name: e.target.value})}
+    className="w-full p-2 border rounded"
+    placeholder="z.B. All-Rounder"
+    required
+    />
+    </div>
+    <div>
+    <label className="block text-sm font-medium mb-1">Icon *</label>
+    <input
+    type="text"
+    value={formData.icon}
+    onChange={(e) => setFormData({...formData, icon: e.target.value})}
+    className="w-full p-2 border rounded"
+    placeholder="🏆"
+    required
+    />
+    </div>
+    </div>
+    
+    <div>
+    <label className="block text-sm font-medium mb-1">Beschreibung</label>
+    <textarea
+    value={formData.description}
+    onChange={(e) => setFormData({...formData, description: e.target.value})}
+    className="w-full p-2 border rounded"
+    rows="2"
+    placeholder="z.B. Drei verschiedene Aktivitäten in einer Woche"
+    />
+    </div>
+    
+    <div className="grid grid-cols-2 gap-3">
+    <div>
+    <label className="block text-sm font-medium mb-1">Kriterium *</label>
+    <select
+    value={formData.criteria_type}
+    onChange={(e) => setFormData({...formData, criteria_type: e.target.value})}
+    className="w-full p-2 border rounded"
+    required
+    >
+    <option value="">Kriterium wählen...</option>
+    {Object.entries(criteriaTypes).map(([key, type]) => (
+      <option key={key} value={key}>{type.label}</option>
+    ))}
+    </select>
+    </div>
+    <div>
+    <label className="block text-sm font-medium mb-1">Wert *</label>
+    <input
+    type="number"
+    value={formData.criteria_value}
+    onChange={(e) => setFormData({...formData, criteria_value: parseInt(e.target.value) || 1})}
+    className="w-full p-2 border rounded"
+    min="1"
+    required
+    />
+    </div>
+    </div>
+    
+    {renderExtraFields()}
+    
+    <div className="space-y-2">
+    <div className="flex items-center gap-2">
+    <input
+    type="checkbox"
+    checked={formData.is_active}
+    onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
+    id="is-active"
+    />
+    <label htmlFor="is-active" className="text-sm">Badge aktiv</label>
+    </div>
+    
+    <div className="flex items-center gap-2">
+    <input
+    type="checkbox"
+    checked={formData.is_hidden}
+    onChange={(e) => setFormData({...formData, is_hidden: e.target.checked})}
+    id="is-hidden"
+    />
+    <label htmlFor="is-hidden" className="text-sm">Verstecktes Badge (erscheint erst bei Erreichen)</label>
+    </div>
+    </div>
+    
+    <div className="flex gap-2">
+    <button
+    type="submit"
+    disabled={loading}
+    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50 flex items-center gap-2"
     >
     {loading && <Loader className="w-4 h-4 animate-spin" />}
     <Save className="w-4 h-4" />
@@ -417,6 +609,7 @@ const BadgeModal = ({
     </div>
   );
 };
+
 // Request Status Badge
 const RequestStatusBadge = ({ status }) => {
   const statusConfig = {
@@ -596,6 +789,15 @@ const KonfiPointsSystem = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteItem, setDeleteItem] = useState(null);
   const [deleteType, setDeleteType] = useState('');
+  
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [currentImage, setCurrentImage] = useState(null);
+  
+  // Function to show image
+  const showImage = (filename, title) => {
+    setCurrentImage({ url: `/uploads/${filename}`, title });
+    setShowImageModal(true);
+  };
   
   // New: Badge and Request modals
   const [showBadgeModal, setShowBadgeModal] = useState(false);
@@ -2026,6 +2228,12 @@ const KonfiPointsSystem = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex flex-col">
     {/* All modals */}
     <PasswordModal />
+    <ImageModal 
+    show={showImageModal}
+    onClose={() => setShowImageModal(false)}
+    imageUrl={currentImage?.url}
+    title={currentImage?.title}
+    />
     <BonusPointsModal 
     show={showBonusModal}
     onClose={() => {
@@ -2354,15 +2562,13 @@ const KonfiPointsSystem = () => {
           
           <div className="flex flex-col sm:flex-row gap-3 items-start">
           {request.photo_filename && (
-            <a 
-            href={`/uploads/${request.photo_filename}`} 
-            target="_blank" 
-            rel="noopener noreferrer"
+            <button 
+            onClick={() => showImage(request.photo_filename, `Foto für ${request.activity_name}`)}
             className="bg-blue-100 text-blue-700 px-3 py-2 rounded hover:bg-blue-200 flex items-center gap-2"
             >
             <Camera className="w-4 h-4" />
             Foto ansehen
-            </a>
+            </button>
           )}
           
           <button
