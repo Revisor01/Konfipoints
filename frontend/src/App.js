@@ -1,4 +1,3 @@
-// src/App.js
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
@@ -66,7 +65,6 @@ const getConfirmationCountdown = (confirmationDate) => {
 // Enhanced Badge Display Component - FIXED
 const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = false, konfiData = null }) => {
   const earnedBadgeIds = earnedBadges.map(b => b.id || b.badge_id);
-
   
   // Filter badges
   const visibleBadges = badges.filter(badge => {
@@ -91,7 +89,6 @@ const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = fal
     {visibleBadges.map(badge => {
       const isEarned = earnedBadgeIds.includes(badge.id);
       const isHidden = badge.is_hidden;
-      const progress = !isAdmin && konfiData ? calculateBadgeProgress(badge) : null;
       
       return (
         <div 
@@ -119,18 +116,6 @@ const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = fal
         {isEarned ? (
           <div className={`text-xs mt-1 ${isHidden ? 'text-purple-600' : 'text-yellow-600'}`}>
           ✓ {isHidden ? 'Geheim!' : 'Erhalten'}
-          </div>
-        ) : progress ? (
-          <div className="mt-2">
-          <div className="text-xs text-gray-600 mb-1">
-          {progress.description}
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-1">
-          <div 
-          className="bg-blue-500 h-1 rounded-full transition-all"
-          style={{ width: `${progress.percentage}%` }}
-          ></div>
-          </div>
           </div>
         ) : (
           isAdmin && isHidden && (
