@@ -531,6 +531,28 @@ db.serialize(() => {
     }
   });
   
+  // Migration 4: Add category column to activities table
+  db.all("PRAGMA table_info(activities)", (err, columns) => {
+    if (err) {
+      console.error('Migration 4 check error:', err);
+    } else {
+      const hasCategory = columns.some(col => col.name === 'category');
+      
+      if (!hasCategory) {
+        console.log('⚡ Migration 4: Adding category column to activities table...');
+        db.run("ALTER TABLE activities ADD COLUMN category TEXT", (err) => {
+          if (err) {
+            console.error('Migration 4 error:', err);
+          } else {
+            console.log('✅ Migration 4: category column added');
+          }
+        });
+      } else {
+        console.log('✅ Migration 4: category column already exists');
+      }
+    }
+  });
+  
   // Only insert default data for new database
   if (!dbExists) {
     console.log('📝 Inserting default data...');
