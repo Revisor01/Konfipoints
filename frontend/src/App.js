@@ -66,72 +66,7 @@ const getConfirmationCountdown = (confirmationDate) => {
 // Enhanced Badge Display Component - FIXED
 const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = false, konfiData = null }) => {
   const earnedBadgeIds = earnedBadges.map(b => b.id || b.badge_id);
-  
-  // Filter badges
-  const visibleBadges = badges.filter(badge => {
-    if (isAdmin) return true;
-    if (!badge.is_hidden) return true;
-    return earnedBadgeIds.includes(badge.id);
-  });
-  
-  return (
-    <div className="space-y-4">
-    {showProgress && (
-      <div className="text-center text-sm text-gray-600">
-      <span className="font-bold">{earnedBadges.length}</span> von <span className="font-bold">{visibleBadges.length}</span> Badges erhalten
-      {!isAdmin && badges.some(b => b.is_hidden && !earnedBadgeIds.includes(b.id)) && (
-        <div className="text-xs text-purple-600 mt-1">
-        🎭 Versteckte Badges werden erst bei Erreichen angezeigt
-        </div>
-      )}
-      </div>
-    )}
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-    {visibleBadges.map(badge => {
-      const isEarned = earnedBadgeIds.includes(badge.id);
-      const isHidden = badge.is_hidden;
-      
-      return (
-        <div 
-        key={badge.id} 
-        className={`p-3 rounded-lg text-center border-2 transition-all ${
-          isEarned 
-          ? isHidden 
-          ? 'bg-purple-50 border-purple-400 shadow-md' 
-          : 'bg-yellow-50 border-yellow-400 shadow-md'
-          : 'bg-gray-50 border-gray-200 opacity-60'
-        }`}
-        title={badge.description}
-        >
-        <div className="text-2xl mb-1">
-        {isEarned && isHidden ? '🎭' : badge.icon}
-        </div>
-        <div className={`text-xs font-bold mb-1 leading-tight break-words ${
-          isEarned 
-          ? isHidden ? 'text-purple-800' : 'text-yellow-800' 
-          : 'text-gray-500'
-        }`}>
-        {badge.name}
-        </div>
-        
-        {isEarned ? (
-          <div className={`text-xs mt-1 ${isHidden ? 'text-purple-600' : 'text-yellow-600'}`}>
-          ✓ {isHidden ? 'Geheim!' : 'Erhalten'}
-          </div>
-        ) : (
-          isAdmin && isHidden && (
-            <div className="text-xs text-purple-500 mt-1">
-            🎭 Versteckt
-            </div>
-          )
-        )}
-        </div>
-      );
-    })}
-    </div>
-    </div>
-  );
-};
+
   
   // Filter badges
   const visibleBadges = badges.filter(badge => {
