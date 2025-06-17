@@ -682,6 +682,110 @@ const BadgeModal = ({
   );
 };
 
+// Request Management Modal
+const RequestManagementModal = ({ 
+  show, 
+  onClose, 
+  request,
+  onUpdateStatus, 
+  loading 
+}) => {
+  const [status, setStatus] = useState(request?.status || 'pending');
+  const [adminComment, setAdminComment] = useState(request?.admin_comment || '');
+  
+  useEffect(() => {
+    if (request) {
+      setStatus(request.status || 'pending');
+      setAdminComment(request.admin_comment || '');
+    }
+  }, [request]);
+  
+  if (!show || !request) return null;
+  
+  const handleSubmit = () => {
+    onUpdateStatus(request.id, status, adminComment);
+    onClose();
+  };
+  
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+    <h3 className="text-lg font-bold mb-4">Antrag bearbeiten</h3>
+    
+    <div className="space-y-4">
+    <div className="bg-gray-50 p-3 rounded">
+    <h4 className="font-bold">{request.konfi_name}</h4>
+    <p className="text-sm">{request.activity_name} ({request.activity_points} Punkte)</p>
+    <p className="text-xs text-gray-600">{formatDate(request.requested_date)}</p>
+    {request.comment && (
+      <p className="text-xs text-gray-700 italic mt-1">"{request.comment}"</p>
+    )}
+    </div>
+    
+    {request.photo_filename && (
+      <div className="text-center">
+      <button 
+      onClick={() => showImage(request.id, `Foto für ${request.activity_name}`)}
+      className="bg-blue-100 text-blue-700 px-3 py-2 rounded hover:bg-blue-200 flex items-center gap-2 mx-auto"
+      >
+      <Camera className="w-4 h-4" />
+      Foto anzeigen
+      </button>
+      </div>
+    )}
+    
+    <div>
+    <label className="block text-sm font-medium mb-1">Status</label>
+    <select
+    value={status}
+    onChange={(e) => setStatus(e.target.value)}
+    className="w-full p-2 border rounded"
+    >
+    <option value="pending">Ausstehend</option>
+    <option value="approved">Genehmigt</option>
+    <option value="rejected">Abgelehnt</option>
+    </select>
+    </div>
+    
+    <div>
+    <label className="block text-sm font-medium mb-1">
+    Admin-Kommentar {status === 'rejected' && <span className="text-red-500">*</span>}
+    </label>
+    <textarea
+    value={adminComment}
+    onChange={(e) => setAdminComment(e.target.value)}
+    className="w-full p-2 border rounded"
+    rows="3"
+    placeholder={status === 'rejected' ? 'Grund für Ablehnung...' : 'Optionaler Kommentar...'}
+    />
+    {status === 'rejected' && !adminComment.trim() && (
+      <p className="text-xs text-red-500 mt-1">Grund für Ablehnung ist erforderlich</p>
+    )}
+    </div>
+    
+    <div className="flex gap-2">
+    <button
+    onClick={handleSubmit}
+    disabled={loading || (status === 'rejected' && !adminComment.trim())}
+    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50 flex items-center gap-2"
+    >
+    {loading && <Loader className="w-4 h-4 animate-spin" />}
+    <Save className="w-4 h-4" />
+    Speichern
+    </button>
+    <button
+    onClick={onClose}
+    className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+    >
+    Abbrechen
+    </button>
+    </div>
+    </div>
+    </div>
+    </div>
+  );
+};
+
 // Request Status Badge
 const RequestStatusBadge = ({ status }) => {
   const statusConfig = {
@@ -801,6 +905,8 @@ const KonfiPointsSystem = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showRequestManagementModal, setShowRequestManagementModal] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
   
   // Auto-hide messages
   useEffect(() => {
@@ -860,8 +966,8 @@ const KonfiPointsSystem = () => {
   const [currentImage, setCurrentImage] = useState(null);
   
   // Function to show image
-  const showImage = (filename, title) => {
-    setCurrentImage({ url: `${API_BASE_URL}/activity-requests/${filename}/photo`, title });
+  const showImage = (requestId, title) => {
+    setCurrentImage({ url: `${API_BASE_URL}/activity-requests/${requestId}/photo`, title });
     setShowImageModal(true);
   };
   
@@ -2094,129 +2200,130 @@ const KonfiPointsSystem = () => {
               </div>
             )}
             
-            {/* Konfi Dashboard */}
-            {currentView === 'konfi-dashboard' && selectedKonfi && (
-              <div className="space-y-6">
-                {/* Points Overview - Conditional Display */}
-                <div className="grid gap-6">
-                  {/* Nur wenn Ziele > 0 */}
-              {(showGottesdienstTarget || showGemeindeTarget) && (
-                <div className={`grid gap-6 ${showGottesdienstTarget && showGemeindeTarget ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
-                {showGottesdienstTarget && (
-                  <div className="bg-blue-50 p-6 rounded-xl shadow-lg">
-                  <h3 className="font-bold text-blue-800 mb-3 flex items-center gap-2">
-                  <BookOpen className="w-5 h-5" />
-                  Gottesdienstliche Aktivitäten
-                  </h3>
-                  <div className="text-3xl font-bold text-blue-600 mb-3">
-                  {selectedKonfi.points.gottesdienst}/{settings.target_gottesdienst}
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
-                  <div 
-                  className={`h-4 rounded-full transition-all ${getProgressColor(selectedKonfi.points.gottesdienst, settings.target_gottesdienst)}`}
-                  style={{ width: `${Math.min((selectedKonfi.points.gottesdienst / parseInt(settings.target_gottesdienst)) * 100, 100)}%` }}
-                  ></div>
-                  </div>
-                  {selectedKonfi.points.gottesdienst >= parseInt(settings.target_gottesdienst) && (
-                    <div className="text-green-600 font-bold flex items-center gap-1">
-                    <Star className="w-4 h-4" />
-                    Ziel erreicht!
-                    </div>
-                  )}
-                  </div>
-                )}
-                
-                {showGemeindeTarget && (
-                  <div className="bg-green-50 p-6 rounded-xl shadow-lg">
-                  <h3 className="font-bold text-green-800 mb-3 flex items-center gap-2">
-                  <Heart className="w-5 h-5" />
-                  Gemeindliche Aktivitäten
-                  </h3>
-                  <div className="text-3xl font-bold text-green-600 mb-3">
-                  {selectedKonfi.points.gemeinde}/{settings.target_gemeinde}
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
-                  <div 
-                  className={`h-4 rounded-full transition-all ${getProgressColor(selectedKonfi.points.gemeinde, settings.target_gemeinde)}`}
-                  style={{ width: `${Math.min((selectedKonfi.points.gemeinde / parseInt(settings.target_gemeinde)) * 100, 100)}%` }}
-                  ></div>
-                  </div>
-                  {selectedKonfi.points.gemeinde >= parseInt(settings.target_gemeinde) && (
-                    <div className="text-green-600 font-bold flex items-center gap-1">
-                    <Star className="w-4 h-4" />
-                    Ziel erreicht!
-                    </div>
-                  )}
-                  </div>
-                )}
-                </div>
-              )}
-              
-              {/* Quick Actions */}
-              <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-lg font-bold mb-4">Schnell-Aktionen</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <button
-              onClick={() => setShowRequestModal(true)}
-              className="bg-blue-500 text-white p-4 rounded-lg hover:bg-blue-600 flex items-center gap-3"
-              >
-              <Upload className="w-6 h-6" />
-              <div>
-              <div className="font-bold">Aktivität beantragen</div>
-              <div className="text-sm opacity-90">Neue Punkte beantragen</div>
-              </div>
-              </button>
-              <button
-              onClick={() => setCurrentView('konfi-badges')}
-              className="bg-yellow-500 text-white p-4 rounded-lg hover:bg-yellow-600 flex items-center gap-3"
-              >
-              <Award className="w-6 h-6" />
-              <div>
-              <div className="font-bold">Meine Badges</div>
-              <div className="text-sm opacity-90">Erreichte Auszeichnungen</div>
-              </div>
-              </button>
-              </div>
-              </div>
-              
-              {/* Statistics Dashboard */}
-              <StatisticsDashboard 
-              konfiData={selectedKonfi}
-              allStats={ranking}
-              badges={badges}
-              settings={settings}
-              />
-              
-              {/* Recent Activities */}
-              <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-lg font-bold mb-4">Letzte Aktivitäten</h3>
-              {(selectedKonfi.activities?.slice(0, 5) || []).length === 0 ? (
-                <p className="text-gray-600">Noch keine Aktivitäten eingetragen.</p>
-              ) : (
-                <div className="space-y-3">
-                {(selectedKonfi.activities?.slice(0, 5) || []).map((activity, index) => (
-                  <div key={index} className={`flex justify-between items-center p-3 rounded ${
-                    activity.type === 'gottesdienst' ? 'bg-blue-50' : 'bg-green-50'
-                  }`}>
-                  <div className="flex items-center gap-3">
-                  {activity.type === 'gottesdienst' ? (
-                    <BookOpen className="w-4 h-4 text-blue-600" />
-                  ) : (
-                    <Heart className="w-4 h-4 text-green-600" />
-                  )}
-                  <div>
-                  <div className="font-medium">{activity.name}</div>
-                  <div className="text-sm text-gray-600">{formatDate(activity.date)}</div>
-                  </div>
-                  </div>
-                  <span className="font-bold text-orange-600">+{activity.points}</span>
-                  </div>
-                ))}
-                </div>
-              )}
-              </div>
+      {/* Konfi Dashboard */}
+      {currentView === 'konfi-dashboard' && selectedKonfi && (
+        <div className="space-y-6">
+        {/* Points Overview - Conditional Display */}
+        <>
+        {/* Nur wenn Ziele > 0 */}
+        {(showGottesdienstTarget || showGemeindeTarget) && (
+          <div className={`grid gap-6 ${showGottesdienstTarget && showGemeindeTarget ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+          {showGottesdienstTarget && (
+            <div className="bg-blue-50 p-6 rounded-xl shadow-lg">
+            <h3 className="font-bold text-blue-800 mb-3 flex items-center gap-2">
+            <BookOpen className="w-5 h-5" />
+            Gottesdienstliche Aktivitäten
+            </h3>
+            <div className="text-3xl font-bold text-blue-600 mb-3">
+            {selectedKonfi.points.gottesdienst}/{settings.target_gottesdienst}
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
+            <div 
+            className={`h-4 rounded-full transition-all ${getProgressColor(selectedKonfi.points.gottesdienst, settings.target_gottesdienst)}`}
+            style={{ width: `${Math.min((selectedKonfi.points.gottesdienst / parseInt(settings.target_gottesdienst)) * 100, 100)}%` }}
+            ></div>
+            </div>
+            {selectedKonfi.points.gottesdienst >= parseInt(settings.target_gottesdienst) && (
+              <div className="text-green-600 font-bold flex items-center gap-1">
+              <Star className="w-4 h-4" />
+              Ziel erreicht!
               </div>
             )}
+            </div>
+          )}
+          
+          {showGemeindeTarget && (
+            <div className="bg-green-50 p-6 rounded-xl shadow-lg">
+            <h3 className="font-bold text-green-800 mb-3 flex items-center gap-2">
+            <Heart className="w-5 h-5" />
+            Gemeindliche Aktivitäten
+            </h3>
+            <div className="text-3xl font-bold text-green-600 mb-3">
+            {selectedKonfi.points.gemeinde}/{settings.target_gemeinde}
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
+            <div 
+            className={`h-4 rounded-full transition-all ${getProgressColor(selectedKonfi.points.gemeinde, settings.target_gemeinde)}`}
+            style={{ width: `${Math.min((selectedKonfi.points.gemeinde / parseInt(settings.target_gemeinde)) * 100, 100)}%` }}
+            ></div>
+            </div>
+            {selectedKonfi.points.gemeinde >= parseInt(settings.target_gemeinde) && (
+              <div className="text-green-600 font-bold flex items-center gap-1">
+              <Star className="w-4 h-4" />
+              Ziel erreicht!
+              </div>
+            )}
+            </div>
+          )}
+          </div>
+        )}
+        
+        {/* Quick Actions */}
+        <div className="bg-white rounded-xl shadow-lg p-6">
+        <h3 className="text-lg font-bold mb-4">Schnell-Aktionen</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <button
+        onClick={() => setShowRequestModal(true)}
+        className="bg-blue-500 text-white p-4 rounded-lg hover:bg-blue-600 flex items-center gap-3"
+        >
+        <Upload className="w-6 h-6" />
+        <div>
+        <div className="font-bold">Aktivität beantragen</div>
+        <div className="text-sm opacity-90">Neue Punkte beantragen</div>
+        </div>
+        </button>
+        <button
+        onClick={() => setCurrentView('konfi-badges')}
+        className="bg-yellow-500 text-white p-4 rounded-lg hover:bg-yellow-600 flex items-center gap-3"
+        >
+        <Award className="w-6 h-6" />
+        <div>
+        <div className="font-bold">Meine Badges</div>
+        <div className="text-sm opacity-90">Erreichte Auszeichnungen</div>
+        </div>
+        </button>
+        </div>
+        </div>
+        
+        {/* Statistics Dashboard */}
+        <StatisticsDashboard 
+        konfiData={selectedKonfi}
+        allStats={ranking}
+        badges={badges}
+        settings={settings}
+        />
+        
+        {/* Recent Activities */}
+        <div className="bg-white rounded-xl shadow-lg p-6">
+        <h3 className="text-lg font-bold mb-4">Letzte Aktivitäten</h3>
+        {(selectedKonfi.activities?.slice(0, 5) || []).length === 0 ? (
+          <p className="text-gray-600">Noch keine Aktivitäten eingetragen.</p>
+        ) : (
+          <div className="space-y-3">
+          {(selectedKonfi.activities?.slice(0, 5) || []).map((activity, index) => (
+            <div key={index} className={`flex justify-between items-center p-3 rounded ${
+              activity.type === 'gottesdienst' ? 'bg-blue-50' : 'bg-green-50'
+            }`}>
+            <div className="flex items-center gap-3">
+            {activity.type === 'gottesdienst' ? (
+              <BookOpen className="w-4 h-4 text-blue-600" />
+            ) : (
+              <Heart className="w-4 h-4 text-green-600" />
+            )}
+            <div>
+            <div className="font-medium">{activity.name}</div>
+            <div className="text-sm text-gray-600">{formatDate(activity.date)}</div>
+            </div>
+            </div>
+            <span className="font-bold text-orange-600">+{activity.points}</span>
+            </div>
+          ))}
+          </div>
+        )}
+        </div>
+        </>
+        </div>
+      )}
       
       {/* Konfi Requests - KOMPAKTER */}
       {currentView === 'konfi-requests' && (
@@ -2338,6 +2445,16 @@ const KonfiPointsSystem = () => {
     onClose={() => setShowImageModal(false)}
     imageUrl={currentImage?.url}
     title={currentImage?.title}
+    />
+    <RequestManagementModal 
+    show={showRequestManagementModal}
+    onClose={() => {
+      setShowRequestManagementModal(false);
+      setSelectedRequest(null);
+    }}
+    request={selectedRequest}
+    onUpdateStatus={handleUpdateRequestStatus}
+    loading={loading}
     />
     <BonusPointsModal 
     show={showBonusModal}
@@ -2676,6 +2793,7 @@ const KonfiPointsSystem = () => {
           {formatDate(request.requested_date)}
           </p>
           </div>
+          <div className="flex gap-2">
           {request.photo_filename && (
             <button 
             onClick={() => showImage(request.id, `Foto für ${request.activity_name}`)}
@@ -2685,6 +2803,17 @@ const KonfiPointsSystem = () => {
             Foto
             </button>
           )}
+          <button
+          onClick={() => {
+            setSelectedRequest(request);
+            setShowRequestManagementModal(true);
+          }}
+          className="bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200 flex items-center gap-1 text-xs"
+          >
+          <Edit className="w-3 h-3" />
+          Bearbeiten
+          </button>
+          </div>
           </div>
           
           {request.comment && (
@@ -2700,19 +2829,21 @@ const KonfiPointsSystem = () => {
           className="bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600 disabled:opacity-50 flex items-center gap-1 text-sm"
           >
           <CheckCircle className="w-3 h-3" />
-          Genehmigen
+          Schnell-Genehmigung
           </button>
           
           <button
           onClick={() => {
-            const comment = prompt('Grund für Ablehnung (optional):');
-            handleUpdateRequestStatus(request.id, 'rejected', comment || '');
+            const comment = prompt('Grund für Ablehnung:');
+            if (comment) {
+              handleUpdateRequestStatus(request.id, 'rejected', comment);
+            }
           }}
           disabled={loading}
           className="bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 disabled:opacity-50 flex items-center gap-1 text-sm"
           >
           <XCircle className="w-3 h-3" />
-          Ablehnen
+          Schnell-Ablehnung
           </button>
           </div>
           </div>
@@ -2721,13 +2852,13 @@ const KonfiPointsSystem = () => {
       )}
       </div>
       
-      {/* Recent processed requests - KOMPAKTER */}
+      {/* Recent processed requests - ERWEITERT */}
       <div className="mt-8">
-      <h3 className="text-lg font-bold mb-4">Kürzlich bearbeitet</h3>
+      <h3 className="text-lg font-bold mb-4">Alle bearbeiteten Anträge</h3>
       <div className="space-y-2">
-      {activityRequests.filter(r => r.status !== 'pending').slice(0, 5).map(request => (
+      {activityRequests.filter(r => r.status !== 'pending').slice(0, 10).map(request => (
         <div key={request.id} className="flex justify-between items-center p-2 bg-gray-50 rounded text-sm">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-1">
         <span className="font-medium">{request.konfi_name}</span> - {request.activity_name}
         {request.photo_filename && (
           <button 
@@ -2737,8 +2868,24 @@ const KonfiPointsSystem = () => {
           <Camera className="w-3 h-3" />
           </button>
         )}
+        {request.admin_comment && (
+          <span className="text-xs text-gray-600 italic">
+          "{request.admin_comment}"
+          </span>
+        )}
         </div>
+        <div className="flex items-center gap-2">
         <RequestStatusBadge status={request.status} />
+        <button
+        onClick={() => {
+          setSelectedRequest(request);
+          setShowRequestManagementModal(true);
+        }}
+        className="text-gray-500 hover:text-gray-700"
+        >
+        <Edit className="w-3 h-3" />
+        </button>
+        </div>
         </div>
       ))}
       </div>
