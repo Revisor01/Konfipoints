@@ -67,6 +67,22 @@ const upload = multer({
   }
 });
 
+// Middleware to verify JWT - MOVED HERE BEFORE USAGE
+const verifyToken = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+  
+  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    req.user = decoded;
+    next();
+  });
+};
+
 // Bible books for password generation
 const BIBLE_BOOKS = [
   'Genesis', 'Exodus', 'Levitikus', 'Numeri', 'Deuteronomium',
@@ -588,22 +604,6 @@ db.serialize(() => {
     console.log('✅ Existing database loaded');
   }
 });
-
-// Middleware to verify JWT
-const verifyToken = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) {
-    return res.status(401).json({ error: 'No token provided' });
-  }
-
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(401).json({ error: 'Invalid token' });
-    }
-    req.user = decoded;
-    next();
-  });
-};
 
 // Routes
 
