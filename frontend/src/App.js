@@ -79,6 +79,10 @@ const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = fal
         current = konfiData.points.gottesdienst + konfiData.points.gemeinde;
         description = `${current}/${total} Punkte`;
         break;
+      case 'bonus_points':
+        current = konfiData.bonusPoints ? konfiData.bonusPoints.length : 0;
+        description = `${current}/${total} Bonuspunkte`;
+        break;
       case 'gottesdienst_points':
         current = konfiData.points.gottesdienst;
         description = `${current}/${total} Gottesdienst`;
@@ -102,20 +106,13 @@ const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = fal
         description = `${current}/${total} verschieden`;
         break;
       case 'category_activities':
-        if (badge.criteria_extra) {
-          try {
-            const extraData = typeof badge.criteria_extra === 'string' 
-            ? JSON.parse(badge.criteria_extra) 
-            : badge.criteria_extra;
-            if (extraData.required_category && konfiData.activities) {
-              current = konfiData.activities.filter(activity => 
-                activity.category === extraData.required_category
-              ).length;
-              description = `${current}/${total} aus ${extraData.required_category}`;
-            }
-          } catch (e) {
-            return null;
-          }
+        if (criteria.required_category && konfiData.activities) {
+          current = konfiData.activities.filter(activity => {
+            if (!activity.category) return false;
+            const categories = activity.category.split(',').map(c => c.trim());
+            return categories.includes(criteria.required_category);
+          }).length;
+          description = `${current}/${total} aus ${criteria.required_category}`;
         }
         break;
       case 'activity_combination':
@@ -2530,8 +2527,12 @@ const KonfiPointsSystem = () => {
             )}
             </div>
             {activity.category && (
-              <div className="text-xs text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full mt-1 inline-block font-medium border border-purple-200">
-              🏷️ {activity.category}
+              <div className="flex flex-wrap gap-1 mt-1">
+              {activity.category.split(',').map((cat, index) => (
+                <span key={index} className="text-xs text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full font-medium border border-purple-200">
+                🏷️ {cat.trim()}
+                </span>
+              ))}
               </div>
             )}
             </div>
@@ -3286,7 +3287,7 @@ const KonfiPointsSystem = () => {
       type="text"
       value={newActivityCategory}
       onChange={(e) => setNewActivityCategory(e.target.value)}
-      placeholder="Kategorie (optional)"
+      placeholder="Kategorien (kommagetrennt: Kinder,Fest)"
       className="p-2 border rounded-lg"
       />
       <button

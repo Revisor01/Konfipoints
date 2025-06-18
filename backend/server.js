@@ -110,6 +110,7 @@ const CRITERIA_TYPES = {
   category_activities: { label: "Kategorie-Aktivitäten", description: "Aktivitäten aus bestimmter Kategorie" }, // NEU
   time_based: { label: "Zeitbasiert", description: "Aktivitäten in einem Zeitraum" },
   streak: { label: "Serie", description: "Aufeinanderfolgende Aktivitäten" },
+  bonus_points: { label: "Bonuspunkte", description: "Anzahl erhaltener Bonuspunkte" }
 };
 
 // Badge checking function - FIXED: No additional DB connections
@@ -196,13 +197,25 @@ const checkAndAwardBadges = async (konfiId) => {
               
               case 'category_activities':
                 if (criteria.required_category && konfi.activity_ids) {
-                  // Use existing DB connection instead of creating new one
                   const categoryCountQuery = `
       SELECT COUNT(*) as count FROM konfi_activities ka 
       JOIN activities a ON ka.activity_id = a.id 
-      WHERE ka.konfi_id = ? AND a.category = ?
+      WHERE ka.konfi_id = ? AND (
+        a.category = ? OR 
+        a.category LIKE ? OR 
+        a.category LIKE ? OR 
+        a.category LIKE ?
+      )
     `;
                   
+                  const category = criteria.required_category;
+                  const params = [
+                    konfiId, 
+                    category,                    // genau diese Kategorie
+                    `${category},%`,            // am Anfang
+                    `%,${category}`,            // am Ende  
+                    `%,${category},%`           // in der Mitte
+                  ];
                   db.get(categoryCountQuery, [konfiId, criteria.required_category], (err, result) => {
                     if (err) {
                       console.error('Category badge check error:', err);
@@ -237,6 +250,19 @@ const checkAndAwardBadges = async (konfiId) => {
                 const activityCount = konfi.activity_ids ? konfi.activity_ids.split(',').length : 0;
                 earned = activityCount >= badge.criteria_value;
                 processBadgeResult();
+                break;
+              
+              case 'bonus_points':
+                // Count bonus points for this konfi
+                db.get("SELECT COUNT(*) as count FROM bonus_points WHERE konfi_id = ?", [konfiId], (err, result) => {
+                  if (err) {
+                    console.error('Bonus points badge check error:', err);
+                    earned = false;
+                  } else {
+                    earned = result && result.count >= badge.criteria_value;
+                  }
+                  processBadgeResult();
+                });
                 break;
               
               case 'streak':
