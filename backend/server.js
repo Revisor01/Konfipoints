@@ -100,18 +100,75 @@ const BIBLE_BOOKS = [
 
 // Badge criteria types
 const CRITERIA_TYPES = {
-  total_points: { label: "Gesamtpunkte", description: "Mindestanzahl aller Punkte" },
-  gottesdienst_points: { label: "Gottesdienst-Punkte", description: "Mindestanzahl gottesdienstlicher Punkte" },
-  gemeinde_points: { label: "Gemeinde-Punkte", description: "Mindestanzahl gemeindlicher Punkte" },
-  activity_count: { label: "Aktivitäten-Anzahl", description: "Gesamtanzahl aller Aktivitäten" },
-  unique_activities: { label: "Verschiedene Aktivitäten", description: "Anzahl unterschiedlicher Aktivitäten" },
-  both_categories: { label: "Beide Kategorien", description: "Mindestpunkte in beiden Bereichen" },
-  activity_combination: { label: "Aktivitäts-Kombination", description: "Spezifische Kombination von Aktivitäten" },
-  category_activities: { label: "Kategorie-Aktivitäten", description: "Aktivitäten aus bestimmter Kategorie" }, // NEU
-  time_based: { label: "Zeitbasiert", description: "Aktivitäten in einem Zeitraum" },
-  streak: { label: "Serie", description: "Aufeinanderfolgende Aktivitäten" },
-  bonus_points: { label: "Bonuspunkte", description: "Anzahl erhaltener Bonuspunkte" },
-  specific_activity: { label: "Spezifische Aktivität", description: "Bestimmte Aktivität X-mal absolviert" }
+  // === PUNKTE-BASIERTE KRITERIEN (Einfach & häufig verwendet) ===
+  total_points: { 
+    label: "🎯 Gesamtpunkte", 
+    description: "Mindestanzahl aller Punkte",
+    help: "Badge wird vergeben, wenn die Summe aus Gottesdienst- und Gemeindepunkten erreicht wird. Beispiel: Wert 20 = mindestens 20 Punkte insgesamt."
+  },
+  gottesdienst_points: { 
+    label: "📖 Gottesdienst-Punkte", 
+    description: "Mindestanzahl gottesdienstlicher Punkte",
+    help: "Badge wird vergeben, wenn die angegebene Anzahl gottesdienstlicher Punkte erreicht wird. Beispiel: Wert 10 = mindestens 10 Gottesdienst-Punkte."
+  },
+  gemeinde_points: { 
+    label: "🤝 Gemeinde-Punkte", 
+    description: "Mindestanzahl gemeindlicher Punkte",
+    help: "Badge wird vergeben, wenn die angegebene Anzahl gemeindlicher Punkte erreicht wird. Beispiel: Wert 15 = mindestens 15 Gemeinde-Punkte."
+  },
+  both_categories: { 
+    label: "⚖️ Beide Kategorien", 
+    description: "Mindestpunkte in beiden Bereichen",
+    help: "Badge wird vergeben, wenn sowohl bei Gottesdienst- als auch bei Gemeindepunkten der Mindestwert erreicht wird. Beispiel: Wert 5 = mindestens 5 Gottesdienst-Punkte UND 5 Gemeinde-Punkte."
+  },
+  
+  // === AKTIVITÄTS-BASIERTE KRITERIEN (Mittlere Komplexität) ===
+  activity_count: { 
+    label: "📊 Aktivitäten-Anzahl", 
+    description: "Gesamtanzahl aller Aktivitäten",
+    help: "Badge wird vergeben, wenn die angegebene Anzahl von Aktivitäten absolviert wurde (egal welche). Beispiel: Wert 5 = mindestens 5 Aktivitäten."
+  },
+  unique_activities: { 
+    label: "🌟 Verschiedene Aktivitäten", 
+    description: "Anzahl unterschiedlicher Aktivitäten",
+    help: "Badge wird vergeben, wenn die angegebene Anzahl verschiedener Aktivitäten absolviert wurde. Mehrfache Teilnahme an derselben Aktivität zählt nur einmal. Beispiel: Wert 3 = 3 verschiedene Aktivitäten."
+  },
+  
+  // === SPEZIFISCHE AKTIVITÄTS-KRITERIEN (Spezifischer) ===
+  specific_activity: { 
+    label: "🎯 Spezifische Aktivität", 
+    description: "Bestimmte Aktivität X-mal absolviert",
+    help: "Badge wird vergeben, wenn eine bestimmte Aktivität die angegebene Anzahl mal absolviert wurde. Beispiel: Wert 5 + 'Sonntagsgottesdienst' = 5x am Sonntagsgottesdienst teilgenommen."
+  },
+  category_activities: { 
+    label: "🏷️ Kategorie-Aktivitäten", 
+    description: "Aktivitäten aus bestimmter Kategorie",
+    help: "Badge wird vergeben, wenn die angegebene Anzahl von Aktivitäten aus einer bestimmten Kategorie absolviert wurde. Beispiel: Wert 3 + Kategorie 'sonntagsgottesdienst' = 3 Sonntagsgottesdienste."
+  },
+  activity_combination: { 
+    label: "🎭 Aktivitäts-Kombination", 
+    description: "Spezifische Kombination von Aktivitäten",
+    help: "Badge wird vergeben, wenn alle ausgewählten Aktivitäten mindestens einmal absolviert wurden. Der Wert gibt die Mindestanzahl an benötigten Aktivitäten aus der Liste an."
+  },
+  
+  // === ZEIT-BASIERTE KRITERIEN (Komplex) ===
+  time_based: { 
+    label: "⏰ Zeitbasiert", 
+    description: "Aktivitäten in einem Zeitraum",
+    help: "Badge wird vergeben, wenn die angegebene Anzahl von Aktivitäten innerhalb der festgelegten Tage absolviert wurde. Beispiel: Wert 3 + 7 Tage = 3 Aktivitäten in einer Woche."
+  },
+  streak: { 
+    label: "🔥 Serie", 
+    description: "Aufeinanderfolgende Aktivitäten",
+    help: "Badge wird vergeben, wenn in der angegebenen Anzahl aufeinanderfolgender Wochen mindestens eine Aktivität absolviert wurde. Beispiel: Wert 4 = 4 Wochen in Folge aktiv."
+  },
+  
+  // === SPEZIAL-KRITERIEN (Selten verwendet) ===
+  bonus_points: { 
+    label: "💰 Bonuspunkte", 
+    description: "Anzahl erhaltener Bonuspunkte",
+    help: "Badge wird vergeben, wenn die angegebene Anzahl von Bonuspunkt-Einträgen erhalten wurde (unabhängig von der Höhe der Bonuspunkte). Beispiel: Wert 2 = mindestens 2 Bonuspunkt-Vergaben."
+  }
 };
 
 const checkAndAwardBadges = async (konfiId) => {
