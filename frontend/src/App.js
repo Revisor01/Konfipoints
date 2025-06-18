@@ -717,72 +717,97 @@ const BadgeModal = ({
       case 'activity_combination':
         return (
           <div>
-            <label className="block text-sm font-medium mb-1">Erforderliche Aktivitäten</label>
-            <div className="space-y-2 max-h-32 overflow-y-auto border rounded p-2">
-              {activities.map(activity => (
-                <label key={activity.id} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={(formData.criteria_extra.required_activities || []).includes(activity.name)}
-                    onChange={(e) => {
-                      const current = formData.criteria_extra.required_activities || [];
-                      const updated = e.target.checked 
-                        ? [...current, activity.name]
-                        : current.filter(name => name !== activity.name);
-                      setFormData({
-                        ...formData,
-                        criteria_extra: { ...formData.criteria_extra, required_activities: updated }
-                      });
-                    }}
-                  />
-                  <span className="text-sm">{activity.name}</span>
-                </label>
-              ))}
-            </div>
+          <label className="block text-sm font-medium mb-1">Erforderliche Aktivitäten</label>
+          <div className="space-y-2 max-h-32 overflow-y-auto border rounded p-2">
+          {activities.map(activity => (
+            <label key={activity.id} className="flex items-center gap-2">
+            <input
+            type="checkbox"
+            checked={(formData.criteria_extra.required_activities || []).includes(activity.name)}
+            onChange={(e) => {
+              const current = formData.criteria_extra.required_activities || [];
+              const updated = e.target.checked 
+              ? [...current, activity.name]
+              : current.filter(name => name !== activity.name);
+              setFormData({
+                ...formData,
+                criteria_extra: { ...formData.criteria_extra, required_activities: updated }
+              });
+            }}
+            />
+            <span className="text-sm">{activity.name}</span>
+            </label>
+          ))}
+          </div>
           </div>
         );
       
       case 'category_activities':
         return (
           <div>
-            <label className="block text-sm font-medium mb-1">Kategorie wählen</label>
-            <select
-              value={formData.criteria_extra.required_category || ''}
-              onChange={(e) => setFormData({
-                ...formData,
-                criteria_extra: { ...formData.criteria_extra, required_category: e.target.value }
-              })}
-              className="w-full p-2 border rounded"
-            >
-              <option value="">Kategorie wählen...</option>
-              {categories.map(category => (
-                <option key={category} value={category}>{category}</option>
-              ))}
-            </select>
-            <p className="text-xs text-gray-500 mt-1">
-              {formData.criteria_value} Aktivitäten aus Kategorie "{formData.criteria_extra.required_category || '...'}"
-            </p>
+          <label className="block text-sm font-medium mb-1">Kategorie wählen</label>
+          <select
+          value={formData.criteria_extra.required_category || ''}
+          onChange={(e) => setFormData({
+            ...formData,
+            criteria_extra: { ...formData.criteria_extra, required_category: e.target.value }
+          })}
+          className="w-full p-2 border rounded"
+          >
+          <option value="">Kategorie wählen...</option>
+          {categories.map(category => (
+            <option key={category} value={category}>{category}</option>
+          ))}
+          </select>
+          <p className="text-xs text-gray-500 mt-1">
+          {formData.criteria_value} Aktivitäten aus Kategorie "{formData.criteria_extra.required_category || '...'}"
+          </p>
+          </div>
+        );
+      
+      case 'specific_activity':
+        return (
+          <div>
+          <label className="block text-sm font-medium mb-1">Aktivität wählen</label>
+          <select
+          value={formData.criteria_extra.required_activity_name || ''}
+          onChange={(e) => setFormData({
+            ...formData,
+            criteria_extra: { ...formData.criteria_extra, required_activity_name: e.target.value }
+          })}
+          className="w-full p-2 border rounded"
+          >
+          <option value="">Aktivität wählen...</option>
+          {activities.map(activity => (
+            <option key={activity.id} value={activity.name}>
+            {activity.name} ({activity.points} Punkte - {activity.type === 'gottesdienst' ? 'Gottesdienst' : 'Gemeinde'})
+            </option>
+          ))}
+          </select>
+          <p className="text-xs text-gray-500 mt-1">
+          {formData.criteria_value}x "{formData.criteria_extra.required_activity_name || '...'}" absolvieren
+          </p>
           </div>
         );
       
       case 'time_based':
         return (
           <div>
-            <label className="block text-sm font-medium mb-1">Zeitraum (Tage)</label>
-            <input
-              type="number"
-              value={formData.criteria_extra.days || 7}
-              onChange={(e) => setFormData({
-                ...formData,
-                criteria_extra: { ...formData.criteria_extra, days: parseInt(e.target.value) || 7 }
-              })}
-              className="w-full p-2 border rounded"
-              min="1"
-              max="365"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              {formData.criteria_value} Aktivitäten in {formData.criteria_extra.days || 7} Tagen
-            </p>
+          <label className="block text-sm font-medium mb-1">Zeitraum (Tage)</label>
+          <input
+          type="number"
+          value={formData.criteria_extra.days || 7}
+          onChange={(e) => setFormData({
+            ...formData,
+            criteria_extra: { ...formData.criteria_extra, days: parseInt(e.target.value) || 7 }
+          })}
+          className="w-full p-2 border rounded"
+          min="1"
+          max="365"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+          {formData.criteria_value} Aktivitäten in {formData.criteria_extra.days || 7} Tagen
+          </p>
           </div>
         );
       
