@@ -1493,14 +1493,14 @@ app.get('/api/konfis/:id', verifyToken, (req, res) => {
     
     // Get activities separately
     const activitiesQuery = `
-      SELECT a.name, a.points, a.type, ka.completed_date as date, 
-              COALESCE(adm.display_name, 'Unbekannt') as admin, ka.id
-      FROM konfi_activities ka
-      JOIN activities a ON ka.activity_id = a.id
-      LEFT JOIN admins adm ON ka.admin_id = adm.id
-      WHERE ka.konfi_id = ?
-      ORDER BY ka.completed_date DESC
-    `;
+  SELECT a.name, a.points, a.type, a.category, ka.completed_date as date, 
+          COALESCE(adm.display_name, 'Unbekannt') as admin, ka.id
+  FROM konfi_activities ka
+  JOIN activities a ON ka.activity_id = a.id
+  LEFT JOIN admins adm ON ka.admin_id = adm.id
+  WHERE ka.konfi_id = ?
+  ORDER BY ka.completed_date DESC
+`;
     
     // Get bonus points separately
     const bonusQuery = `

@@ -962,14 +962,20 @@ const StatisticsDashboard = ({ konfiData, allStats, badges, settings }) => {
         </div>
       )}
       
-      {/* Badges */}
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-          <Award className="w-6 h-6 text-yellow-500" />
-          MEINE BADGES
-        </h3>
-        <BadgeDisplay badges={availableBadges} earnedBadges={earnedBadges} />
-      </div>
+    {/* Badges */}
+    <div className="bg-white rounded-xl shadow-lg p-6">
+    <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+    <Award className="w-6 h-6 text-yellow-500" />
+    MEINE BADGES
+    </h3>
+    <BadgeDisplay 
+    badges={badges.available || []} 
+    earnedBadges={badges.earned || []} 
+    konfiData={konfiData}
+    isAdmin={false}
+    showProgress={true}
+    />
+    </div>
       
       {/* Overall Statistics */}
       {allStats.totalPoints && (
@@ -1162,14 +1168,16 @@ const KonfiPointsSystem = () => {
   
   const loadKonfiData = async (konfiId) => {
     setLoading(true);
+    setError(''); // Clear previous errors
     try {
-      const [konfiRes, requestsRes, badgesRes, statsRes, rankingRes, settingsRes] = await Promise.all([
+      const [konfiRes, requestsRes, badgesRes, statsRes, rankingRes, settingsRes, activitiesRes] = await Promise.all([
         api.get(`/konfis/${konfiId}`),
         api.get('/activity-requests'),
         api.get(`/konfis/${konfiId}/badges`),
         api.get('/statistics'),
         api.get('/ranking'),
-        api.get('/settings')
+        api.get('/settings'),
+        api.get('/activities') // Load activities upfront
       ]);
       
       setSelectedKonfi(konfiRes.data);
@@ -1177,23 +1185,23 @@ const KonfiPointsSystem = () => {
       setStatistics(statsRes.data);
       setRanking(rankingRes.data);
       setSettings(settingsRes.data);
+      setActivities(activitiesRes.data); // Set activities
       
       // Set badges for display
       setBadges({
-        earned: badgesRes.data.earned,
-        available: badgesRes.data.available
+        earned: badgesRes.data.earned || [],
+        available: badgesRes.data.available || []
       });
       
-      // Load activities for request modal
-      const activitiesRes = await api.get('/activities');
-      setActivities(activitiesRes.data);
-      
-    } catch (err) {
-      setError('Fehler beim Laden der Konfi-Daten: ' + (err.response?.data?.error || err.message));
-      // Fix für Refresh Problem: Setze View zurück auf Dashboard
-      if (err.response?.status === 404) {
+      // Ensure view stays on dashboard unless explicitly changed
+      if (currentView !== 'konfi-requests' && currentView !== 'konfi-badges') {
         setCurrentView('konfi-dashboard');
       }
+      
+    } catch (err) {
+      console.error('Error loading konfi data:', err);
+      setError('Fehler beim Laden der Konfi-Daten: ' + (err.response?.data?.error || err.message));
+      // Don't change view on error, keep current state
     } finally {
       setLoading(false);
     }
@@ -2450,8 +2458,8 @@ const KonfiPointsSystem = () => {
             )}
             </div>
             {activity.category && (
-              <div className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full mt-1 inline-block font-medium">
-              📂 {activity.category}
+              <div className="text-xs text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full mt-1 inline-block font-medium border border-purple-200">
+              🏷️ {activity.category}
               </div>
             )}
             </div>
@@ -2535,9 +2543,11 @@ const KonfiPointsSystem = () => {
         
         {badges.available ? (
           <BadgeDisplay 
-          badges={badges.available} 
-          earnedBadges={badges.earned || []} 
+          badges={availableBadges} 
+          earnedBadges={earnedBadges} 
+          konfiData={selectedKonfi}
           isAdmin={false}
+          showProgress={true}
           />
         ) : (
           <div className="text-center py-8">
@@ -2849,41 +2859,37 @@ const KonfiPointsSystem = () => {
         </p>
         </div>
         
-        {/* Verbesserte Inline Progress bars */}
+        {/* Verbesserte Inline Progress bars - nur Desktop */}
         {(showGottesdienstTarget || showGemeindeTarget) && (
-          <div className="mt-3 space-y-2">
+          <div className="hidden md:block mt-3 space-y-2 ml-4" style={{ width: '280px' }}>
           {showGottesdienstTarget && (
-            <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 min-w-0 flex-1">
+            <div className="flex items-center gap-2">
             <BookOpen className="w-3 h-3 text-blue-600 flex-shrink-0" />
-            <span className="text-xs text-gray-700 font-medium">Gottesdienst</span>
-            <div className="flex-1 bg-gray-200 rounded-full h-2 min-w-0">
+            <span className="text-xs text-gray-700 font-medium w-16 flex-shrink-0">Gottesdienst</span>
+            <div className="w-24 bg-gray-200 rounded-full h-2 flex-shrink-0">
             <div 
             className={`h-2 rounded-full transition-all ${getProgressColor(konfi.points.gottesdienst, settings.target_gottesdienst)}`}
             style={{ width: `${Math.min((konfi.points.gottesdienst / parseInt(settings.target_gottesdienst)) * 100, 100)}%` }}
             ></div>
             </div>
-            <span className="text-xs font-bold text-blue-600 flex-shrink-0">
+            <span className="text-xs font-bold text-blue-600 flex-shrink-0 w-8">
             {konfi.points.gottesdienst}/{settings.target_gottesdienst}
             </span>
             </div>
-            </div>
           )}
           {showGemeindeTarget && (
-            <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 min-w-0 flex-1">
+            <div className="flex items-center gap-2">
             <Heart className="w-3 h-3 text-green-600 flex-shrink-0" />
-            <span className="text-xs text-gray-700 font-medium">Gemeinde</span>
-            <div className="flex-1 bg-gray-200 rounded-full h-2 min-w-0">
+            <span className="text-xs text-gray-700 font-medium w-16 flex-shrink-0">Gemeinde</span>
+            <div className="w-24 bg-gray-200 rounded-full h-2 flex-shrink-0">
             <div 
             className={`h-2 rounded-full transition-all ${getProgressColor(konfi.points.gemeinde, settings.target_gemeinde)}`}
             style={{ width: `${Math.min((konfi.points.gemeinde / parseInt(settings.target_gemeinde)) * 100, 100)}%` }}
             ></div>
             </div>
-            <span className="text-xs font-bold text-green-600 flex-shrink-0">
+            <span className="text-xs font-bold text-green-600 flex-shrink-0 w-8">
             {konfi.points.gemeinde}/{settings.target_gemeinde}
             </span>
-            </div>
             </div>
           )}
           </div>
