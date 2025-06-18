@@ -2881,7 +2881,7 @@ const KonfiPointsSystem = () => {
             <div className="flex items-center gap-3">
             <BookOpen className="w-4 h-4 text-blue-600 flex-shrink-0" />
             <span className="text-xs text-gray-700 font-medium w-20 flex-shrink-0">Gottesdienst</span>
-            <div className="w-70 bg-gray-200 rounded-full h-2 flex-shrink-0">
+            <div className="w-full bg-gray-200 rounded-full h-2 flex-shrink-0">
             <div 
             className={`h-2 rounded-full transition-all ${getProgressColor(konfi.points.gottesdienst, settings.target_gottesdienst)}`}
             style={{ width: `${Math.min((konfi.points.gottesdienst / parseInt(settings.target_gottesdienst)) * 100, 100)}%` }}
@@ -2896,7 +2896,7 @@ const KonfiPointsSystem = () => {
             <div className="flex items-center gap-3">
             <Heart className="w-4 h-4 text-green-600 flex-shrink-0" />
             <span className="text-xs text-gray-700 font-medium w-20 flex-shrink-0">Gemeinde</span>
-            <div className="w-70 bg-gray-200 rounded-full h-2 flex-shrink-0">
+            <div className="w-full bg-gray-200 rounded-full h-2 flex-shrink-0">
             <div 
             className={`h-2 rounded-full transition-all ${getProgressColor(konfi.points.gemeinde, settings.target_gemeinde)}`}
             style={{ width: `${Math.min((konfi.points.gemeinde / parseInt(settings.target_gemeinde)) * 100, 100)}%` }}
