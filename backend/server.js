@@ -114,28 +114,14 @@ const CRITERIA_TYPES = {
   specific_activity: { label: "Spezifische Aktivität", description: "Bestimmte Aktivität X-mal absolviert" }
 };
 
-// Badge checking function - FIXED: No additional DB connections
 const checkAndAwardBadges = async (konfiId) => {
   return new Promise((resolve, reject) => {
     // Get all active badges
     db.all("SELECT * FROM custom_badges WHERE is_active = 1", [], (err, badges) => {
       if (err) return reject(err);
       
-      // Get konfi data with activities
-      const konfiQuery = `
-        SELECT k.*,
-                GROUP_CONCAT(DISTINCT ka.activity_id) as activity_ids,
-                GROUP_CONCAT(DISTINCT a.name) as activity_names,
-                GROUP_CONCAT(DISTINCT a.category) as activity_categories,
-                GROUP_CONCAT(ka.completed_date) as activity_dates
-        FROM konfis k
-        LEFT JOIN konfi_activities ka ON k.id = ka.konfi_id
-        LEFT JOIN activities a ON ka.activity_id = a.id
-        WHERE k.id = ?
-        GROUP BY k.id
-      `;
-      
-      db.get(konfiQuery, [konfiId], (err, konfi) => {
+      // Get konfi data
+      db.get("SELECT * FROM konfis WHERE id = ?", [konfiId], (err, konfi) => {
         if (err) return reject(err);
         if (!konfi) return resolve(0);
         
@@ -182,12 +168,26 @@ const checkAndAwardBadges = async (konfiId) => {
                 break;
               
               case 'specific_activity':
-                if (criteria.required_activity_name && konfi.activity_names) {
-                  const activities = konfi.activity_names.split(',');
-                  const count = activities.filter(name => name === criteria.required_activity_name).length;
-                  earned = count >= badge.criteria_value;
+                if (criteria.required_activity_name) {
+                  // Separate query to count specific activity occurrences
+                  const countQuery = `
+                    SELECT COUNT(*) as count 
+                    FROM konfi_activities ka 
+                    JOIN activities a ON ka.activity_id = a.id 
+                    WHERE ka.konfi_id = ? AND a.name = ?
+                  `;
+                  db.get(countQuery, [konfiId, criteria.required_activity_name], (err, result) => {
+                    if (err) {
+                      console.error('Specific activity badge check error:', err);
+                      earned = false;
+                    } else {
+                      earned = result && result.count >= badge.criteria_value;
+                    }
+                    processBadgeResult();
+                  });
+                } else {
+                  processBadgeResult();
                 }
-                processBadgeResult();
                 break;
               
               case 'both_categories':
@@ -197,26 +197,43 @@ const checkAndAwardBadges = async (konfiId) => {
                 break;
               
               case 'activity_combination':
-                if (criteria.required_activities && konfi.activity_names) {
-                  const activities = konfi.activity_names.split(',');
-                  const required = criteria.required_activities;
-                  earned = required.every(req => activities.includes(req));
+                if (criteria.required_activities) {
+                  // Check if all required activities have been completed at least once
+                  const combinationQuery = `
+                    SELECT DISTINCT a.name 
+                    FROM konfi_activities ka 
+                    JOIN activities a ON ka.activity_id = a.id 
+                    WHERE ka.konfi_id = ?
+                  `;
+                  db.all(combinationQuery, [konfiId], (err, results) => {
+                    if (err) {
+                      console.error('Activity combination badge check error:', err);
+                      earned = false;
+                    } else {
+                      const completedActivities = results.map(r => r.name);
+                      earned = criteria.required_activities.every(req => 
+                        completedActivities.includes(req)
+                      );
+                    }
+                    processBadgeResult();
+                  });
+                } else {
+                  processBadgeResult();
                 }
-                processBadgeResult();
                 break;
               
               case 'category_activities':
-                if (criteria.required_category && konfi.activity_ids) {
+                if (criteria.required_category) {
                   const categoryCountQuery = `
-      SELECT COUNT(*) as count FROM konfi_activities ka 
-      JOIN activities a ON ka.activity_id = a.id 
-      WHERE ka.konfi_id = ? AND (
-        a.category = ? OR 
-        a.category LIKE ? OR 
-        a.category LIKE ? OR 
-        a.category LIKE ?
-      )
-    `;
+                    SELECT COUNT(*) as count FROM konfi_activities ka 
+                    JOIN activities a ON ka.activity_id = a.id 
+                    WHERE ka.konfi_id = ? AND (
+                      a.category = ? OR 
+                      a.category LIKE ? OR 
+                      a.category LIKE ? OR 
+                      a.category LIKE ?
+                    )
+                  `;
                   
                   const category = criteria.required_category;
                   const params = [
@@ -242,104 +259,139 @@ const checkAndAwardBadges = async (konfiId) => {
                 break;
               
               case 'time_based':
-                if (criteria.days && konfi.activity_dates) {
-                  const dates = konfi.activity_dates.split(',');
-                  const now = new Date();
-                  const cutoff = new Date(now.getTime() - (criteria.days * 24 * 60 * 60 * 1000));
-                  
-                  const recentCount = dates.filter(dateStr => {
-                    const date = new Date(dateStr);
-                    return date >= cutoff;
-                  }).length;
-                  
-                  earned = recentCount >= badge.criteria_value;
+                if (criteria.days) {
+                  const timeQuery = `
+                    SELECT completed_date FROM konfi_activities 
+                    WHERE konfi_id = ? 
+                    ORDER BY completed_date DESC
+                  `;
+                  db.all(timeQuery, [konfiId], (err, results) => {
+                    if (err) {
+                      console.error('Time based badge check error:', err);
+                      earned = false;
+                    } else {
+                      const now = new Date();
+                      const cutoff = new Date(now.getTime() - (criteria.days * 24 * 60 * 60 * 1000));
+                      
+                      const recentCount = results.filter(r => {
+                        const date = new Date(r.completed_date);
+                        return date >= cutoff;
+                      }).length;
+                      
+                      earned = recentCount >= badge.criteria_value;
+                    }
+                    processBadgeResult();
+                  });
+                } else {
+                  processBadgeResult();
                 }
-                processBadgeResult();
                 break;
               
               case 'activity_count':
-                const activityCount = konfi.activity_ids ? konfi.activity_ids.split(',').length : 0;
-                earned = activityCount >= badge.criteria_value;
-                processBadgeResult();
+                db.get("SELECT COUNT(*) as count FROM konfi_activities WHERE konfi_id = ?", 
+                  [konfiId], (err, result) => {
+                    if (err) {
+                      console.error('Activity count badge check error:', err);
+                      earned = false;
+                    } else {
+                      earned = result && result.count >= badge.criteria_value;
+                    }
+                    processBadgeResult();
+                  });
                 break;
               
               case 'bonus_points':
-                // Count bonus points for this konfi
-                db.get("SELECT COUNT(*) as count FROM bonus_points WHERE konfi_id = ?", [konfiId], (err, result) => {
+                db.get("SELECT COUNT(*) as count FROM bonus_points WHERE konfi_id = ?", 
+                  [konfiId], (err, result) => {
+                    if (err) {
+                      console.error('Bonus points badge check error:', err);
+                      earned = false;
+                    } else {
+                      earned = result && result.count >= badge.criteria_value;
+                    }
+                    processBadgeResult();
+                  });
+                break;
+              
+              case 'streak':
+                const streakQuery = `
+                  SELECT completed_date FROM konfi_activities 
+                  WHERE konfi_id = ? 
+                  ORDER BY completed_date DESC
+                `;
+                db.all(streakQuery, [konfiId], (err, results) => {
                   if (err) {
-                    console.error('Bonus points badge check error:', err);
+                    console.error('Streak badge check error:', err);
                     earned = false;
                   } else {
-                    earned = result && result.count >= badge.criteria_value;
+                    // Hilfsfunktion: Kalenderwoche berechnen
+                    function getYearWeek(date) {
+                      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+                      const dayNum = d.getUTCDay() || 7;
+                      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+                      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+                      const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+                      return `${d.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
+                    }
+                    
+                    // Aktivitätsdaten in Set einzigartiger Wochen umwandeln
+                    const activityWeeks = new Set(
+                      results
+                      .map(r => getYearWeek(new Date(r.completed_date)))
+                      .filter(week => week && !week.includes('NaN'))
+                    );
+                    
+                    // Sortiere Wochen chronologisch (neueste zuerst)
+                    const sortedWeeks = Array.from(activityWeeks).sort().reverse();
+                    
+                    let currentStreak = 0;
+                    
+                    // Finde den längsten Streak vom neuesten Datum aus
+                    if (sortedWeeks.length > 0) {
+                      currentStreak = 1; // Erste Woche zählt immer
+                      
+                      // Prüfe aufeinanderfolgende Wochen rückwärts
+                      for (let i = 0; i < sortedWeeks.length - 1; i++) {
+                        const thisWeek = sortedWeeks[i];
+                        const nextWeek = sortedWeeks[i + 1];
+                        
+                        // Berechne die erwartete vorherige Woche
+                        const [year, week] = thisWeek.split('-W').map(Number);
+                        let expectedYear = year;
+                        let expectedWeek = week - 1;
+                        
+                        if (expectedWeek === 0) {
+                          expectedYear -= 1;
+                          expectedWeek = 52; // Vereinfacht, könnte 53 sein
+                        }
+                        
+                        const expectedWeekStr = `${expectedYear}-W${expectedWeek.toString().padStart(2, '0')}`;
+                        
+                        if (nextWeek === expectedWeekStr) {
+                          currentStreak++;
+                        } else {
+                          break; // Streak unterbrochen
+                        }
+                      }
+                    }
+                    
+                    earned = currentStreak >= badge.criteria_value;
                   }
                   processBadgeResult();
                 });
                 break;
               
-              case 'streak':
-                if (konfi.activity_dates) { // ÄNDERUNG: konfiData → konfi
-                  // Hilfsfunktion: Kalenderwoche berechnen
-                  function getYearWeek(date) {
-                    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-                    const dayNum = d.getUTCDay() || 7;
-                    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-                    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-                    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-                    return `${d.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
-                  }
-                  
-                  // Aktivitätsdaten in Set einzigartiger Wochen umwandeln
-                  const activityWeeks = new Set(
-                    konfi.activity_dates // ÄNDERUNG: konfiData → konfi
-                    .split(',')
-                    .map(dateStr => getYearWeek(new Date(dateStr)))
-                    .filter(week => week && !week.includes('NaN'))
-                  );
-                  
-                  // Sortiere Wochen chronologisch (neueste zuerst)
-                  const sortedWeeks = Array.from(activityWeeks).sort().reverse();
-                  
-                  let currentStreak = 0;
-                  
-                  // Finde den längsten Streak vom neuesten Datum aus
-                  if (sortedWeeks.length > 0) {
-                    currentStreak = 1; // Erste Woche zählt immer
-                    
-                    // Prüfe aufeinanderfolgende Wochen rückwärts
-                    for (let i = 0; i < sortedWeeks.length - 1; i++) {
-                      const thisWeek = sortedWeeks[i];
-                      const nextWeek = sortedWeeks[i + 1];
-                      
-                      // Berechne die erwartete vorherige Woche
-                      const [year, week] = thisWeek.split('-W').map(Number);
-                      let expectedYear = year;
-                      let expectedWeek = week - 1;
-                      
-                      if (expectedWeek === 0) {
-                        expectedYear -= 1;
-                        expectedWeek = 52; // Vereinfacht, könnte 53 sein
-                      }
-                      
-                      const expectedWeekStr = `${expectedYear}-W${expectedWeek.toString().padStart(2, '0')}`;
-                      
-                      if (nextWeek === expectedWeekStr) {
-                        currentStreak++;
-                      } else {
-                        break; // Streak unterbrochen
-                      }
-                    }
-                  }
-                  
-                  earned = currentStreak >= badge.criteria_value;
-                }
-                processBadgeResult();
-                break;
-              
               case 'unique_activities':
-                const uniqueCount = konfi.activity_ids ? 
-                new Set(konfi.activity_ids.split(',')).size : 0;
-                earned = uniqueCount >= badge.criteria_value;
-                processBadgeResult();
+                db.all("SELECT DISTINCT activity_id FROM konfi_activities WHERE konfi_id = ?", 
+                  [konfiId], (err, results) => {
+                    if (err) {
+                      console.error('Unique activities badge check error:', err);
+                      earned = false;
+                    } else {
+                      earned = results.length >= badge.criteria_value;
+                    }
+                    processBadgeResult();
+                  });
                 break;
               
               default:
