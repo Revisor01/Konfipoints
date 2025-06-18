@@ -240,7 +240,7 @@ const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = fal
       <span className="font-bold">{earnedBadges.length}</span> von <span className="font-bold">{visibleBadges.length}</span> Badges erhalten
       {!isAdmin && badges.some(b => b.is_hidden && !earnedBadgeIds.includes(b.id)) && (
         <div className="text-xs text-purple-600 mt-1">
-        🎭 Geheime Badges werden erst bei Erreichen angezeigt
+        🎭 {badges.filter(b => b.is_hidden).length} geheime Badges warten auf dich!
         </div>
       )}
       </div>
@@ -432,52 +432,67 @@ const EnhancedRankingDisplay = ({ ranking, isAdmin = false }) => {
           </div>
         </div>
 
-        {/* Top 3 Podium */}
-        {ranking.topScores && (
-          <div className="bg-white rounded-2xl p-6 shadow-lg">
-            <h4 className="font-bold text-lg mb-6 text-gray-800">🏆 Top 3 Bestenliste</h4>
-            <div className="flex justify-center items-end gap-4">
-              {/* 2nd Place */}
-              {ranking.topScores[1] && (
-                <div className="text-center">
-                  <div className="bg-gray-200 rounded-lg p-4 mb-2 h-16 flex items-end">
-                    <div className="w-full text-center">
-                      <div className="text-2xl mb-1">🥈</div>
-                    </div>
-                  </div>
-                  <div className="font-bold text-lg text-gray-700">{ranking.topScores[1]}</div>
-                  <div className="text-xs text-gray-500">Punkte</div>
-                </div>
-              )}
-              
-              {/* 1st Place */}
-              {ranking.topScores[0] && (
-                <div className="text-center">
-                  <div className="bg-yellow-200 rounded-lg p-4 mb-2 h-20 flex items-end">
-                    <div className="w-full text-center">
-                      <div className="text-3xl mb-1">🥇</div>
-                    </div>
-                  </div>
-                  <div className="font-bold text-xl text-yellow-700">{ranking.topScores[0]}</div>
-                  <div className="text-xs text-gray-500">Punkte</div>
-                </div>
-              )}
-              
-              {/* 3rd Place */}
-              {ranking.topScores[2] && (
-                <div className="text-center">
-                  <div className="bg-orange-200 rounded-lg p-4 mb-2 h-12 flex items-end">
-                    <div className="w-full text-center">
-                      <div className="text-xl mb-1">🥉</div>
-                    </div>
-                  </div>
-                  <div className="font-bold text-lg text-orange-700">{ranking.topScores[2]}</div>
-                  <div className="text-xs text-gray-500">Punkte</div>
-                </div>
-              )}
+      {/* Top 3 Podium */}
+      {ranking.topScores && (
+        <div className="bg-white rounded-2xl p-6 shadow-lg">
+        <h4 className="font-bold text-lg mb-6 text-gray-800">🏆 Top 3 Bestenliste</h4>
+        <div className="flex justify-center items-end gap-4">
+        {/* 2nd Place */}
+        {ranking.topScores[1] && (
+          <div className="text-center">
+          <div className="bg-gray-200 rounded-lg p-4 mb-2 h-16 flex items-end">
+          <div className="w-full text-center">
+          <div className="text-2xl mb-1">🥈</div>
+          </div>
+          </div>
+          <div className="font-bold text-lg text-gray-700">{ranking.topScores[1]}</div>
+          <div className="text-xs text-gray-500">Punkte</div>
+          {ranking.topNames && ranking.topNames[1] && (
+            <div className="text-xs text-gray-600 font-mono mt-1">
+            {ranking.topNames[1].split(' ').map(n => n[0]).join('')}
             </div>
+          )}
           </div>
         )}
+        
+        {/* 1st Place */}
+        {ranking.topScores[0] && (
+          <div className="text-center">
+          <div className="bg-yellow-200 rounded-lg p-4 mb-2 h-20 flex items-end">
+          <div className="w-full text-center">
+          <div className="text-3xl mb-1">🥇</div>
+          </div>
+          </div>
+          <div className="font-bold text-xl text-yellow-700">{ranking.topScores[0]}</div>
+          <div className="text-xs text-gray-500">Punkte</div>
+          {ranking.topNames && ranking.topNames[0] && (
+            <div className="text-xs text-gray-600 font-mono mt-1">
+            {ranking.topNames[0].split(' ').map(n => n[0]).join('')}
+            </div>
+          )}
+          </div>
+        )}
+        
+        {/* 3rd Place */}
+        {ranking.topScores[2] && (
+          <div className="text-center">
+          <div className="bg-orange-200 rounded-lg p-4 mb-2 h-12 flex items-end">
+          <div className="w-full text-center">
+          <div className="text-xl mb-1">🥉</div>
+          </div>
+          </div>
+          <div className="font-bold text-lg text-orange-700">{ranking.topScores[2]}</div>
+          <div className="text-xs text-gray-500">Punkte</div>
+          {ranking.topNames && ranking.topNames[2] && (
+            <div className="text-xs text-gray-600 font-mono mt-1">
+            {ranking.topNames[2].split(' ').map(n => n[0]).join('')}
+            </div>
+          )}
+          </div>
+        )}
+        </div>
+        </div>
+      )}
       </div>
     );
   }
@@ -2381,30 +2396,35 @@ const KonfiPointsSystem = () => {
       ))}
       </nav>
             
-            {/* Mobile Navigation */}
-            {mobileMenuOpen && (
-              <nav className="sm:hidden py-4">
-                <div className="grid grid-cols-1 gap-2">
-                  {navigationItems.map(({ id, label, icon: Icon }) => (
-                    <button
-                      key={id}
-                      onClick={() => {
-                        setCurrentView(id);
-                        setMobileMenuOpen(false);
-                      }}
-                      className={`flex items-center gap-2 px-3 py-3 rounded-lg transition-colors ${
-                        currentView === id 
-                          ? 'bg-blue-100 text-blue-600 border border-blue-300' 
-                          : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                      <span className="font-medium">{label}</span>
-                    </button>
-                  ))}
-                </div>
-              </nav>
-            )}
+      {/* Mobile Navigation */}
+      {mobileMenuOpen && (
+        <nav className="sm:hidden py-4">
+        <div className="grid grid-cols-2 gap-2">
+        {navigationItems.map(({ id, label, icon: Icon, notification }) => (
+          <button
+          key={id}
+          onClick={() => {
+            setCurrentView(id);
+            setMobileMenuOpen(false);
+          }}
+          className={`flex items-center justify-center gap-2 px-3 py-3 rounded-lg transition-colors relative ${
+            currentView === id 
+            ? 'bg-blue-100 text-blue-600 border border-blue-300' 
+            : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+          }`}
+          >
+          <Icon className="w-4 h-4" />
+          <span className="text-sm font-medium">{label}</span>
+          {notification > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+            {notification}
+            </span>
+          )}
+          </button>
+        ))}
+        </div>
+        </nav>
+      )}
           </div>
         </div>
         
@@ -2512,12 +2532,12 @@ const KonfiPointsSystem = () => {
         
         {/* Recent Activities mit Kategorien */}
         <div className="bg-white rounded-xl shadow-lg p-6">
-        <h3 className="text-lg font-bold mb-4">Letzte Aktivitäten</h3>
-        {(selectedKonfi.activities?.slice(0, 5) || []).length === 0 ? (
+        <h3 className="text-lg font-bold mb-4">Meine Aktivitäten</h3>
+        {(selectedKonfi.activities || []).length === 0 ? (
           <p className="text-gray-600">Noch keine Aktivitäten eingetragen.</p>
         ) : (
           <div className="space-y-3">
-          {(selectedKonfi.activities?.slice(0, 5) || []).map((activity, index) => (
+          {(selectedKonfi.activities || []).map((activity, index) => (
             <div key={index} className={`flex justify-between items-center p-3 rounded ${
               activity.type === 'gottesdienst' ? 'bg-blue-50' : 'bg-green-50'
             }`}>
@@ -2843,14 +2863,14 @@ const KonfiPointsSystem = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6">
     {/* Desktop Navigation */}
     <nav className="hidden sm:flex gap-6">
-    {navigationItems.map(({ id, label, icon: Icon }) => (
+    {navigationItems.map(({ id, label, icon: Icon, notification }) => (
       <button
       key={id}
       onClick={() => {
         setCurrentView(id);
         setMobileMenuOpen(false);
       }}
-      className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
+      className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors relative ${
         currentView === id 
         ? 'border-blue-500 text-blue-600' 
         : 'border-transparent text-gray-600 hover:text-blue-600'
@@ -2858,6 +2878,11 @@ const KonfiPointsSystem = () => {
       >
       <Icon className="w-4 h-4" />
       {label}
+      {notification > 0 && (
+        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+        {notification}
+        </span>
+      )}
       </button>
     ))}
     </nav>
@@ -2924,13 +2949,13 @@ const KonfiPointsSystem = () => {
         onClick={() => loadKonfiDetails(konfi.id)}
         >
         <div className="flex items-center justify-between">
-        <div className="flex-1">
-        <div className="flex items-center gap-4">
-        <div>
-        <h3 className="font-bold text-lg text-blue-600 hover:text-blue-800">
+        <div className="flex-1 min-w-0"> {/* min-w-0 wichtig für text truncation */}
+        <div className="flex items-start gap-6"> {/* items-start statt items-center */}
+        <div className="flex-shrink-0" style={{ width: '200px' }}> {/* Feste Breite für Namen */}
+        <h3 className="font-bold text-lg text-blue-600 hover:text-blue-800 truncate">
         {konfi.name}
         </h3>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-600 truncate">
         {konfi.jahrgang} | {konfi.username}
         {konfi.badges && konfi.badges.length > 0 && (
           <span className="ml-2 text-yellow-600">
@@ -2941,20 +2966,20 @@ const KonfiPointsSystem = () => {
         </p>
         </div>
         
-        {/* Verbesserte Inline Progress bars - nur Desktop mit mehr Abstand und noch längeren, dünneren Balken */}
+        {/* Progress bars - jetzt immer an gleicher Position */}
         {(showGottesdienstTarget || showGemeindeTarget) && (
-          <div className="hidden md:block mt-4 space-y-3 ml-6" style={{ width: '420px' }}>
+          <div className="hidden md:block space-y-3 flex-1" style={{ maxWidth: '400px' }}>
           {showGottesdienstTarget && (
             <div className="flex items-center gap-3">
             <BookOpen className="w-4 h-4 text-blue-600 flex-shrink-0" />
             <span className="text-xs text-gray-700 font-medium w-20 flex-shrink-0">Gottesdienst</span>
-            <div className="w-full bg-gray-200 rounded-full h-2 flex-shrink-0">
+            <div className="flex-1 bg-gray-200 rounded-full h-2">
             <div 
             className={`h-2 rounded-full transition-all ${getProgressColor(konfi.points.gottesdienst, settings.target_gottesdienst)}`}
             style={{ width: `${Math.min((konfi.points.gottesdienst / parseInt(settings.target_gottesdienst)) * 100, 100)}%` }}
             ></div>
             </div>
-            <span className="text-xs font-bold text-blue-600 flex-shrink-0 w-10">
+            <span className="text-xs font-bold text-blue-600 flex-shrink-0 w-12 text-right">
             {konfi.points.gottesdienst}/{settings.target_gottesdienst}
             </span>
             </div>
@@ -2963,13 +2988,13 @@ const KonfiPointsSystem = () => {
             <div className="flex items-center gap-3">
             <Heart className="w-4 h-4 text-green-600 flex-shrink-0" />
             <span className="text-xs text-gray-700 font-medium w-20 flex-shrink-0">Gemeinde</span>
-            <div className="w-full bg-gray-200 rounded-full h-2 flex-shrink-0">
+            <div className="flex-1 bg-gray-200 rounded-full h-2">
             <div 
             className={`h-2 rounded-full transition-all ${getProgressColor(konfi.points.gemeinde, settings.target_gemeinde)}`}
             style={{ width: `${Math.min((konfi.points.gemeinde / parseInt(settings.target_gemeinde)) * 100, 100)}%` }}
             ></div>
             </div>
-            <span className="text-xs font-bold text-green-600 flex-shrink-0 w-10">
+            <span className="text-xs font-bold text-green-600 flex-shrink-0 w-12 text-right">
             {konfi.points.gemeinde}/{settings.target_gemeinde}
             </span>
             </div>
@@ -2979,7 +3004,8 @@ const KonfiPointsSystem = () => {
         </div>
         </div>
         
-        <div className="flex items-center gap-6">
+        {/* Punkte-Anzeige rechts */}
+        <div className="flex items-center gap-6 flex-shrink-0">
         {showGottesdienstTarget && (
           <div className="text-center">
           <div className="text-xl font-bold text-blue-600">
@@ -3325,8 +3351,16 @@ const KonfiPointsSystem = () => {
         <span className="font-medium">{activity.name}</span>
         <div className="text-sm text-blue-600">
         {activity.points} Punkte
-        {activity.category && ` • ${activity.category}`}
         </div>
+        {activity.category && (
+          <div className="flex flex-wrap gap-1 mt-1">
+          {activity.category.split(',').map((cat, index) => (
+            <span key={index} className="text-xs text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full font-medium border border-purple-200">
+            🏷️ {cat.trim()}
+            </span>
+          ))}
+          </div>
+        )}
         </div>
         <div className="flex gap-1">
         <button
@@ -3834,8 +3868,12 @@ const KonfiPointsSystem = () => {
           )}
           </div>
           {activity.category && (
-            <div className="text-xs text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full mt-1 inline-block font-medium border border-purple-200">
-            🏷️ {activity.category}
+            <div className="flex flex-wrap gap-1 mt-1">
+            {activity.category.split(',').map((cat, index) => (
+              <span key={index} className="text-xs text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full font-medium border border-purple-200">
+              🏷️ {cat.trim()}
+              </span>
+            ))}
             </div>
           )}
           </div>

@@ -1129,10 +1129,10 @@ app.get('/api/ranking', verifyToken, (req, res) => {
     FROM konfis 
     ORDER BY total_points DESC
   `;
-
+  
   db.all(query, [], (err, rows) => {
     if (err) return res.status(500).json({ error: 'Database error' });
-
+    
     if (req.user.type === 'admin') {
       // Admins get full ranking
       res.json(rows.map((row, index) => ({
@@ -1149,7 +1149,8 @@ app.get('/api/ranking', verifyToken, (req, res) => {
         myPosition,
         myPoints,
         totalKonfis: rows.length,
-        topScores: rows.slice(0, 3).map(row => row.total_points)
+        topScores: rows.slice(0, 3).map(row => row.total_points),
+        topNames: rows.slice(0, 3).map(row => row.name) // NEU: Namen für Initialen
       });
     }
   });
