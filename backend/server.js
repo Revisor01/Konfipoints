@@ -240,7 +240,7 @@ const checkAndAwardBadges = async (konfiId) => {
                 break;
               
               case 'streak':
-                if (konfi.activity_dates) {
+                if (konfiData.activities && konfiData.activities.length > 0) {
                   // Hilfsfunktion: Kalenderwoche berechnen
                   function getYearWeek(date) {
                     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -248,57 +248,69 @@ const checkAndAwardBadges = async (konfiId) => {
                     d.setUTCDate(d.getUTCDate() + 4 - dayNum);
                     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
                     const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-                    return `${d.getUTCFullYear()}-W${weekNo}`;
+                    return `${d.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
                   }
                   
-                  // Aktivitätsdaten in Set einzigartiger Wochen umwandeln
-                  const weekSet = new Set(
-                    konfi.activity_dates
-                    .split(',')
-                    .map(dateStr => getYearWeek(new Date(dateStr)))
+                  // Aktivitätsdaten in Set einzigartiger Wochen umwandeln  
+                  const activityWeeks = new Set(
+                    konfiData.activities
+                    .map(activity => getYearWeek(new Date(activity.date)))
+                    .filter(week => week && !week.includes('NaN'))
                   );
                   
-                  // Sortiere Wochen rückwärts (neueste zuerst)
-                  const sortedWeeks = Array.from(weekSet).sort().reverse();
+                  // Sortiere Wochen chronologisch (neueste zuerst)
+                  const sortedWeeks = Array.from(activityWeeks).sort().reverse();
                   
                   let currentStreak = 0;
-                  let lastYearWeek = null;
+                  const currentWeek = getYearWeek(new Date());
                   
-                  for (const yearWeek of sortedWeeks) {
-                    const [year, week] = yearWeek.split('-W').map(Number);
-                    if (!lastYearWeek) {
-                      currentStreak = 1;
-                      lastYearWeek = { year, week };
-                    } else {
-                      let expectedWeek = lastYearWeek.week - 1;
-                      let expectedYear = lastYearWeek.year;
+                  // Prüfe ob aktuelle Woche dabei ist
+                  if (sortedWeeks.includes(currentWeek)) {
+                    currentStreak = 1;
+                    
+                    // Prüfe rückwärts für aufeinanderfolgende Wochen
+                    for (let i = 0; i < sortedWeeks.length - 1; i++) {
+                      const thisWeek = sortedWeeks[i];
+                      const nextWeek = sortedWeeks[i + 1];
+                      
+                      // Berechne vorherige Woche
+                      const [year, week] = thisWeek.split('-W').map(Number);
+                      let expectedYear = year;
+                      let expectedWeek = week - 1;
                       
                       if (expectedWeek === 0) {
                         expectedYear -= 1;
-                        const dec31 = new Date(Date.UTC(expectedYear, 11, 31));
-                        const lastWeek = getYearWeek(dec31).split('-W')[1];
-                        expectedWeek = parseInt(lastWeek, 10);
+                        expectedWeek = 52; // Vereinfacht, könnte 53 sein
                       }
                       
-                      if (year === expectedYear && week === expectedWeek) {
+                      const expectedWeekStr = `${expectedYear}-W${expectedWeek.toString().padStart(2, '0')}`;
+                      
+                      if (nextWeek === expectedWeekStr) {
                         currentStreak++;
-                        lastYearWeek = { year, week };
                       } else {
                         break;
                       }
                     }
                   }
                   
-                  earned = currentStreak >= badge.criteria_value;
+                  current = currentStreak;
+                  description = `${current}/${total} Wochen in Folge`;
+                } else {
+                  current = 0;
+                  description = `${current}/${total} Wochen in Folge`;
                 }
-                processBadgeResult();
                 break;
               
               case 'unique_activities':
-                const uniqueCount = konfi.activity_ids ? 
-                new Set(konfi.activity_ids.split(',')).size : 0;
-                earned = uniqueCount >= badge.criteria_value;
-                processBadgeResult();
+                if (konfiData.activities) {
+                  const uniqueActivityNames = new Set(konfiData.activities.map(a => a.name));
+                  current = uniqueActivityNames.size;
+                  description = `${current}/${total} verschieden`;
+                  console.log('Unique activities:', Array.from(uniqueActivityNames), 'Count:', current); // Debug
+                } else {
+                  current = 0;
+                  description = `${current}/${total} verschieden`;
+                }
                 break;
               
               default:

@@ -2859,35 +2859,35 @@ const KonfiPointsSystem = () => {
         </p>
         </div>
         
-        {/* Verbesserte Inline Progress bars - nur Desktop */}
+        {/* Verbesserte Inline Progress bars - nur Desktop mit mehr Abstand und längeren Balken */}
         {(showGottesdienstTarget || showGemeindeTarget) && (
-          <div className="hidden md:block mt-3 space-y-2 ml-4" style={{ width: '280px' }}>
+          <div className="hidden md:block mt-4 space-y-3 ml-6" style={{ width: '380px' }}>
           {showGottesdienstTarget && (
-            <div className="flex items-center gap-2">
-            <BookOpen className="w-3 h-3 text-blue-600 flex-shrink-0" />
-            <span className="text-xs text-gray-700 font-medium w-16 flex-shrink-0">Gottesdienst</span>
-            <div className="w-24 bg-gray-200 rounded-full h-2 flex-shrink-0">
+            <div className="flex items-center gap-3">
+            <BookOpen className="w-4 h-4 text-blue-600 flex-shrink-0" />
+            <span className="text-xs text-gray-700 font-medium w-20 flex-shrink-0">Gottesdienst</span>
+            <div className="w-40 bg-gray-200 rounded-full h-3 flex-shrink-0">
             <div 
-            className={`h-2 rounded-full transition-all ${getProgressColor(konfi.points.gottesdienst, settings.target_gottesdienst)}`}
+            className={`h-3 rounded-full transition-all ${getProgressColor(konfi.points.gottesdienst, settings.target_gottesdienst)}`}
             style={{ width: `${Math.min((konfi.points.gottesdienst / parseInt(settings.target_gottesdienst)) * 100, 100)}%` }}
             ></div>
             </div>
-            <span className="text-xs font-bold text-blue-600 flex-shrink-0 w-8">
+            <span className="text-xs font-bold text-blue-600 flex-shrink-0 w-10">
             {konfi.points.gottesdienst}/{settings.target_gottesdienst}
             </span>
             </div>
           )}
           {showGemeindeTarget && (
-            <div className="flex items-center gap-2">
-            <Heart className="w-3 h-3 text-green-600 flex-shrink-0" />
-            <span className="text-xs text-gray-700 font-medium w-16 flex-shrink-0">Gemeinde</span>
-            <div className="w-24 bg-gray-200 rounded-full h-2 flex-shrink-0">
+            <div className="flex items-center gap-3">
+            <Heart className="w-4 h-4 text-green-600 flex-shrink-0" />
+            <span className="text-xs text-gray-700 font-medium w-20 flex-shrink-0">Gemeinde</span>
+            <div className="w-40 bg-gray-200 rounded-full h-3 flex-shrink-0">
             <div 
-            className={`h-2 rounded-full transition-all ${getProgressColor(konfi.points.gemeinde, settings.target_gemeinde)}`}
+            className={`h-3 rounded-full transition-all ${getProgressColor(konfi.points.gemeinde, settings.target_gemeinde)}`}
             style={{ width: `${Math.min((konfi.points.gemeinde / parseInt(settings.target_gemeinde)) * 100, 100)}%` }}
             ></div>
             </div>
-            <span className="text-xs font-bold text-green-600 flex-shrink-0 w-8">
+            <span className="text-xs font-bold text-green-600 flex-shrink-0 w-10">
             {konfi.points.gemeinde}/{settings.target_gemeinde}
             </span>
             </div>
@@ -3731,36 +3731,39 @@ const KonfiPointsSystem = () => {
       {(selectedKonfi.activities.length === 0 && (!selectedKonfi.bonusPoints || selectedKonfi.bonusPoints.length === 0)) ? (
         <p className="text-gray-600">Noch keine Aktivitäten absolviert.</p>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
         {/* Normal Activities with remove button */}
         {selectedKonfi.activities.map((activity, index) => (
-          <div key={`activity-${index}`} className={`flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 rounded border gap-2 ${
-            activity.type === 'gottesdienst' ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200'
+          <div key={`activity-${index}`} className={`flex justify-between items-center p-3 rounded ${
+            activity.type === 'gottesdienst' ? 'bg-blue-50' : 'bg-green-50'
           }`}>
-          <div className="flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
           {activity.type === 'gottesdienst' ? (
             <BookOpen className="w-4 h-4 text-blue-600" />
           ) : (
             <Heart className="w-4 h-4 text-green-600" />
           )}
-          <span className="font-medium">{activity.name}</span>
+          <div>
+          <div className="font-medium">{activity.name}</div>
+          <div className="text-sm text-gray-600">
+          {formatDate(activity.date)}
+          {activity.admin && (
+            <span className="ml-2 text-xs">• {activity.admin}</span>
+          )}
           </div>
-          <div className="text-sm text-gray-600 ml-6">
-          {formatDate(activity.date)} • Vergeben von: {activity.admin}
+          {activity.category && (
+            <div className="text-xs text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full mt-1 inline-block font-medium border border-purple-200">
+            🏷️ {activity.category}
+            </div>
+          )}
           </div>
           </div>
           <div className="flex items-center gap-2">
-          <span className={`px-2 py-1 rounded text-xs font-bold ${
-            activity.type === 'gottesdienst' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-          }`}>
-          {activity.type === 'gottesdienst' ? 'Gottesdienst' : 'Gemeinde'}
-          </span>
-          <span className="font-bold text-orange-600">+{activity.points} Punkte</span>
+          <span className="font-bold text-orange-600">+{activity.points}</span>
           <button
           onClick={() => removeActivityFromKonfi(selectedKonfi.id, activity.id)}
           disabled={loading}
-          className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 disabled:opacity-50 text-xs ml-2"
+          className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 disabled:opacity-50 text-xs"
           title="Aktivität entfernen"
           >
           <Trash2 className="w-3 h-3" />
@@ -3771,30 +3774,28 @@ const KonfiPointsSystem = () => {
         
         {/* Bonus Points with remove button */}
         {selectedKonfi.bonusPoints && selectedKonfi.bonusPoints.map((bonus, index) => (
-          <div key={`bonus-${index}`} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 bg-orange-50 rounded border border-orange-200 gap-2">
-          <div className="flex-1">
-          <div className="flex items-center gap-2">
+          <div key={`bonus-${index}`} className="flex justify-between items-center p-3 bg-orange-50 rounded">
+          <div className="flex items-center gap-3">
           <Gift className="w-4 h-4 text-orange-600" />
-          <span className="font-medium">{bonus.description}</span>
+          <div>
+          <div className="font-medium">{bonus.description}</div>
+          <div className="text-sm text-gray-600">
+          {formatDate(bonus.date)}
+          {bonus.admin && (
+            <span className="ml-2 text-xs">• {bonus.admin}</span>
+          )}
           </div>
-          <div className="text-sm text-gray-600 ml-6">
-          {formatDate(bonus.date)} • Vergeben von: {bonus.admin}
+          <div className="text-xs text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full mt-1 inline-block font-medium border border-orange-200">
+          💰 Zusatzpunkt
           </div>
-          <span className="text-xs text-orange-600 italic flex items-center gap-1 ml-6">
-          Zusatzpunkt
-          </span>
+          </div>
           </div>
           <div className="flex items-center gap-2">
-          <span className={`px-2 py-1 rounded text-xs font-bold ${
-            bonus.type === 'gottesdienst' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-          }`}>
-          {bonus.type === 'gottesdienst' ? 'Gottesdienst' : 'Gemeinde'}
-          </span>
-          <span className="font-bold text-orange-600">+{bonus.points} Punkte</span>
+          <span className="font-bold text-orange-600">+{bonus.points}</span>
           <button
           onClick={() => removeBonusPointsFromKonfi(selectedKonfi.id, bonus.id)}
           disabled={loading}
-          className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 disabled:opacity-50 text-xs ml-2"
+          className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 disabled:opacity-50 text-xs"
           title="Zusatzpunkte entfernen"
           >
           <Trash2 className="w-3 h-3" />
