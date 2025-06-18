@@ -2874,7 +2874,7 @@ const KonfiPointsSystem = () => {
         </p>
         </div>
         
-        {/* Verbesserte Inline Progress bars */}
+        {/* Verbesserte Inline Progress bars - nur Desktop mit mehr Abstand und noch längeren, dünneren Balken */}
         {(showGottesdienstTarget || showGemeindeTarget) && (
           <div className="hidden md:block mt-4 space-y-3 ml-6" style={{ width: '420px' }}>
           {showGottesdienstTarget && (
@@ -2909,6 +2909,7 @@ const KonfiPointsSystem = () => {
           )}
           </div>
         )}
+        </div>
         </div>
         
         <div className="flex items-center gap-6">
