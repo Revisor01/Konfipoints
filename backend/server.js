@@ -216,7 +216,8 @@ const checkAndAwardBadges = async (konfiId) => {
                     `%,${category}`,            // am Ende  
                     `%,${category},%`           // in der Mitte
                   ];
-                  db.get(categoryCountQuery, [konfiId, criteria.required_category], (err, result) => {
+                  
+                  db.get(categoryCountQuery, params, (err, result) => {
                     if (err) {
                       console.error('Category badge check error:', err);
                       earned = false;

@@ -106,13 +106,22 @@ const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = fal
         description = `${current}/${total} verschieden`;
         break;
       case 'category_activities':
-        if (criteria.required_category && konfiData.activities) {
-          current = konfiData.activities.filter(activity => {
-            if (!activity.category) return false;
-            const categories = activity.category.split(',').map(c => c.trim());
-            return categories.includes(criteria.required_category);
-          }).length;
-          description = `${current}/${total} aus ${criteria.required_category}`;
+        if (badge.criteria_extra && konfiData.activities) {
+          try {
+            const extraData = typeof badge.criteria_extra === 'string' 
+            ? JSON.parse(badge.criteria_extra) 
+            : badge.criteria_extra;
+            if (extraData.required_category) {
+              current = konfiData.activities.filter(activity => {
+                if (!activity.category) return false;
+                const categories = activity.category.split(',').map(c => c.trim());
+                return categories.includes(extraData.required_category);
+              }).length;
+              description = `${current}/${total} aus ${extraData.required_category}`;
+            }
+          } catch (e) {
+            return null;
+          }
         }
         break;
       case 'activity_combination':
