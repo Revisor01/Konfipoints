@@ -2543,8 +2543,8 @@ const KonfiPointsSystem = () => {
         
         {badges.available ? (
           <BadgeDisplay 
-          badges={availableBadges} 
-          earnedBadges={earnedBadges} 
+          badges={badges.available} 
+          earnedBadges={badges.earned || []} 
           konfiData={selectedKonfi}
           isAdmin={false}
           showProgress={true}
