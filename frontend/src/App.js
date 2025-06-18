@@ -89,7 +89,7 @@ const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = fal
         break;
       case 'both_categories':
         current = Math.min(konfiData.points.gottesdienst, konfiData.points.gemeinde);
-        description = `${current}/${total} Min`;
+        description = `${current}/${total} in beiden`;
         break;
       case 'activity_count':
         current = konfiData.activities ? konfiData.activities.length : 0;
@@ -100,6 +100,61 @@ const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = fal
         new Set(konfiData.activities.map(a => a.name)).size : 0;
         current = uniqueActivities;
         description = `${current}/${total} verschieden`;
+        break;
+      case 'category_activities':
+        if (badge.criteria_extra) {
+          try {
+            const extraData = typeof badge.criteria_extra === 'string' 
+            ? JSON.parse(badge.criteria_extra) 
+            : badge.criteria_extra;
+            if (extraData.required_category && konfiData.activities) {
+              current = konfiData.activities.filter(activity => 
+                activity.category === extraData.required_category
+              ).length;
+              description = `${current}/${total} aus ${extraData.required_category}`;
+            }
+          } catch (e) {
+            return null;
+          }
+        }
+        break;
+      case 'activity_combination':
+        if (badge.criteria_extra) {
+          try {
+            const extraData = typeof badge.criteria_extra === 'string' 
+            ? JSON.parse(badge.criteria_extra) 
+            : badge.criteria_extra;
+            if (extraData.required_activities && konfiData.activities) {
+              const completedActivities = new Set(konfiData.activities.map(a => a.name));
+              current = extraData.required_activities.filter(req => 
+                completedActivities.has(req)
+              ).length;
+              description = `${current}/${extraData.required_activities.length} Kombination`;
+            }
+          } catch (e) {
+            return null;
+          }
+        }
+        break;
+      case 'time_based':
+        if (badge.criteria_extra && konfiData.activities) {
+          try {
+            const extraData = typeof badge.criteria_extra === 'string' 
+            ? JSON.parse(badge.criteria_extra) 
+            : badge.criteria_extra;
+            const days = extraData.days || 7;
+            const now = new Date();
+            const cutoff = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
+            
+            current = konfiData.activities.filter(activity => {
+              const activityDate = new Date(activity.date);
+              return activityDate >= cutoff;
+            }).length;
+            description = `${current}/${total} in ${days} Tagen`;
+          } catch (e) {
+            return null;
+          }
+        }
         break;
       default:
         return null;
@@ -162,15 +217,23 @@ const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = fal
           </div>
         ) : progress ? (
           <div className="mt-2">
-          <div className="text-xs text-gray-600 mb-1">
+          <div className="text-xs text-gray-600 mb-1 font-medium">
           {progress.description}
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-1">
+          <div className="w-full bg-gray-200 rounded-full h-2">
           <div 
-          className="bg-blue-500 h-1 rounded-full transition-all"
+          className={`h-2 rounded-full transition-all ${
+            progress.percentage >= 100 ? 'bg-green-500' : 
+            progress.percentage >= 50 ? 'bg-yellow-500' : 'bg-blue-500'
+          }`}
           style={{ width: `${progress.percentage}%` }}
           ></div>
           </div>
+          {progress.percentage >= 80 && progress.percentage < 100 && (
+            <div className="text-xs text-orange-600 mt-1 font-bold">
+            🔥 Fast geschafft!
+            </div>
+          )}
           </div>
         ) : (
           isAdmin && isHidden && (
@@ -2382,10 +2445,13 @@ const KonfiPointsSystem = () => {
             <div className="font-medium">{activity.name}</div>
             <div className="text-sm text-gray-600">
             {formatDate(activity.date)}
+            {activity.admin && (
+              <span className="ml-2 text-xs">• {activity.admin}</span>
+            )}
             </div>
             {activity.category && (
-              <div className="text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded mt-1 inline-block">
-              {activity.category}
+              <div className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full mt-1 inline-block font-medium">
+              📂 {activity.category}
               </div>
             )}
             </div>
@@ -2783,28 +2849,40 @@ const KonfiPointsSystem = () => {
         </p>
         </div>
         
-        {/* Inline Progress bars */}
+        {/* Verbesserte Inline Progress bars */}
         {(showGottesdienstTarget || showGemeindeTarget) && (
-          <div className="flex gap-4 ml-8">
+          <div className="mt-3 space-y-2">
           {showGottesdienstTarget && (
-            <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-600 w-16">Gottesdienst</span>
-            <div className="w-20 bg-gray-200 rounded-full h-2">
+            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+            <BookOpen className="w-3 h-3 text-blue-600 flex-shrink-0" />
+            <span className="text-xs text-gray-700 font-medium">Gottesdienst</span>
+            <div className="flex-1 bg-gray-200 rounded-full h-2 min-w-0">
             <div 
             className={`h-2 rounded-full transition-all ${getProgressColor(konfi.points.gottesdienst, settings.target_gottesdienst)}`}
             style={{ width: `${Math.min((konfi.points.gottesdienst / parseInt(settings.target_gottesdienst)) * 100, 100)}%` }}
             ></div>
             </div>
+            <span className="text-xs font-bold text-blue-600 flex-shrink-0">
+            {konfi.points.gottesdienst}/{settings.target_gottesdienst}
+            </span>
+            </div>
             </div>
           )}
           {showGemeindeTarget && (
-            <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-600 w-16">Gemeinde</span>
-            <div className="w-20 bg-gray-200 rounded-full h-2">
+            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Heart className="w-3 h-3 text-green-600 flex-shrink-0" />
+            <span className="text-xs text-gray-700 font-medium">Gemeinde</span>
+            <div className="flex-1 bg-gray-200 rounded-full h-2 min-w-0">
             <div 
             className={`h-2 rounded-full transition-all ${getProgressColor(konfi.points.gemeinde, settings.target_gemeinde)}`}
             style={{ width: `${Math.min((konfi.points.gemeinde / parseInt(settings.target_gemeinde)) * 100, 100)}%` }}
             ></div>
+            </div>
+            <span className="text-xs font-bold text-green-600 flex-shrink-0">
+            {konfi.points.gemeinde}/{settings.target_gemeinde}
+            </span>
             </div>
             </div>
           )}
