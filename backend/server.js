@@ -110,7 +110,8 @@ const CRITERIA_TYPES = {
   category_activities: { label: "Kategorie-Aktivitäten", description: "Aktivitäten aus bestimmter Kategorie" }, // NEU
   time_based: { label: "Zeitbasiert", description: "Aktivitäten in einem Zeitraum" },
   streak: { label: "Serie", description: "Aufeinanderfolgende Aktivitäten" },
-  bonus_points: { label: "Bonuspunkte", description: "Anzahl erhaltener Bonuspunkte" }
+  bonus_points: { label: "Bonuspunkte", description: "Anzahl erhaltener Bonuspunkte" },
+  specific_activity: { label: "Spezifische Aktivität", description: "Bestimmte Aktivität X-mal absolviert" }
 };
 
 // Badge checking function - FIXED: No additional DB connections
@@ -177,6 +178,15 @@ const checkAndAwardBadges = async (konfiId) => {
               
               case 'gemeinde_points':
                 earned = konfi.gemeinde_points >= badge.criteria_value;
+                processBadgeResult();
+                break;
+              
+              case 'specific_activity':
+                if (criteria.required_activity_name && konfi.activity_names) {
+                  const activities = konfi.activity_names.split(',');
+                  const count = activities.filter(name => name === criteria.required_activity_name).length;
+                  earned = count >= badge.criteria_value;
+                }
                 processBadgeResult();
                 break;
               

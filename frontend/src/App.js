@@ -105,6 +105,23 @@ const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = fal
         current = uniqueActivities;
         description = `${current}/${total} verschieden`;
         break;
+      case 'specific_activity':
+        if (badge.criteria_extra && konfiData.activities) {
+          try {
+            const extraData = typeof badge.criteria_extra === 'string' 
+            ? JSON.parse(badge.criteria_extra) 
+            : badge.criteria_extra;
+            if (extraData.required_activity_name) {
+              current = konfiData.activities.filter(activity => 
+                activity.name === extraData.required_activity_name
+              ).length;
+              description = `${current}/${total}x ${extraData.required_activity_name}`;
+            }
+          } catch (e) {
+            return null;
+          }
+        }
+        break;
       case 'category_activities':
         if (badge.criteria_extra && konfiData.activities) {
           try {
@@ -2968,7 +2985,7 @@ const KonfiPointsSystem = () => {
         
         {/* Progress bars - jetzt immer an gleicher Position */}
         {(showGottesdienstTarget || showGemeindeTarget) && (
-          <div className="hidden md:block space-y-3 flex-1" style={{ maxWidth: '400px' }}>
+          <div className="hidden md:block space-y-3 flex-1 w-full">
           {showGottesdienstTarget && (
             <div className="flex items-center gap-3">
             <BookOpen className="w-4 h-4 text-blue-600 flex-shrink-0" />
@@ -3005,7 +3022,7 @@ const KonfiPointsSystem = () => {
         </div>
         
         {/* Punkte-Anzeige rechts */}
-        <div className="flex items-center gap-6 flex-shrink-0">
+        <div className="flex items-center gap-6 flex-shrink-0 pl-8">
         {showGottesdienstTarget && (
           <div className="text-center">
           <div className="text-xl font-bold text-blue-600">
@@ -3398,8 +3415,16 @@ const KonfiPointsSystem = () => {
         <span className="font-medium">{activity.name}</span>
         <div className="text-sm text-green-600">
         {activity.points} Punkte
-        {activity.category && ` • ${activity.category}`}
         </div>
+        {activity.category && (
+          <div className="flex flex-wrap gap-1 mt-1">
+          {activity.category.split(',').map((cat, index) => (
+            <span key={index} className="text-xs text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full font-medium border border-purple-200">
+            🏷️ {cat.trim()}
+            </span>
+          ))}
+          </div>
+        )}
         </div>
         <div className="flex gap-1">
         <button
