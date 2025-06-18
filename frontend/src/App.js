@@ -281,7 +281,7 @@ const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = fal
         title={badge.description}
         >
         <div className="text-2xl mb-1">
-        {isEarned && isHidden ? '🎭' : badge.icon}
+        {badge.icon}
         </div>
         <div className={`text-xs font-bold mb-1 leading-tight break-words ${
           isEarned 
