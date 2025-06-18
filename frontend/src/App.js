@@ -62,9 +62,51 @@ const getConfirmationCountdown = (confirmationDate) => {
   };
 };
 
-// Enhanced Badge Display Component - FIXED
+// Enhanced Badge Display Component with progress tracking
 const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = false, konfiData = null }) => {
   const earnedBadgeIds = earnedBadges.map(b => b.id || b.badge_id);
+  
+  // Calculate badge progress for konfi view
+  const calculateBadgeProgress = (badge) => {
+    if (!konfiData || earnedBadgeIds.includes(badge.id)) return null;
+    
+    let current = 0;
+    let total = badge.criteria_value;
+    let description = '';
+    
+    switch (badge.criteria_type) {
+      case 'total_points':
+        current = konfiData.points.gottesdienst + konfiData.points.gemeinde;
+        description = `${current}/${total} Punkte`;
+        break;
+      case 'gottesdienst_points':
+        current = konfiData.points.gottesdienst;
+        description = `${current}/${total} Gottesdienst`;
+        break;
+      case 'gemeinde_points':
+        current = konfiData.points.gemeinde;
+        description = `${current}/${total} Gemeinde`;
+        break;
+      case 'both_categories':
+        current = Math.min(konfiData.points.gottesdienst, konfiData.points.gemeinde);
+        description = `${current}/${total} Min`;
+        break;
+      case 'activity_count':
+        current = konfiData.activities ? konfiData.activities.length : 0;
+        description = `${current}/${total} Aktivitäten`;
+        break;
+      case 'unique_activities':
+        const uniqueActivities = konfiData.activities ? 
+        new Set(konfiData.activities.map(a => a.name)).size : 0;
+        current = uniqueActivities;
+        description = `${current}/${total} verschieden`;
+        break;
+      default:
+        return null;
+    }
+    
+    return { current, total, description, percentage: Math.min((current / total) * 100, 100) };
+  };
   
   // Filter badges
   const visibleBadges = badges.filter(badge => {
@@ -89,6 +131,7 @@ const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = fal
     {visibleBadges.map(badge => {
       const isEarned = earnedBadgeIds.includes(badge.id);
       const isHidden = badge.is_hidden;
+      const progress = !isAdmin && konfiData ? calculateBadgeProgress(badge) : null;
       
       return (
         <div 
@@ -116,6 +159,18 @@ const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = fal
         {isEarned ? (
           <div className={`text-xs mt-1 ${isHidden ? 'text-purple-600' : 'text-yellow-600'}`}>
           ✓ {isHidden ? 'Geheim!' : 'Erhalten'}
+          </div>
+        ) : progress ? (
+          <div className="mt-2">
+          <div className="text-xs text-gray-600 mb-1">
+          {progress.description}
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-1">
+          <div 
+          className="bg-blue-500 h-1 rounded-full transition-all"
+          style={{ width: `${progress.percentage}%` }}
+          ></div>
+          </div>
           </div>
         ) : (
           isAdmin && isHidden && (
@@ -2327,12 +2382,12 @@ const KonfiPointsSystem = () => {
             <div className="font-medium">{activity.name}</div>
             <div className="text-sm text-gray-600">
             {formatDate(activity.date)}
-            {activity.category && (
-              <span className="ml-2 px-2 py-0.5 bg-gray-200 text-gray-700 rounded text-xs">
-              {activity.category}
-              </span>
-            )}
             </div>
+            {activity.category && (
+              <div className="text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded mt-1 inline-block">
+              {activity.category}
+              </div>
+            )}
             </div>
             </div>
             <span className="font-bold text-orange-600">+{activity.points}</span>
@@ -2685,7 +2740,7 @@ const KonfiPointsSystem = () => {
       </div>
     )}
     
-    {/* ADMIN OVERVIEW - KOMPAKT OHNE BUTTONS */}
+    {/* ADMIN OVERVIEW - NOCH KOMPAKTER */}
     {currentView === 'overview' && (
       <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-lg p-6">
@@ -2703,14 +2758,14 @@ const KonfiPointsSystem = () => {
       </div>
       </div>
       
-      <div className="grid gap-3">
+      <div className="grid gap-2">
       {filteredKonfis.map(konfi => (
         <div 
         key={konfi.id} 
         className="border rounded-lg p-3 hover:shadow-md transition-shadow cursor-pointer bg-white hover:bg-blue-50"
         onClick={() => loadKonfiDetails(konfi.id)}
         >
-        <div className="flex justify-between items-center">
+        <div className="flex items-center justify-between">
         <div className="flex-1">
         <div className="flex items-center gap-4">
         <div>
@@ -2727,6 +2782,34 @@ const KonfiPointsSystem = () => {
         )}
         </p>
         </div>
+        
+        {/* Inline Progress bars */}
+        {(showGottesdienstTarget || showGemeindeTarget) && (
+          <div className="flex gap-4 ml-8">
+          {showGottesdienstTarget && (
+            <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-600 w-16">Gottesdienst</span>
+            <div className="w-20 bg-gray-200 rounded-full h-2">
+            <div 
+            className={`h-2 rounded-full transition-all ${getProgressColor(konfi.points.gottesdienst, settings.target_gottesdienst)}`}
+            style={{ width: `${Math.min((konfi.points.gottesdienst / parseInt(settings.target_gottesdienst)) * 100, 100)}%` }}
+            ></div>
+            </div>
+            </div>
+          )}
+          {showGemeindeTarget && (
+            <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-600 w-16">Gemeinde</span>
+            <div className="w-20 bg-gray-200 rounded-full h-2">
+            <div 
+            className={`h-2 rounded-full transition-all ${getProgressColor(konfi.points.gemeinde, settings.target_gemeinde)}`}
+            style={{ width: `${Math.min((konfi.points.gemeinde / parseInt(settings.target_gemeinde)) * 100, 100)}%` }}
+            ></div>
+            </div>
+            </div>
+          )}
+          </div>
+        )}
         </div>
         </div>
         
@@ -2755,40 +2838,6 @@ const KonfiPointsSystem = () => {
         </div>
         </div>
         </div>
-        
-        {/* Kompakte Progress bars */}
-        {(showGottesdienstTarget || showGemeindeTarget) && (
-          <div className="mt-2 space-y-1">
-          {showGottesdienstTarget && (
-            <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-600 w-20">Gottesdienst</span>
-            <div className="flex-1 bg-gray-200 rounded-full h-1.5">
-            <div 
-            className={`h-1.5 rounded-full transition-all ${getProgressColor(konfi.points.gottesdienst, settings.target_gottesdienst)}`}
-            style={{ width: `${Math.min((konfi.points.gottesdienst / parseInt(settings.target_gottesdienst)) * 100, 100)}%` }}
-            ></div>
-            </div>
-            <span className="text-xs text-gray-500 w-10">
-            {Math.round((konfi.points.gottesdienst / parseInt(settings.target_gottesdienst)) * 100)}%
-            </span>
-            </div>
-          )}
-          {showGemeindeTarget && (
-            <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-600 w-20">Gemeinde</span>
-            <div className="flex-1 bg-gray-200 rounded-full h-1.5">
-            <div 
-            className={`h-1.5 rounded-full transition-all ${getProgressColor(konfi.points.gemeinde, settings.target_gemeinde)}`}
-            style={{ width: `${Math.min((konfi.points.gemeinde / parseInt(settings.target_gemeinde)) * 100, 100)}%` }}
-            ></div>
-            </div>
-            <span className="text-xs text-gray-500 w-10">
-            {Math.round((konfi.points.gemeinde / parseInt(settings.target_gemeinde)) * 100)}%
-            </span>
-            </div>
-          )}
-          </div>
-        )}
         </div>
       ))}
       </div>
@@ -2959,7 +3008,11 @@ const KonfiPointsSystem = () => {
       
       <div className="grid gap-2">
       {filteredKonfis.map(konfi => (
-        <div key={konfi.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
+        <div 
+        key={konfi.id} 
+        className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+        onClick={() => loadKonfiDetails(konfi.id)}
+        >
         <div className="flex-1">
         <h3 className="font-bold">{konfi.name}</h3>
         <div className="flex items-center gap-4 text-sm text-gray-600">
@@ -3299,10 +3352,10 @@ const KonfiPointsSystem = () => {
           setEditItem(jahrgang);
           setShowEditModal(true);
         }}
-        className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 flex items-center gap-1 text-xs"
+        className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 text-xs"
+        title="Bearbeiten"
         >
         <Edit className="w-3 h-3" />
-        Edit
         </button>
         <button
         onClick={() => {
@@ -3310,10 +3363,10 @@ const KonfiPointsSystem = () => {
           setDeleteItem(jahrgang);
           setShowDeleteModal(true);
         }}
-        className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 flex items-center gap-1 text-xs"
+        className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 text-xs"
+        title="Löschen"
         >
         <Trash2 className="w-3 h-3" />
-        Del
         </button>
         </div>
         </div>
