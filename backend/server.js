@@ -240,7 +240,7 @@ const checkAndAwardBadges = async (konfiId) => {
                 break;
               
               case 'streak':
-                if (konfiData.activities && konfiData.activities.length > 0) {
+                if (konfi.activity_dates) {
                   // Hilfsfunktion: Kalenderwoche berechnen
                   function getYearWeek(date) {
                     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -251,10 +251,11 @@ const checkAndAwardBadges = async (konfiId) => {
                     return `${d.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
                   }
                   
-                  // Alle Wochen mit Aktivitäten sammeln
+                  // Aktivitätsdaten in Set einzigartiger Wochen umwandeln
                   const activityWeeks = new Set(
-                    konfiData.activities
-                    .map(activity => getYearWeek(new Date(activity.date)))
+                    konfi.activity_dates
+                    .split(',')
+                    .map(dateStr => getYearWeek(new Date(dateStr)))
                     .filter(week => week && !week.includes('NaN'))
                   );
                   
@@ -292,17 +293,9 @@ const checkAndAwardBadges = async (konfiId) => {
                     }
                   }
                   
-                  current = currentStreak;
-                  description = `${current}/${total} Wochen in Folge`;
-                  console.log('Streak Debug:', { 
-                    sortedWeeks, 
-                    currentStreak, 
-                    activities: konfiData.activities.map(a => ({ name: a.name, date: a.date }))
-                  });
-                } else {
-                  current = 0;
-                  description = `${current}/${total} Wochen in Folge`;
+                  earned = currentStreak >= badge.criteria_value;
                 }
+                processBadgeResult();
                 break;
               
               case 'unique_activities':
