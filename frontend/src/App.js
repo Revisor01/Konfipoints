@@ -3270,9 +3270,13 @@ const KonfiPointsSystem = () => {
           <span className={`px-2 py-1 text-xs rounded ${badge.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
           {badge.is_active ? 'Aktiv' : 'Inaktiv'}
           </span>
-          {badge.is_hidden && (
+          {badge.is_hidden ? (
             <span className="px-2 py-1 text-xs rounded bg-purple-100 text-purple-800">
-            🎭
+            🎭 Versteckt
+            </span>
+          ) : (
+            <span className="px-2 py-1 text-xs rounded bg-blue-100 text-blue-800">
+            👁️ Sichtbar
             </span>
           )}
           <button

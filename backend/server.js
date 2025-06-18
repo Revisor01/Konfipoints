@@ -241,19 +241,48 @@ const checkAndAwardBadges = async (konfiId) => {
               
               case 'streak':
                 if (konfi.activity_dates) {
-                  const dates = konfi.activity_dates.split(',').map(d => new Date(d)).sort((a, b) => b - a);
-                  let currentStreak = 0;
-                  let lastDate = null;
+                  // Hilfsfunktion: Kalenderwoche berechnen
+                  function getYearWeek(date) {
+                    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+                    const dayNum = d.getUTCDay() || 7;
+                    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+                    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+                    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+                    return `${d.getUTCFullYear()}-W${weekNo}`;
+                  }
                   
-                  for (const date of dates) {
-                    if (!lastDate) {
+                  // Aktivitätsdaten in Set einzigartiger Wochen umwandeln
+                  const weekSet = new Set(
+                    konfi.activity_dates
+                    .split(',')
+                    .map(dateStr => getYearWeek(new Date(dateStr)))
+                  );
+                  
+                  // Sortiere Wochen rückwärts (neueste zuerst)
+                  const sortedWeeks = Array.from(weekSet).sort().reverse();
+                  
+                  let currentStreak = 0;
+                  let lastYearWeek = null;
+                  
+                  for (const yearWeek of sortedWeeks) {
+                    const [year, week] = yearWeek.split('-W').map(Number);
+                    if (!lastYearWeek) {
                       currentStreak = 1;
-                      lastDate = date;
+                      lastYearWeek = { year, week };
                     } else {
-                      const daysDiff = Math.floor((lastDate - date) / (1000 * 60 * 60 * 24));
-                      if (daysDiff <= 7) { // Wöchentliche Serie
+                      let expectedWeek = lastYearWeek.week - 1;
+                      let expectedYear = lastYearWeek.year;
+                      
+                      if (expectedWeek === 0) {
+                        expectedYear -= 1;
+                        const dec31 = new Date(Date.UTC(expectedYear, 11, 31));
+                        const lastWeek = getYearWeek(dec31).split('-W')[1];
+                        expectedWeek = parseInt(lastWeek, 10);
+                      }
+                      
+                      if (year === expectedYear && week === expectedWeek) {
                         currentStreak++;
-                        lastDate = date;
+                        lastYearWeek = { year, week };
                       } else {
                         break;
                       }
