@@ -136,6 +136,63 @@ const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = fal
           }
         }
         break;
+      case 'streak':
+        if (konfiData.activities) {
+          // Hilfsfunktion: Kalenderwoche berechnen
+          function getYearWeek(date) {
+            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            const dayNum = d.getUTCDay() || 7;
+            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+            return `${d.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
+          }
+          
+          // Aktivitätsdaten in Set einzigartiger Wochen umwandeln
+          const activityWeeks = new Set(
+            konfiData.activities
+            .map(activity => getYearWeek(new Date(activity.date)))
+            .filter(week => week && !week.includes('NaN'))
+          );
+          
+          // Sortiere Wochen chronologisch (neueste zuerst)
+          const sortedWeeks = Array.from(activityWeeks).sort().reverse();
+          
+          let currentStreak = 0;
+          
+          // Finde den längsten Streak vom neuesten Datum aus
+          if (sortedWeeks.length > 0) {
+            currentStreak = 1; // Erste Woche zählt immer
+            
+            // Prüfe aufeinanderfolgende Wochen rückwärts
+            for (let i = 0; i < sortedWeeks.length - 1; i++) {
+              const thisWeek = sortedWeeks[i];
+              const nextWeek = sortedWeeks[i + 1];
+              
+              // Berechne die erwartete vorherige Woche
+              const [year, week] = thisWeek.split('-W').map(Number);
+              let expectedYear = year;
+              let expectedWeek = week - 1;
+              
+              if (expectedWeek === 0) {
+                expectedYear -= 1;
+                expectedWeek = 52; // Vereinfacht, könnte 53 sein
+              }
+              
+              const expectedWeekStr = `${expectedYear}-W${expectedWeek.toString().padStart(2, '0')}`;
+              
+              if (nextWeek === expectedWeekStr) {
+                currentStreak++;
+              } else {
+                break; // Streak unterbrochen
+              }
+            }
+          }
+          
+          current = currentStreak;
+          description = `${current}/${total} Wochen-Serie`;
+        }
+        break;
       case 'time_based':
         if (badge.criteria_extra && konfiData.activities) {
           try {
