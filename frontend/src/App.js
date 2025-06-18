@@ -177,7 +177,7 @@ const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = fal
       <span className="font-bold">{earnedBadges.length}</span> von <span className="font-bold">{visibleBadges.length}</span> Badges erhalten
       {!isAdmin && badges.some(b => b.is_hidden && !earnedBadgeIds.includes(b.id)) && (
         <div className="text-xs text-purple-600 mt-1">
-        🎭 Versteckte Badges werden erst bei Erreichen angezeigt
+        🎭 Geheime Badges werden erst bei Erreichen angezeigt
         </div>
       )}
       </div>
@@ -213,7 +213,22 @@ const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = fal
         
         {isEarned ? (
           <div className={`text-xs mt-1 ${isHidden ? 'text-purple-600' : 'text-yellow-600'}`}>
-          ✓ {isHidden ? 'Geheim!' : 'Erhalten'}
+          <div>✓ {isHidden ? 'Geheim!' : 'Erhalten'}</div>
+          {(() => {
+            const earnedBadge = earnedBadges.find(b => (b.id || b.badge_id) === badge.id);
+            if (earnedBadge && earnedBadge.earned_at) {
+              const earnedDate = new Date(earnedBadge.earned_at);
+              const day = earnedDate.getDate().toString().padStart(2, '0');
+              const month = (earnedDate.getMonth() + 1).toString().padStart(2, '0');
+              const year = earnedDate.getFullYear();
+              return (
+                <div className="text-xs opacity-75 mt-1">
+                {day}.{month}.{year}
+                </div>
+              );
+            }
+            return null;
+          })()}
           </div>
         ) : progress ? (
           <div className="mt-2">
@@ -238,7 +253,7 @@ const BadgeDisplay = ({ badges, earnedBadges, showProgress = true, isAdmin = fal
         ) : (
           isAdmin && isHidden && (
             <div className="text-xs text-purple-500 mt-1">
-            🎭 Versteckt
+            🎭 Geheim
             </div>
           )
         )}
@@ -773,7 +788,7 @@ const BadgeModal = ({
                 onChange={(e) => setFormData({...formData, is_hidden: e.target.checked})}
                 id="is-hidden"
               />
-              <label htmlFor="is-hidden" className="text-sm">Verstecktes Badge</label>
+              <label htmlFor="is-hidden" className="text-sm">Geheimes Badge</label>
             </div>
           </div>
           
@@ -2859,16 +2874,16 @@ const KonfiPointsSystem = () => {
         </p>
         </div>
         
-        {/* Verbesserte Inline Progress bars - nur Desktop mit mehr Abstand und längeren Balken */}
+        {/* Verbesserte Inline Progress bars */}
         {(showGottesdienstTarget || showGemeindeTarget) && (
-          <div className="hidden md:block mt-4 space-y-3 ml-6" style={{ width: '380px' }}>
+          <div className="hidden md:block mt-4 space-y-3 ml-6" style={{ width: '420px' }}>
           {showGottesdienstTarget && (
             <div className="flex items-center gap-3">
             <BookOpen className="w-4 h-4 text-blue-600 flex-shrink-0" />
             <span className="text-xs text-gray-700 font-medium w-20 flex-shrink-0">Gottesdienst</span>
-            <div className="w-40 bg-gray-200 rounded-full h-3 flex-shrink-0">
+            <div className="w-48 bg-gray-200 rounded-full h-2 flex-shrink-0">
             <div 
-            className={`h-3 rounded-full transition-all ${getProgressColor(konfi.points.gottesdienst, settings.target_gottesdienst)}`}
+            className={`h-2 rounded-full transition-all ${getProgressColor(konfi.points.gottesdienst, settings.target_gottesdienst)}`}
             style={{ width: `${Math.min((konfi.points.gottesdienst / parseInt(settings.target_gottesdienst)) * 100, 100)}%` }}
             ></div>
             </div>
@@ -2881,9 +2896,9 @@ const KonfiPointsSystem = () => {
             <div className="flex items-center gap-3">
             <Heart className="w-4 h-4 text-green-600 flex-shrink-0" />
             <span className="text-xs text-gray-700 font-medium w-20 flex-shrink-0">Gemeinde</span>
-            <div className="w-40 bg-gray-200 rounded-full h-3 flex-shrink-0">
+            <div className="w-48 bg-gray-200 rounded-full h-2 flex-shrink-0">
             <div 
-            className={`h-3 rounded-full transition-all ${getProgressColor(konfi.points.gemeinde, settings.target_gemeinde)}`}
+            className={`h-2 rounded-full transition-all ${getProgressColor(konfi.points.gemeinde, settings.target_gemeinde)}`}
             style={{ width: `${Math.min((konfi.points.gemeinde / parseInt(settings.target_gemeinde)) * 100, 100)}%` }}
             ></div>
             </div>
@@ -2894,7 +2909,6 @@ const KonfiPointsSystem = () => {
           )}
           </div>
         )}
-        </div>
         </div>
         
         <div className="flex items-center gap-6">
@@ -3356,7 +3370,7 @@ const KonfiPointsSystem = () => {
           </span>
           {badge.is_hidden ? (
             <span className="px-2 py-1 text-xs rounded bg-purple-100 text-purple-800">
-            🎭 Versteckt
+            🎭 Geheim
             </span>
           ) : (
             <span className="px-2 py-1 text-xs rounded bg-blue-100 text-blue-800">

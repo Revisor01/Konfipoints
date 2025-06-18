@@ -251,7 +251,7 @@ const checkAndAwardBadges = async (konfiId) => {
                     return `${d.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
                   }
                   
-                  // Aktivitätsdaten in Set einzigartiger Wochen umwandeln  
+                  // Alle Wochen mit Aktivitäten sammeln
                   const activityWeeks = new Set(
                     konfiData.activities
                     .map(activity => getYearWeek(new Date(activity.date)))
@@ -260,37 +260,27 @@ const checkAndAwardBadges = async (konfiId) => {
                   
                   // Sortiere Wochen chronologisch (neueste zuerst)
                   const sortedWeeks = Array.from(activityWeeks).sort().reverse();
-                  
-                  let currentStreak = 0;
                   const currentWeek = getYearWeek(new Date());
                   
-                  // Prüfe ob aktuelle Woche dabei ist
-                  if (sortedWeeks.includes(currentWeek)) {
-                    currentStreak = 1;
+                  let currentStreak = 0;
+                  
+                  // Starte von der aktuellen Woche und gehe rückwärts
+                  let checkWeek = currentWeek;
+                  
+                  while (sortedWeeks.includes(checkWeek)) {
+                    currentStreak++;
                     
-                    // Prüfe rückwärts für aufeinanderfolgende Wochen
-                    for (let i = 0; i < sortedWeeks.length - 1; i++) {
-                      const thisWeek = sortedWeeks[i];
-                      const nextWeek = sortedWeeks[i + 1];
-                      
-                      // Berechne vorherige Woche
-                      const [year, week] = thisWeek.split('-W').map(Number);
-                      let expectedYear = year;
-                      let expectedWeek = week - 1;
-                      
-                      if (expectedWeek === 0) {
-                        expectedYear -= 1;
-                        expectedWeek = 52; // Vereinfacht, könnte 53 sein
-                      }
-                      
-                      const expectedWeekStr = `${expectedYear}-W${expectedWeek.toString().padStart(2, '0')}`;
-                      
-                      if (nextWeek === expectedWeekStr) {
-                        currentStreak++;
-                      } else {
-                        break;
-                      }
+                    // Berechne vorherige Woche
+                    const [year, week] = checkWeek.split('-W').map(Number);
+                    let prevYear = year;
+                    let prevWeek = week - 1;
+                    
+                    if (prevWeek === 0) {
+                      prevYear -= 1;
+                      prevWeek = 52; // Vereinfacht
                     }
+                    
+                    checkWeek = `${prevYear}-W${prevWeek.toString().padStart(2, '0')}`;
                   }
                   
                   current = currentStreak;
