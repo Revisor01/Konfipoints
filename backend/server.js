@@ -240,8 +240,8 @@ const checkAndAwardBadges = async (konfiId) => {
                 break;
               
               case 'streak':
-                if (konfiData.activities) {
-                  // Hilfsfunktion: Kalenderwoche berechnen (gleiche wie im Backend)
+                if (konfi.activity_dates) { // ÄNDERUNG: konfiData → konfi
+                  // Hilfsfunktion: Kalenderwoche berechnen
                   function getYearWeek(date) {
                     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
                     const dayNum = d.getUTCDay() || 7;
@@ -253,8 +253,9 @@ const checkAndAwardBadges = async (konfiId) => {
                   
                   // Aktivitätsdaten in Set einzigartiger Wochen umwandeln
                   const activityWeeks = new Set(
-                    konfiData.activities
-                    .map(activity => getYearWeek(new Date(activity.date)))
+                    konfi.activity_dates // ÄNDERUNG: konfiData → konfi
+                    .split(',')
+                    .map(dateStr => getYearWeek(new Date(dateStr)))
                     .filter(week => week && !week.includes('NaN'))
                   );
                   
@@ -292,9 +293,9 @@ const checkAndAwardBadges = async (konfiId) => {
                     }
                   }
                   
-                  current = currentStreak;
-                  description = `${current}/${total} Wochen-Serie`;
+                  earned = currentStreak >= badge.criteria_value;
                 }
+                processBadgeResult();
                 break;
               
               case 'unique_activities':
