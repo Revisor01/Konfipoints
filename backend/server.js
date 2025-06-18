@@ -198,10 +198,10 @@ const checkAndAwardBadges = async (konfiId) => {
                 if (criteria.required_category && konfi.activity_ids) {
                   // Use existing DB connection instead of creating new one
                   const categoryCountQuery = `
-                    SELECT COUNT(*) as count FROM konfi_activities ka 
-                    JOIN activities a ON ka.activity_id = a.id 
-                    WHERE ka.konfi_id = ? AND a.category = ?
-                  `;
+      SELECT COUNT(*) as count FROM konfi_activities ka 
+      JOIN activities a ON ka.activity_id = a.id 
+      WHERE ka.konfi_id = ? AND a.category = ?
+    `;
                   
                   db.get(categoryCountQuery, [konfiId, criteria.required_category], (err, result) => {
                     if (err) {
@@ -240,7 +240,7 @@ const checkAndAwardBadges = async (konfiId) => {
                 break;
               
               case 'streak':
-                if (konfiData.activities && konfiData.activities.length > 0) {
+                if (konfi.activity_dates) {
                   // Hilfsfunktion: Kalenderwoche berechnen
                   function getYearWeek(date) {
                     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -248,59 +248,57 @@ const checkAndAwardBadges = async (konfiId) => {
                     d.setUTCDate(d.getUTCDate() + 4 - dayNum);
                     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
                     const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-                    return `${d.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
+                    return `${d.getUTCFullYear()}-W${weekNo}`;
                   }
                   
-                  // Alle Wochen mit Aktivitäten sammeln
-                  const activityWeeks = new Set(
-                    konfiData.activities
-                    .map(activity => getYearWeek(new Date(activity.date)))
-                    .filter(week => week && !week.includes('NaN'))
+                  // Aktivitätsdaten in Set einzigartiger Wochen umwandeln
+                  const weekSet = new Set(
+                    konfi.activity_dates
+                    .split(',')
+                    .map(dateStr => getYearWeek(new Date(dateStr)))
                   );
                   
-                  // Sortiere Wochen chronologisch (neueste zuerst)
-                  const sortedWeeks = Array.from(activityWeeks).sort().reverse();
-                  const currentWeek = getYearWeek(new Date());
+                  // Sortiere Wochen rückwärts (neueste zuerst)
+                  const sortedWeeks = Array.from(weekSet).sort().reverse();
                   
                   let currentStreak = 0;
+                  let lastYearWeek = null;
                   
-                  // Starte von der aktuellen Woche und gehe rückwärts
-                  let checkWeek = currentWeek;
-                  
-                  while (sortedWeeks.includes(checkWeek)) {
-                    currentStreak++;
-                    
-                    // Berechne vorherige Woche
-                    const [year, week] = checkWeek.split('-W').map(Number);
-                    let prevYear = year;
-                    let prevWeek = week - 1;
-                    
-                    if (prevWeek === 0) {
-                      prevYear -= 1;
-                      prevWeek = 52; // Vereinfacht
+                  for (const yearWeek of sortedWeeks) {
+                    const [year, week] = yearWeek.split('-W').map(Number);
+                    if (!lastYearWeek) {
+                      currentStreak = 1;
+                      lastYearWeek = { year, week };
+                    } else {
+                      let expectedWeek = lastYearWeek.week - 1;
+                      let expectedYear = lastYearWeek.year;
+                      
+                      if (expectedWeek === 0) {
+                        expectedYear -= 1;
+                        const dec31 = new Date(Date.UTC(expectedYear, 11, 31));
+                        const lastWeek = getYearWeek(dec31).split('-W')[1];
+                        expectedWeek = parseInt(lastWeek, 10);
+                      }
+                      
+                      if (year === expectedYear && week === expectedWeek) {
+                        currentStreak++;
+                        lastYearWeek = { year, week };
+                      } else {
+                        break;
+                      }
                     }
-                    
-                    checkWeek = `${prevYear}-W${prevWeek.toString().padStart(2, '0')}`;
                   }
                   
-                  current = currentStreak;
-                  description = `${current}/${total} Wochen in Folge`;
-                } else {
-                  current = 0;
-                  description = `${current}/${total} Wochen in Folge`;
+                  earned = currentStreak >= badge.criteria_value;
                 }
+                processBadgeResult();
                 break;
               
               case 'unique_activities':
-                if (konfiData.activities) {
-                  const uniqueActivityNames = new Set(konfiData.activities.map(a => a.name));
-                  current = uniqueActivityNames.size;
-                  description = `${current}/${total} verschieden`;
-                  console.log('Unique activities:', Array.from(uniqueActivityNames), 'Count:', current); // Debug
-                } else {
-                  current = 0;
-                  description = `${current}/${total} verschieden`;
-                }
+                const uniqueCount = konfi.activity_ids ? 
+                new Set(konfi.activity_ids.split(',')).size : 0;
+                earned = uniqueCount >= badge.criteria_value;
+                processBadgeResult();
                 break;
               
               default:
