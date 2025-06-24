@@ -946,7 +946,21 @@ app.get('/api/badges', verifyToken, (req, res) => {
   if (req.user.type !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
   }
-  db.all("SELECT cb.*, a.display_name as created_by_name FROM custom_badges cb LEFT JOIN admins a ON cb.created_by = a.id ORDER BY cb.created_at DESC", [], (err, rows) => {
+  
+  const badgeQuery = `
+    SELECT cb.*, a.display_name as created_by_name,
+            COALESCE(bc.earned_count, 0) as earned_count
+    FROM custom_badges cb 
+    LEFT JOIN admins a ON cb.created_by = a.id
+    LEFT JOIN (
+      SELECT badge_id, COUNT(*) as earned_count 
+      FROM konfi_badges 
+      GROUP BY badge_id
+    ) bc ON cb.id = bc.badge_id
+    ORDER BY cb.created_at DESC
+  `;
+  
+  db.all(badgeQuery, [], (err, rows) => {
     if (err) return res.status(500).json({ error: 'Database error' });
     res.json(rows);
   });
@@ -1525,6 +1539,25 @@ app.get('/api/konfis', verifyToken, (req, res) => {
       return res.status(500).json({ error: 'Database error: ' + err.message });
     }
     
+    // Get badge counts for each konfi
+    const badgeCountQuery = `
+      SELECT konfi_id, COUNT(*) as badge_count 
+      FROM konfi_badges 
+      GROUP BY konfi_id
+    `;
+    
+    db.all(badgeCountQuery, [], (err, badgeCounts) => {
+      if (err) {
+        console.error('Database error loading badge counts:', err);
+        return res.status(500).json({ error: 'Database error: ' + err.message });
+      }
+      
+      // Create badge count map
+      const badgeCountMap = {};
+      badgeCounts.forEach(bc => {
+        badgeCountMap[bc.konfi_id] = bc.badge_count;
+      });
+    
     // Get all activities for all konfis
     const activitiesQuery = `
       SELECT ka.konfi_id, a.name, a.points, a.type, ka.completed_date as date, 
@@ -1602,13 +1635,15 @@ app.get('/api/konfis', verifyToken, (req, res) => {
             gemeinde: row.gemeinde_points
           },
           activities: activitiesByKonfi[row.id] || [],
-          bonusPoints: bonusPointsByKonfi[row.id] || []
+          bonusPoints: bonusPointsByKonfi[row.id] || [],
+          badges: [], // Will be populated if needed
+          badgeCount: badgeCountMap[row.id] || 0 // NEW: Badge count
         }));
         
         res.json(konfis);
       });
     });
-  });
+    });
 });
 
 // Get single konfi (admin or konfi themselves) - WITH ADMIN TRACKING AND BADGES
