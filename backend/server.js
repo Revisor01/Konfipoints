@@ -2467,10 +2467,10 @@ app.get('/api/chat/rooms/:roomId/messages', verifyToken, (req, res) => {
   const offset = parseInt(req.query.offset) || 0;
   
   // Check if user has access to this room
-  const accessQuery = userType === 'admin' ? 
+  const accessQuery = req.user.type === 'admin' ?
   "SELECT 1 FROM chat_rooms WHERE id = ?" :
   "SELECT 1 FROM chat_participants WHERE room_id = ? AND user_id = ? AND user_type = ?";
-  const accessParams = req.user.type === 'admin' ? [roomId] : [roomId, req.user.id, req.user.type];
+  const accessParams = req.user.type === 'admin' ? [roomId] : [roomId, userId, req.user.type];
   
   db.get(accessQuery, accessParams, (err, access) => {
     if (err || !access) return res.status(403).json({ error: 'Access denied' });
@@ -2551,10 +2551,10 @@ app.post('/api/chat/rooms/:roomId/messages', chatUpload.single('file'), (req, re
   }
   
   // Check access
-  const accessQuery = userType === 'admin' ? 
+  const accessQuery = req.user.type === 'admin' ? 
   "SELECT 1 FROM chat_rooms WHERE id = ?" :
   "SELECT 1 FROM chat_participants WHERE room_id = ? AND user_id = ? AND user_type = ?";
-  const accessParams = userType === 'admin' ? [roomId] : [roomId, userId, userType];
+  const accessParams = req.user.type === 'admin' ? [roomId] : [roomId, userId, req.user.type];
   
   db.get(accessQuery, accessParams, (err, access) => {
     if (err || !access) return res.status(403).json({ error: 'Access denied' });
