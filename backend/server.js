@@ -1643,7 +1643,6 @@ app.get('/api/konfis', verifyToken, (req, res) => {
         res.json(konfis);
       });
     });
-    });
 });
 
 // Get single konfi (admin or konfi themselves) - WITH ADMIN TRACKING AND BADGES
