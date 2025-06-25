@@ -1519,7 +1519,7 @@ app.delete('/api/jahrgaenge/:id', verifyToken, (req, res) => {
 
 // === KONFIS MANAGEMENT ===
 
-// Get all konfis (admin only) - WITH ADMIN TRACKING
+// Get all konfis (admin only) - FIXED BRACKETS
 app.get('/api/konfis', verifyToken, (req, res) => {
   if (req.user.type !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
@@ -1557,92 +1557,94 @@ app.get('/api/konfis', verifyToken, (req, res) => {
       badgeCounts.forEach(bc => {
         badgeCountMap[bc.konfi_id] = bc.badge_count;
       });
-    
-    // Get all activities for all konfis
-    const activitiesQuery = `
-      SELECT ka.konfi_id, a.name, a.points, a.type, ka.completed_date as date, 
-              COALESCE(adm.display_name, 'Unbekannt') as admin, ka.id
-      FROM konfi_activities ka
-      JOIN activities a ON ka.activity_id = a.id
-      LEFT JOIN admins adm ON ka.admin_id = adm.id
-      ORDER BY ka.completed_date DESC
-    `;
-    
-    // Get all bonus points for all konfis
-    const bonusQuery = `
-      SELECT bp.konfi_id, bp.description, bp.points, bp.type, bp.completed_date as date,
-              COALESCE(adm.display_name, 'Unbekannt') as admin, bp.id
-      FROM bonus_points bp
-      LEFT JOIN admins adm ON bp.admin_id = adm.id
-      ORDER BY bp.completed_date DESC
-    `;
-    
-    db.all(activitiesQuery, [], (err, allActivities) => {
-      if (err) {
-        console.error('Database error loading activities:', err);
-        return res.status(500).json({ error: 'Database error: ' + err.message });
-      }
       
-      db.all(bonusQuery, [], (err, allBonusPoints) => {
+      // Get all activities for all konfis
+      const activitiesQuery = `
+        SELECT ka.konfi_id, a.name, a.points, a.type, ka.completed_date as date, 
+                COALESCE(adm.display_name, 'Unbekannt') as admin, ka.id
+        FROM konfi_activities ka
+        JOIN activities a ON ka.activity_id = a.id
+        LEFT JOIN admins adm ON ka.admin_id = adm.id
+        ORDER BY ka.completed_date DESC
+      `;
+      
+      // Get all bonus points for all konfis
+      const bonusQuery = `
+        SELECT bp.konfi_id, bp.description, bp.points, bp.type, bp.completed_date as date,
+                COALESCE(adm.display_name, 'Unbekannt') as admin, bp.id
+        FROM bonus_points bp
+        LEFT JOIN admins adm ON bp.admin_id = adm.id
+        ORDER BY bp.completed_date DESC
+      `;
+      
+      db.all(activitiesQuery, [], (err, allActivities) => {
         if (err) {
-          console.error('Database error loading bonus points:', err);
+          console.error('Database error loading activities:', err);
           return res.status(500).json({ error: 'Database error: ' + err.message });
         }
         
-        // Group activities and bonus points by konfi_id
-        const activitiesByKonfi = {};
-        const bonusPointsByKonfi = {};
-        
-        allActivities.forEach(activity => {
-          if (!activitiesByKonfi[activity.konfi_id]) {
-            activitiesByKonfi[activity.konfi_id] = [];
+        db.all(bonusQuery, [], (err, allBonusPoints) => {
+          if (err) {
+            console.error('Database error loading bonus points:', err);
+            return res.status(500).json({ error: 'Database error: ' + err.message });
           }
-          activitiesByKonfi[activity.konfi_id].push({
-            name: activity.name,
-            points: activity.points,
-            type: activity.type,
-            date: activity.date,
-            admin: activity.admin,
-            id: activity.id
+          
+          // Group activities and bonus points by konfi_id
+          const activitiesByKonfi = {};
+          const bonusPointsByKonfi = {};
+          
+          allActivities.forEach(activity => {
+            if (!activitiesByKonfi[activity.konfi_id]) {
+              activitiesByKonfi[activity.konfi_id] = [];
+            }
+            activitiesByKonfi[activity.konfi_id].push({
+              name: activity.name,
+              points: activity.points,
+              type: activity.type,
+              date: activity.date,
+              admin: activity.admin,
+              id: activity.id
+            });
           });
-        });
-        
-        allBonusPoints.forEach(bonus => {
-          if (!bonusPointsByKonfi[bonus.konfi_id]) {
-            bonusPointsByKonfi[bonus.konfi_id] = [];
-          }
-          bonusPointsByKonfi[bonus.konfi_id].push({
-            description: bonus.description,
-            points: bonus.points,
-            type: bonus.type,
-            date: bonus.date,
-            admin: bonus.admin,
-            id: bonus.id
+          
+          allBonusPoints.forEach(bonus => {
+            if (!bonusPointsByKonfi[bonus.konfi_id]) {
+              bonusPointsByKonfi[bonus.konfi_id] = [];
+            }
+            bonusPointsByKonfi[bonus.konfi_id].push({
+              description: bonus.description,
+              points: bonus.points,
+              type: bonus.type,
+              date: bonus.date,
+              admin: bonus.admin,
+              id: bonus.id
+            });
           });
+          
+          // Build final result WITH badge counts
+          const konfis = konfisRows.map(row => ({
+            id: row.id,
+            name: row.name,
+            username: row.username,
+            password: row.password_plain,
+            jahrgang: row.jahrgang_name,
+            jahrgang_id: row.jahrgang_id,
+            confirmation_date: row.confirmation_date,
+            points: {
+              gottesdienst: row.gottesdienst_points,
+              gemeinde: row.gemeinde_points
+            },
+            activities: activitiesByKonfi[row.id] || [],
+            bonusPoints: bonusPointsByKonfi[row.id] || [],
+            badges: [], // Will be populated if needed
+            badgeCount: badgeCountMap[row.id] || 0 // NEW: Badge count
+          }));
+          
+          res.json(konfis);
         });
-        
-        // Build final result
-        const konfis = konfisRows.map(row => ({
-          id: row.id,
-          name: row.name,
-          username: row.username,
-          password: row.password_plain,
-          jahrgang: row.jahrgang_name,
-          jahrgang_id: row.jahrgang_id,
-          confirmation_date: row.confirmation_date,
-          points: {
-            gottesdienst: row.gottesdienst_points,
-            gemeinde: row.gemeinde_points
-          },
-          activities: activitiesByKonfi[row.id] || [],
-          bonusPoints: bonusPointsByKonfi[row.id] || [],
-          badges: [], // Will be populated if needed
-          badgeCount: badgeCountMap[row.id] || 0 // NEW: Badge count
-        }));
-        
-        res.json(konfis);
       });
     });
+  });
 });
 
 // Get single konfi (admin or konfi themselves) - WITH ADMIN TRACKING AND BADGES
