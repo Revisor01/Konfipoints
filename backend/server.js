@@ -676,6 +676,68 @@ db.serialize(() => {
     FOREIGN KEY (approved_by) REFERENCES admins (id)
   )`);
 
+  // Chat system tables
+  db.run(`CREATE TABLE IF NOT EXISTS chat_rooms (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('jahrgang', 'admin', 'direct')),
+  jahrgang_id INTEGER,
+  created_by INTEGER,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (jahrgang_id) REFERENCES jahrgaenge (id),
+  FOREIGN KEY (created_by) REFERENCES admins (id)
+)`);
+  
+  db.run(`CREATE TABLE IF NOT EXISTS chat_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  room_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  user_type TEXT NOT NULL CHECK (user_type IN ('admin', 'konfi')),
+  message_type TEXT NOT NULL CHECK (message_type IN ('text', 'image', 'file', 'video', 'poll', 'system')),
+  content TEXT,
+  file_path TEXT,
+  file_name TEXT,
+  file_size INTEGER,
+  reply_to INTEGER,
+  edited_at DATETIME,
+  deleted_at DATETIME,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (room_id) REFERENCES chat_rooms (id),
+  FOREIGN KEY (reply_to) REFERENCES chat_messages (id)
+)`);
+  
+  db.run(`CREATE TABLE IF NOT EXISTS chat_participants (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  room_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  user_type TEXT NOT NULL CHECK (user_type IN ('admin', 'konfi')),
+  last_read_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (room_id) REFERENCES chat_rooms (id)
+)`);
+  
+  db.run(`CREATE TABLE IF NOT EXISTS chat_polls (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  message_id INTEGER NOT NULL,
+  question TEXT NOT NULL,
+  options TEXT NOT NULL, -- JSON array
+  multiple_choice BOOLEAN DEFAULT 0,
+  expires_at DATETIME,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (message_id) REFERENCES chat_messages (id)
+)`);
+  
+  db.run(`CREATE TABLE IF NOT EXISTS chat_poll_votes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  poll_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  user_type TEXT NOT NULL CHECK (user_type IN ('admin', 'konfi')),
+  option_index INTEGER NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (poll_id) REFERENCES chat_polls (id),
+  UNIQUE(poll_id, user_id, user_type, option_index)
+)`);
+  
   console.log('✅ Database schema ensured');
   
   // === DATABASE MIGRATIONS ===
@@ -2277,5 +2339,469 @@ process.on('SIGINT', () => {
       console.log('📝 Database connection closed.');
     }
     process.exit(0);
+  });
+});
+
+// server.js - Chat API Endpoints hinzufügen
+
+// Chat file upload setup
+const chatUpload = multer({ 
+  dest: path.join(uploadsDir, 'chat'),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|pdf|mp4|mov|avi|docx|txt/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Dateityp nicht erlaubt'));
+    }
+  }
+});
+
+// Initialize default chat rooms
+const initializeChatRooms = () => {
+  // Create jahrgang chat rooms
+  db.all("SELECT * FROM jahrgaenge", [], (err, jahrgaenge) => {
+    if (err) return;
+    
+    jahrgaenge.forEach(jahrgang => {
+      db.get("SELECT id FROM chat_rooms WHERE type = 'jahrgang' AND jahrgang_id = ?", [jahrgang.id], (err, room) => {
+        if (!room) {
+          db.run("INSERT INTO chat_rooms (name, type, jahrgang_id, created_by) VALUES (?, 'jahrgang', ?, 1)",
+            [`Jahrgang ${jahrgang.name}`, jahrgang.id], function(err) {
+              if (!err) {
+                // Add all konfis of this jahrgang to the room
+                db.all("SELECT id FROM konfis WHERE jahrgang_id = ?", [jahrgang.id], (err, konfis) => {
+                  if (!err) {
+                    konfis.forEach(konfi => {
+                      db.run("INSERT INTO chat_participants (room_id, user_id, user_type) VALUES (?, ?, 'konfi')",
+                        [this.lastID, konfi.id]);
+                    });
+                  }
+                });
+              }
+            });
+        }
+      });
+    });
+  });
+  
+  // Create admin support room
+  db.get("SELECT id FROM chat_rooms WHERE type = 'admin' AND name = 'Admin Support'", [], (err, room) => {
+    if (!room) {
+      db.run("INSERT INTO chat_rooms (name, type, created_by) VALUES ('Admin Support', 'admin', 1)", function(err) {
+        if (!err) {
+          // Add all admins to the admin room
+          db.all("SELECT id FROM admins", [], (err, admins) => {
+            if (!err) {
+              admins.forEach(admin => {
+                db.run("INSERT INTO chat_participants (room_id, user_id, user_type) VALUES (?, ?, 'admin')",
+                  [this.lastID, admin.id]);
+              });
+            }
+          });
+        }
+      });
+    }
+  });
+};
+
+// Call initialization after database setup
+setTimeout(initializeChatRooms, 2000);
+
+// === CHAT API ENDPOINTS ===
+
+// Get chat rooms for user
+app.get('/api/chat/rooms', verifyToken, (req, res) => {
+  const userId = req.user.id;
+  const userType = req.user.type;
+  
+  let query;
+  let params;
+  
+  if (userType === 'admin') {
+    // Admins see all rooms
+    query = `
+      SELECT r.*, j.name as jahrgang_name,
+              COUNT(CASE WHEN m.created_at > p.last_read_at THEN 1 END) as unread_count,
+              (SELECT content FROM chat_messages WHERE room_id = r.id AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1) as last_message,
+              (SELECT created_at FROM chat_messages WHERE room_id = r.id AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1) as last_message_time
+      FROM chat_rooms r
+      LEFT JOIN jahrgaenge j ON r.jahrgang_id = j.id
+      LEFT JOIN chat_participants p ON r.id = p.room_id AND p.user_id = ? AND p.user_type = ?
+      LEFT JOIN chat_messages m ON r.id = m.room_id AND m.deleted_at IS NULL
+      GROUP BY r.id
+      ORDER BY last_message_time DESC NULLS LAST
+    `;
+    params = [userId, userType];
+  } else {
+    // Konfis see only their rooms
+    query = `
+      SELECT r.*, j.name as jahrgang_name,
+              COUNT(CASE WHEN m.created_at > p.last_read_at THEN 1 END) as unread_count,
+              (SELECT content FROM chat_messages WHERE room_id = r.id AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1) as last_message,
+              (SELECT created_at FROM chat_messages WHERE room_id = r.id AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1) as last_message_time
+      FROM chat_rooms r
+      LEFT JOIN jahrgaenge j ON r.jahrgang_id = j.id
+      INNER JOIN chat_participants p ON r.id = p.room_id AND p.user_id = ? AND p.user_type = ?
+      LEFT JOIN chat_messages m ON r.id = m.room_id AND m.created_at > p.last_read_at AND m.deleted_at IS NULL
+      GROUP BY r.id
+      ORDER BY last_message_time DESC NULLS LAST
+    `;
+    params = [userId, userType];
+  }
+  
+  db.all(query, params, (err, rooms) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.json(rooms);
+  });
+});
+
+// Get messages for a room
+app.get('/api/chat/rooms/:roomId/messages', verifyToken, (req, res) => {
+  const roomId = req.params.roomId;
+  const limit = parseInt(req.query.limit) || 50;
+  const offset = parseInt(req.query.offset) || 0;
+  
+  // Check if user has access to this room
+  const accessQuery = userType === 'admin' ? 
+  "SELECT 1 FROM chat_rooms WHERE id = ?" :
+  "SELECT 1 FROM chat_participants WHERE room_id = ? AND user_id = ? AND user_type = ?";
+  const accessParams = req.user.type === 'admin' ? [roomId] : [roomId, req.user.id, req.user.type];
+  
+  db.get(accessQuery, accessParams, (err, access) => {
+    if (err || !access) return res.status(403).json({ error: 'Access denied' });
+    
+    const messagesQuery = `
+      SELECT m.*, 
+              CASE 
+                WHEN m.user_type = 'admin' THEN a.display_name
+                ELSE k.name
+              END as sender_name,
+              CASE
+                WHEN m.user_type = 'admin' THEN a.username
+                ELSE k.username  
+              END as sender_username,
+              p.question, p.options, p.expires_at, p.multiple_choice
+      FROM chat_messages m
+      LEFT JOIN admins a ON m.user_id = a.id AND m.user_type = 'admin'
+      LEFT JOIN konfis k ON m.user_id = k.id AND m.user_type = 'konfi'
+      LEFT JOIN chat_polls p ON m.id = p.message_id
+      WHERE m.room_id = ? AND m.deleted_at IS NULL
+      ORDER BY m.created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+    
+    db.all(messagesQuery, [roomId, limit, offset], (err, messages) => {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      
+      // Get poll votes for poll messages
+      const pollMessages = messages.filter(m => m.message_type === 'poll');
+      if (pollMessages.length > 0) {
+        const pollIds = pollMessages.map(m => m.id);
+        const votesQuery = `
+          SELECT pv.*, 
+                  CASE 
+                    WHEN pv.user_type = 'admin' THEN a.display_name
+                    ELSE k.name
+                  END as voter_name
+          FROM chat_poll_votes pv
+          LEFT JOIN admins a ON pv.user_id = a.id AND pv.user_type = 'admin'
+          LEFT JOIN konfis k ON pv.user_id = k.id AND pv.user_type = 'konfi'
+          INNER JOIN chat_polls p ON pv.poll_id = p.id
+          WHERE p.message_id IN (${pollIds.map(() => '?').join(',')})
+        `;
+        
+        db.all(votesQuery, pollIds, (err, votes) => {
+          if (!err) {
+            messages.forEach(message => {
+              if (message.message_type === 'poll') {
+                message.votes = votes.filter(v => v.poll_id === message.id);
+                if (message.options) {
+                  try {
+                    message.options = JSON.parse(message.options);
+                  } catch (e) {
+                    message.options = [];
+                  }
+                }
+              }
+            });
+          }
+          res.json(messages.reverse());
+        });
+      } else {
+        res.json(messages.reverse());
+      }
+    });
+  });
+});
+
+// Send message
+app.post('/api/chat/rooms/:roomId/messages', chatUpload.single('file'), (req, res) => {
+  const roomId = req.params.roomId;
+  const { content, message_type = 'text', reply_to } = req.body;
+  const userId = req.user.id;
+  const userType = req.user.type;
+  
+  if (!content && !req.file) {
+    return res.status(400).json({ error: 'Content or file required' });
+  }
+  
+  // Check access
+  const accessQuery = userType === 'admin' ? 
+  "SELECT 1 FROM chat_rooms WHERE id = ?" :
+  "SELECT 1 FROM chat_participants WHERE room_id = ? AND user_id = ? AND user_type = ?";
+  const accessParams = userType === 'admin' ? [roomId] : [roomId, userId, userType];
+  
+  db.get(accessQuery, accessParams, (err, access) => {
+    if (err || !access) return res.status(403).json({ error: 'Access denied' });
+    
+    let filePath = null;
+    let fileName = null;
+    let fileSize = null;
+    let actualMessageType = message_type;
+    
+    if (req.file) {
+      filePath = req.file.filename;
+      fileName = req.file.originalname;
+      fileSize = req.file.size;
+      
+      // Determine message type from file
+      const ext = path.extname(fileName).toLowerCase();
+      if (['.jpg', '.jpeg', '.png', '.gif'].includes(ext)) {
+        actualMessageType = 'image';
+      } else if (['.mp4', '.mov', '.avi'].includes(ext)) {
+        actualMessageType = 'video';
+      } else {
+        actualMessageType = 'file';
+      }
+    }
+    
+    const insertQuery = `
+      INSERT INTO chat_messages (room_id, user_id, user_type, message_type, content, file_path, file_name, file_size, reply_to)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    
+    db.run(insertQuery, [roomId, userId, userType, actualMessageType, content, filePath, fileName, fileSize, reply_to], function(err) {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      
+      // Get the sent message with sender info
+      const messageQuery = `
+        SELECT m.*, 
+                CASE 
+                  WHEN m.user_type = 'admin' THEN a.display_name
+                  ELSE k.name
+                END as sender_name,
+                CASE
+                  WHEN m.user_type = 'admin' THEN a.username
+                  ELSE k.username  
+                END as sender_username
+        FROM chat_messages m
+        LEFT JOIN admins a ON m.user_id = a.id AND m.user_type = 'admin'
+        LEFT JOIN konfis k ON m.user_id = k.id AND m.user_type = 'konfi'
+        WHERE m.id = ?
+      `;
+      
+      db.get(messageQuery, [this.lastID], (err, message) => {
+        if (err) return res.status(500).json({ error: 'Database error' });
+        res.json(message);
+      });
+    });
+  });
+});
+
+// Create poll
+app.post('/api/chat/rooms/:roomId/polls', verifyToken, (req, res) => {
+  if (req.user.type !== 'admin') {
+    return res.status(403).json({ error: 'Only admins can create polls' });
+  }
+  
+  const roomId = req.params.roomId;
+  const { question, options, multiple_choice = false, expires_in_hours } = req.body;
+  
+  if (!question || !options || !Array.isArray(options) || options.length < 2) {
+    return res.status(400).json({ error: 'Question and at least 2 options required' });
+  }
+  
+  const userId = req.user.id;
+  const userType = req.user.type;
+  const expiresAt = expires_in_hours ? 
+  new Date(Date.now() + expires_in_hours * 60 * 60 * 1000).toISOString() : null;
+  
+  // First create the message
+  db.run("INSERT INTO chat_messages (room_id, user_id, user_type, message_type, content) VALUES (?, ?, ?, 'poll', ?)",
+    [roomId, userId, userType, question], function(err) {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      
+      const messageId = this.lastID;
+      
+      // Then create the poll
+      db.run("INSERT INTO chat_polls (message_id, question, options, multiple_choice, expires_at) VALUES (?, ?, ?, ?, ?)",
+        [messageId, question, JSON.stringify(options), multiple_choice ? 1 : 0, expiresAt], function(err) {
+          if (err) return res.status(500).json({ error: 'Database error' });
+          
+          res.json({ 
+            message_id: messageId, 
+            poll_id: this.lastID, 
+            question, 
+            options, 
+            multiple_choice,
+            expires_at: expiresAt 
+          });
+        });
+    });
+});
+
+// Vote on poll
+app.post('/api/chat/polls/:pollId/vote', verifyToken, (req, res) => {
+  const pollId = req.params.pollId;
+  const { option_index } = req.body;
+  const userId = req.user.id;
+  const userType = req.user.type;
+  
+  if (typeof option_index !== 'number') {
+    return res.status(400).json({ error: 'Option index required' });
+  }
+  
+  // Check if poll exists and is not expired
+  db.get("SELECT * FROM chat_polls WHERE id = ?", [pollId], (err, poll) => {
+    if (err || !poll) return res.status(404).json({ error: 'Poll not found' });
+    
+    if (poll.expires_at && new Date(poll.expires_at) < new Date()) {
+      return res.status(400).json({ error: 'Poll has expired' });
+    }
+    
+    // Check if user already voted (for single choice polls)
+    if (!poll.multiple_choice) {
+      db.get("SELECT id FROM chat_poll_votes WHERE poll_id = ? AND user_id = ? AND user_type = ?",
+        [pollId, userId, userType], (err, existingVote) => {
+          if (existingVote) {
+            // Update existing vote
+            db.run("UPDATE chat_poll_votes SET option_index = ? WHERE id = ?",
+              [option_index, existingVote.id], (err) => {
+                if (err) return res.status(500).json({ error: 'Database error' });
+                res.json({ message: 'Vote updated' });
+              });
+          } else {
+            // Create new vote
+            db.run("INSERT INTO chat_poll_votes (poll_id, user_id, user_type, option_index) VALUES (?, ?, ?, ?)",
+              [pollId, userId, userType, option_index], (err) => {
+                if (err) return res.status(500).json({ error: 'Database error' });
+                res.json({ message: 'Vote recorded' });
+              });
+          }
+        });
+    } else {
+      // For multiple choice, just add the vote (duplicate check via UNIQUE constraint)
+      db.run("INSERT INTO chat_poll_votes (poll_id, user_id, user_type, option_index) VALUES (?, ?, ?, ?)",
+        [pollId, userId, userType, option_index], (err) => {
+          if (err) {
+            if (err.message.includes('UNIQUE constraint failed')) {
+              // Remove vote if already exists (toggle behavior)
+              db.run("DELETE FROM chat_poll_votes WHERE poll_id = ? AND user_id = ? AND user_type = ? AND option_index = ?",
+                [pollId, userId, userType, option_index], (err) => {
+                  if (err) return res.status(500).json({ error: 'Database error' });
+                  res.json({ message: 'Vote removed' });
+                });
+            } else {
+              return res.status(500).json({ error: 'Database error' });
+            }
+          } else {
+            res.json({ message: 'Vote recorded' });
+          }
+        });
+    }
+  });
+});
+
+// Mark room as read
+app.put('/api/chat/rooms/:roomId/read', verifyToken, (req, res) => {
+  const roomId = req.params.roomId;
+  const userId = req.user.id;
+  const userType = req.user.type;
+  
+  db.run("UPDATE chat_participants SET last_read_at = CURRENT_TIMESTAMP WHERE room_id = ? AND user_id = ? AND user_type = ?",
+    [roomId, userId, userType], function(err) {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      res.json({ message: 'Marked as read' });
+    });
+});
+
+// Get chat file
+app.get('/api/chat/files/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(uploadsDir, 'chat', filename);
+  
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.status(404).json({ error: 'File not found' });
+  }
+});
+
+// Delete message (admin or sender only)
+app.delete('/api/chat/messages/:messageId', verifyToken, (req, res) => {
+  const messageId = req.params.messageId;
+  const userId = req.user.id;
+  const userType = req.user.type;
+  
+  // Check if user can delete this message
+  let query = "SELECT user_id, user_type FROM chat_messages WHERE id = ?";
+  if (userType !== 'admin') {
+    query += " AND user_id = ? AND user_type = ?";
+  }
+  
+  const params = userType === 'admin' ? [messageId] : [messageId, userId, userType];
+  
+  db.get(query, params, (err, message) => {
+    if (err || !message) return res.status(403).json({ error: 'Cannot delete this message' });
+    
+    db.run("UPDATE chat_messages SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?", [messageId], (err) => {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      res.json({ message: 'Message deleted' });
+    });
+  });
+});
+
+// Get unread counts for all rooms
+app.get('/api/chat/unread-counts', verifyToken, (req, res) => {
+  const userId = req.user.id;
+  const userType = req.user.type;
+  
+  let query;
+  if (userType === 'admin') {
+    query = `
+      SELECT r.id as room_id, COUNT(m.id) as unread_count
+      FROM chat_rooms r
+      LEFT JOIN chat_participants p ON r.id = p.room_id AND p.user_id = ? AND p.user_type = ?
+      LEFT JOIN chat_messages m ON r.id = m.room_id 
+        AND (p.last_read_at IS NULL OR m.created_at > p.last_read_at)
+        AND m.deleted_at IS NULL
+      GROUP BY r.id
+    `;
+  } else {
+    query = `
+      SELECT r.id as room_id, COUNT(m.id) as unread_count
+      FROM chat_rooms r
+      INNER JOIN chat_participants p ON r.id = p.room_id AND p.user_id = ? AND p.user_type = ?
+      LEFT JOIN chat_messages m ON r.id = m.room_id 
+        AND m.created_at > p.last_read_at
+        AND m.deleted_at IS NULL
+      GROUP BY r.id
+    `;
+  }
+  
+  db.all(query, [userId, userType], (err, counts) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    
+    const result = {};
+    counts.forEach(c => {
+      result[c.room_id] = c.unread_count;
+    });
+    
+    res.json(result);
   });
 });
