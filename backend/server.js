@@ -941,27 +941,32 @@ app.post('/api/konfi/login', (req, res) => {
 
 // === BADGE MANAGEMENT ===
 
-// Get all badges (admin only)
+// KORRIGIERTE VERSION - Badge-Zählung in server.js
 app.get('/api/badges', verifyToken, (req, res) => {
   if (req.user.type !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
   }
   
   const badgeQuery = `
-    SELECT cb.*, a.display_name as created_by_name,
-            COALESCE(bc.earned_count, 0) as earned_count
+    SELECT cb.*, 
+            a.display_name as created_by_name,
+            COALESCE(badge_counts.earned_count, 0) as earned_count
     FROM custom_badges cb 
     LEFT JOIN admins a ON cb.created_by = a.id
     LEFT JOIN (
       SELECT badge_id, COUNT(*) as earned_count 
       FROM konfi_badges 
       GROUP BY badge_id
-    ) bc ON cb.id = bc.badge_id
+    ) badge_counts ON cb.id = badge_counts.badge_id
     ORDER BY cb.created_at DESC
   `;
   
   db.all(badgeQuery, [], (err, rows) => {
-    if (err) return res.status(500).json({ error: 'Database error' });
+    if (err) {
+      console.error('Error fetching badges:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    console.log('Badge results:', rows); // Debug-Log
     res.json(rows);
   });
 });
