@@ -2342,7 +2342,7 @@ process.on('SIGINT', () => {
   });
 });
 
-// server.js - Chat API Endpoints hinzufügen
+// === CHAT SYSTEM - KOMPLETTER KORRIGIERTER BEREICH ===
 
 // Chat file upload setup
 const chatUpload = multer({ 
@@ -2414,6 +2414,86 @@ setTimeout(initializeChatRooms, 2000);
 
 // === CHAT API ENDPOINTS ===
 
+// Get admins for direct contact (konfis only)
+app.get('/api/chat/admins', verifyToken, (req, res) => {
+  if (req.user.type !== 'konfi') {
+    return res.status(403).json({ error: 'Konfi access required' });
+  }
+  
+  db.all("SELECT id, display_name, username FROM admins ORDER BY display_name", [], (err, admins) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.json(admins);
+  });
+});
+
+// Create or get direct chat room
+app.post('/api/chat/direct', verifyToken, (req, res) => {
+  const { target_user_id, target_user_type } = req.body;
+  
+  if (!target_user_id || !target_user_type) {
+    return res.status(400).json({ error: 'Target user required' });
+  }
+  
+  // Validate target user type
+  if (!['admin', 'konfi'].includes(target_user_type)) {
+    return res.status(400).json({ error: 'Invalid target user type' });
+  }
+  
+  const user1_type = req.user.type;
+  const user1_id = req.user.id;
+  const user2_type = target_user_type;
+  const user2_id = target_user_id;
+  
+  // Check if room already exists
+  const existingRoomQuery = `
+    SELECT r.id FROM chat_rooms r
+    WHERE r.type = 'direct'
+    AND EXISTS (SELECT 1 FROM chat_participants p1 WHERE p1.room_id = r.id AND p1.user_id = ? AND p1.user_type = ?)
+    AND EXISTS (SELECT 1 FROM chat_participants p2 WHERE p2.room_id = r.id AND p2.user_id = ? AND p2.user_type = ?)
+  `;
+  
+  db.get(existingRoomQuery, [user1_id, user1_type, user2_id, user2_type], (err, existingRoom) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    
+    if (existingRoom) {
+      return res.json({ room_id: existingRoom.id, created: false });
+    }
+    
+    // Get target user name for room title
+    const targetQuery = target_user_type === 'admin' ? 
+    "SELECT display_name as name FROM admins WHERE id = ?" :
+    "SELECT name FROM konfis WHERE id = ?";
+    
+    db.get(targetQuery, [target_user_id], (err, targetUser) => {
+      if (err || !targetUser) return res.status(404).json({ error: 'Target user not found' });
+      
+      const currentUserName = req.user.display_name || req.user.name;
+      const roomName = `${currentUserName} ↔ ${targetUser.name}`;
+      
+      // Create new direct room
+      db.run("INSERT INTO chat_rooms (name, type, created_by) VALUES (?, 'direct', ?)",
+        [roomName, req.user.id], function(err) {
+          if (err) return res.status(500).json({ error: 'Database error' });
+          
+          const roomId = this.lastID;
+          
+          // Add both participants
+          db.run("INSERT INTO chat_participants (room_id, user_id, user_type) VALUES (?, ?, ?)",
+            [roomId, user1_id, user1_type], (err) => {
+              if (err) return res.status(500).json({ error: 'Database error' });
+              
+              db.run("INSERT INTO chat_participants (room_id, user_id, user_type) VALUES (?, ?, ?)",
+                [roomId, user2_id, user2_type], (err) => {
+                  if (err) return res.status(500).json({ error: 'Database error' });
+                  
+                  res.json({ room_id: roomId, created: true });
+                });
+            });
+        });
+    });
+  });
+});
+
 // Get chat rooms for user
 app.get('/api/chat/rooms', verifyToken, (req, res) => {
   const userId = req.user.id;
@@ -2426,7 +2506,7 @@ app.get('/api/chat/rooms', verifyToken, (req, res) => {
     // Admins see all rooms
     query = `
       SELECT r.*, j.name as jahrgang_name,
-              COUNT(CASE WHEN m.created_at > p.last_read_at THEN 1 END) as unread_count,
+              COUNT(CASE WHEN m.created_at > COALESCE(p.last_read_at, '1970-01-01') THEN 1 END) as unread_count,
               (SELECT content FROM chat_messages WHERE room_id = r.id AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1) as last_message,
               (SELECT created_at FROM chat_messages WHERE room_id = r.id AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1) as last_message_time
       FROM chat_rooms r
@@ -2455,7 +2535,10 @@ app.get('/api/chat/rooms', verifyToken, (req, res) => {
   }
   
   db.all(query, params, (err, rooms) => {
-    if (err) return res.status(500).json({ error: 'Database error' });
+    if (err) {
+      console.error('Error fetching chat rooms:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
     res.json(rooms);
   });
 });
@@ -2465,15 +2548,20 @@ app.get('/api/chat/rooms/:roomId/messages', verifyToken, (req, res) => {
   const roomId = req.params.roomId;
   const limit = parseInt(req.query.limit) || 50;
   const offset = parseInt(req.query.offset) || 0;
+  const userId = req.user.id;
+  const userType = req.user.type;
   
   // Check if user has access to this room
-  const accessQuery = req.user.type === 'admin' ?
+  const accessQuery = userType === 'admin' ? 
   "SELECT 1 FROM chat_rooms WHERE id = ?" :
   "SELECT 1 FROM chat_participants WHERE room_id = ? AND user_id = ? AND user_type = ?";
-  const accessParams = req.user.type === 'admin' ? [roomId] : [roomId, userId, req.user.type];
+  const accessParams = userType === 'admin' ? [roomId] : [roomId, userId, userType];
   
   db.get(accessQuery, accessParams, (err, access) => {
-    if (err || !access) return res.status(403).json({ error: 'Access denied' });
+    if (err || !access) {
+      console.error('Access denied for room', roomId, 'user', userId, 'type', userType);
+      return res.status(403).json({ error: 'Access denied' });
+    }
     
     const messagesQuery = `
       SELECT m.*, 
@@ -2496,7 +2584,10 @@ app.get('/api/chat/rooms/:roomId/messages', verifyToken, (req, res) => {
     `;
     
     db.all(messagesQuery, [roomId, limit, offset], (err, messages) => {
-      if (err) return res.status(500).json({ error: 'Database error' });
+      if (err) {
+        console.error('Error fetching messages:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
       
       // Get poll votes for poll messages
       const pollMessages = messages.filter(m => m.message_type === 'poll');
@@ -2551,13 +2642,15 @@ app.post('/api/chat/rooms/:roomId/messages', chatUpload.single('file'), (req, re
   }
   
   // Check access
-  const accessQuery = req.user.type === 'admin' ? 
+  const accessQuery = userType === 'admin' ? 
   "SELECT 1 FROM chat_rooms WHERE id = ?" :
   "SELECT 1 FROM chat_participants WHERE room_id = ? AND user_id = ? AND user_type = ?";
-  const accessParams = req.user.type === 'admin' ? [roomId] : [roomId, userId, req.user.type];
+  const accessParams = userType === 'admin' ? [roomId] : [roomId, userId, userType];
   
   db.get(accessQuery, accessParams, (err, access) => {
-    if (err || !access) return res.status(403).json({ error: 'Access denied' });
+    if (err || !access) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
     
     let filePath = null;
     let fileName = null;
@@ -2586,7 +2679,10 @@ app.post('/api/chat/rooms/:roomId/messages', chatUpload.single('file'), (req, re
     `;
     
     db.run(insertQuery, [roomId, userId, userType, actualMessageType, content, filePath, fileName, fileSize, reply_to], function(err) {
-      if (err) return res.status(500).json({ error: 'Database error' });
+      if (err) {
+        console.error('Error inserting message:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
       
       // Get the sent message with sender info
       const messageQuery = `
@@ -2606,7 +2702,10 @@ app.post('/api/chat/rooms/:roomId/messages', chatUpload.single('file'), (req, re
       `;
       
       db.get(messageQuery, [this.lastID], (err, message) => {
-        if (err) return res.status(500).json({ error: 'Database error' });
+        if (err) {
+          console.error('Error fetching sent message:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
         res.json(message);
       });
     });
@@ -2634,14 +2733,20 @@ app.post('/api/chat/rooms/:roomId/polls', verifyToken, (req, res) => {
   // First create the message
   db.run("INSERT INTO chat_messages (room_id, user_id, user_type, message_type, content) VALUES (?, ?, ?, 'poll', ?)",
     [roomId, userId, userType, question], function(err) {
-      if (err) return res.status(500).json({ error: 'Database error' });
+      if (err) {
+        console.error('Error creating poll message:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
       
       const messageId = this.lastID;
       
       // Then create the poll
       db.run("INSERT INTO chat_polls (message_id, question, options, multiple_choice, expires_at) VALUES (?, ?, ?, ?, ?)",
         [messageId, question, JSON.stringify(options), multiple_choice ? 1 : 0, expiresAt], function(err) {
-          if (err) return res.status(500).json({ error: 'Database error' });
+          if (err) {
+            console.error('Error creating poll:', err);
+            return res.status(500).json({ error: 'Database error' });
+          }
           
           res.json({ 
             message_id: messageId, 
@@ -2725,7 +2830,10 @@ app.put('/api/chat/rooms/:roomId/read', verifyToken, (req, res) => {
   
   db.run("UPDATE chat_participants SET last_read_at = CURRENT_TIMESTAMP WHERE room_id = ? AND user_id = ? AND user_type = ?",
     [roomId, userId, userType], function(err) {
-      if (err) return res.status(500).json({ error: 'Database error' });
+      if (err) {
+        console.error('Error marking room as read:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
       res.json({ message: 'Marked as read' });
     });
 });
@@ -2757,10 +2865,15 @@ app.delete('/api/chat/messages/:messageId', verifyToken, (req, res) => {
   const params = userType === 'admin' ? [messageId] : [messageId, userId, userType];
   
   db.get(query, params, (err, message) => {
-    if (err || !message) return res.status(403).json({ error: 'Cannot delete this message' });
+    if (err || !message) {
+      return res.status(403).json({ error: 'Cannot delete this message' });
+    }
     
     db.run("UPDATE chat_messages SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?", [messageId], (err) => {
-      if (err) return res.status(500).json({ error: 'Database error' });
+      if (err) {
+        console.error('Error deleting message:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
       res.json({ message: 'Message deleted' });
     });
   });
@@ -2795,7 +2908,10 @@ app.get('/api/chat/unread-counts', verifyToken, (req, res) => {
   }
   
   db.all(query, [userId, userType], (err, counts) => {
-    if (err) return res.status(500).json({ error: 'Database error' });
+    if (err) {
+      console.error('Error fetching unread counts:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
     
     const result = {};
     counts.forEach(c => {
@@ -2805,3 +2921,5 @@ app.get('/api/chat/unread-counts', verifyToken, (req, res) => {
     res.json(result);
   });
 });
+
+// === ENDE CHAT SYSTEM ===
