@@ -969,7 +969,7 @@ app.post('/api/admin/login', (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
-    const token = jwt.sign({ id: admin.id, type: 'admin', display_name: admin.display_name }, JWT_SECRET, { expiresIn: '24h' });
+    const token = jwt.sign({ id: admin.id, type: 'admin', display_name: admin.display_name }, JWT_SECRET, { expiresIn: '14d' });
     res.json({ token, user: { id: admin.id, username: admin.username, display_name: admin.display_name, type: 'admin' } });
   });
 });
@@ -2342,7 +2342,7 @@ process.on('SIGINT', () => {
   });
 });
 
-// === CHAT SYSTEM - KOMPLETTER KORRIGIERTER BEREICH ===
+// === CHAT SYSTEM - KORRIGIERT ===
 
 // Chat file upload setup
 const chatUpload = multer({ 
@@ -2588,50 +2588,13 @@ app.get('/api/chat/rooms/:roomId/messages', verifyToken, (req, res) => {
         console.error('Error fetching messages:', err);
         return res.status(500).json({ error: 'Database error' });
       }
-      
-      // Get poll votes for poll messages
-      const pollMessages = messages.filter(m => m.message_type === 'poll');
-      if (pollMessages.length > 0) {
-        const pollIds = pollMessages.map(m => m.id);
-        const votesQuery = `
-          SELECT pv.*, 
-                  CASE 
-                    WHEN pv.user_type = 'admin' THEN a.display_name
-                    ELSE k.name
-                  END as voter_name
-          FROM chat_poll_votes pv
-          LEFT JOIN admins a ON pv.user_id = a.id AND pv.user_type = 'admin'
-          LEFT JOIN konfis k ON pv.user_id = k.id AND pv.user_type = 'konfi'
-          INNER JOIN chat_polls p ON pv.poll_id = p.id
-          WHERE p.message_id IN (${pollIds.map(() => '?').join(',')})
-        `;
-        
-        db.all(votesQuery, pollIds, (err, votes) => {
-          if (!err) {
-            messages.forEach(message => {
-              if (message.message_type === 'poll') {
-                message.votes = votes.filter(v => v.poll_id === message.id);
-                if (message.options) {
-                  try {
-                    message.options = JSON.parse(message.options);
-                  } catch (e) {
-                    message.options = [];
-                  }
-                }
-              }
-            });
-          }
-          res.json(messages.reverse());
-        });
-      } else {
-        res.json(messages.reverse());
-      }
+      res.json(messages.reverse());
     });
   });
 });
 
-// Send message
-app.post('/api/chat/rooms/:roomId/messages', chatUpload.single('file'), (req, res) => {
+// Send message - KORRIGIERT mit verifyToken ZUERST
+app.post('/api/chat/rooms/:roomId/messages', verifyToken, chatUpload.single('file'), (req, res) => {
   const roomId = req.params.roomId;
   const { content, message_type = 'text', reply_to } = req.body;
   const userId = req.user.id;
@@ -2712,116 +2675,6 @@ app.post('/api/chat/rooms/:roomId/messages', chatUpload.single('file'), (req, re
   });
 });
 
-// Create poll
-app.post('/api/chat/rooms/:roomId/polls', verifyToken, (req, res) => {
-  if (req.user.type !== 'admin') {
-    return res.status(403).json({ error: 'Only admins can create polls' });
-  }
-  
-  const roomId = req.params.roomId;
-  const { question, options, multiple_choice = false, expires_in_hours } = req.body;
-  
-  if (!question || !options || !Array.isArray(options) || options.length < 2) {
-    return res.status(400).json({ error: 'Question and at least 2 options required' });
-  }
-  
-  const userId = req.user.id;
-  const userType = req.user.type;
-  const expiresAt = expires_in_hours ? 
-  new Date(Date.now() + expires_in_hours * 60 * 60 * 1000).toISOString() : null;
-  
-  // First create the message
-  db.run("INSERT INTO chat_messages (room_id, user_id, user_type, message_type, content) VALUES (?, ?, ?, 'poll', ?)",
-    [roomId, userId, userType, question], function(err) {
-      if (err) {
-        console.error('Error creating poll message:', err);
-        return res.status(500).json({ error: 'Database error' });
-      }
-      
-      const messageId = this.lastID;
-      
-      // Then create the poll
-      db.run("INSERT INTO chat_polls (message_id, question, options, multiple_choice, expires_at) VALUES (?, ?, ?, ?, ?)",
-        [messageId, question, JSON.stringify(options), multiple_choice ? 1 : 0, expiresAt], function(err) {
-          if (err) {
-            console.error('Error creating poll:', err);
-            return res.status(500).json({ error: 'Database error' });
-          }
-          
-          res.json({ 
-            message_id: messageId, 
-            poll_id: this.lastID, 
-            question, 
-            options, 
-            multiple_choice,
-            expires_at: expiresAt 
-          });
-        });
-    });
-});
-
-// Vote on poll
-app.post('/api/chat/polls/:pollId/vote', verifyToken, (req, res) => {
-  const pollId = req.params.pollId;
-  const { option_index } = req.body;
-  const userId = req.user.id;
-  const userType = req.user.type;
-  
-  if (typeof option_index !== 'number') {
-    return res.status(400).json({ error: 'Option index required' });
-  }
-  
-  // Check if poll exists and is not expired
-  db.get("SELECT * FROM chat_polls WHERE id = ?", [pollId], (err, poll) => {
-    if (err || !poll) return res.status(404).json({ error: 'Poll not found' });
-    
-    if (poll.expires_at && new Date(poll.expires_at) < new Date()) {
-      return res.status(400).json({ error: 'Poll has expired' });
-    }
-    
-    // Check if user already voted (for single choice polls)
-    if (!poll.multiple_choice) {
-      db.get("SELECT id FROM chat_poll_votes WHERE poll_id = ? AND user_id = ? AND user_type = ?",
-        [pollId, userId, userType], (err, existingVote) => {
-          if (existingVote) {
-            // Update existing vote
-            db.run("UPDATE chat_poll_votes SET option_index = ? WHERE id = ?",
-              [option_index, existingVote.id], (err) => {
-                if (err) return res.status(500).json({ error: 'Database error' });
-                res.json({ message: 'Vote updated' });
-              });
-          } else {
-            // Create new vote
-            db.run("INSERT INTO chat_poll_votes (poll_id, user_id, user_type, option_index) VALUES (?, ?, ?, ?)",
-              [pollId, userId, userType, option_index], (err) => {
-                if (err) return res.status(500).json({ error: 'Database error' });
-                res.json({ message: 'Vote recorded' });
-              });
-          }
-        });
-    } else {
-      // For multiple choice, just add the vote (duplicate check via UNIQUE constraint)
-      db.run("INSERT INTO chat_poll_votes (poll_id, user_id, user_type, option_index) VALUES (?, ?, ?, ?)",
-        [pollId, userId, userType, option_index], (err) => {
-          if (err) {
-            if (err.message.includes('UNIQUE constraint failed')) {
-              // Remove vote if already exists (toggle behavior)
-              db.run("DELETE FROM chat_poll_votes WHERE poll_id = ? AND user_id = ? AND user_type = ? AND option_index = ?",
-                [pollId, userId, userType, option_index], (err) => {
-                  if (err) return res.status(500).json({ error: 'Database error' });
-                  res.json({ message: 'Vote removed' });
-                });
-            } else {
-              return res.status(500).json({ error: 'Database error' });
-            }
-          } else {
-            res.json({ message: 'Vote recorded' });
-          }
-        });
-    }
-  });
-});
-
 // Mark room as read
 app.put('/api/chat/rooms/:roomId/read', verifyToken, (req, res) => {
   const roomId = req.params.roomId;
@@ -2836,47 +2689,6 @@ app.put('/api/chat/rooms/:roomId/read', verifyToken, (req, res) => {
       }
       res.json({ message: 'Marked as read' });
     });
-});
-
-// Get chat file
-app.get('/api/chat/files/:filename', (req, res) => {
-  const filename = req.params.filename;
-  const filePath = path.join(uploadsDir, 'chat', filename);
-  
-  if (fs.existsSync(filePath)) {
-    res.sendFile(filePath);
-  } else {
-    res.status(404).json({ error: 'File not found' });
-  }
-});
-
-// Delete message (admin or sender only)
-app.delete('/api/chat/messages/:messageId', verifyToken, (req, res) => {
-  const messageId = req.params.messageId;
-  const userId = req.user.id;
-  const userType = req.user.type;
-  
-  // Check if user can delete this message
-  let query = "SELECT user_id, user_type FROM chat_messages WHERE id = ?";
-  if (userType !== 'admin') {
-    query += " AND user_id = ? AND user_type = ?";
-  }
-  
-  const params = userType === 'admin' ? [messageId] : [messageId, userId, userType];
-  
-  db.get(query, params, (err, message) => {
-    if (err || !message) {
-      return res.status(403).json({ error: 'Cannot delete this message' });
-    }
-    
-    db.run("UPDATE chat_messages SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?", [messageId], (err) => {
-      if (err) {
-        console.error('Error deleting message:', err);
-        return res.status(500).json({ error: 'Database error' });
-      }
-      res.json({ message: 'Message deleted' });
-    });
-  });
 });
 
 // Get unread counts for all rooms
@@ -2920,6 +2732,18 @@ app.get('/api/chat/unread-counts', verifyToken, (req, res) => {
     
     res.json(result);
   });
+});
+
+// Get chat file
+app.get('/api/chat/files/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(uploadsDir, 'chat', filename);
+  
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.status(404).json({ error: 'File not found' });
+  }
 });
 
 // === ENDE CHAT SYSTEM ===
