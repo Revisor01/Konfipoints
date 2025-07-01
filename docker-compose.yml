@@ -14,8 +14,3 @@ services:
       - ./data:/app/data        # 🔄 GEÄNDERT: Lokaler Mount
       - ./uploads:/app/uploads  # 🔄 GEÄNDERT: Lokaler Mount
     restart: unless-stopped
-    networks:
-      - konfi-network
-  networks:
-  konfi-network:
-    driver: bridge
