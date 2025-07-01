@@ -2410,7 +2410,7 @@ const initializeChatRooms = () => {
 };
 
 // Call initialization after database setup
-setTimeout(initializeChatRooms, 2000);
+setImmediate(initializeChatRooms);
 
 // === CHAT API ENDPOINTS ===
 
