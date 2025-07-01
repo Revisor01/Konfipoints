@@ -49,6 +49,8 @@
 	<string>Diese App benötigt Kamerazugriff um Fotos von Aktivitäten zu machen</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Diese App benötigt Zugriff auf die Fotobibliothek um Bilder auszuwählen</string>
+	<key>LSApplicationCategoryType</key>
+	<string></string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Diese App möchte Fotos in der Fotobibliothek speichern</string>
 </dict>

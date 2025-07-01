@@ -25,14 +25,15 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build": "react-scripts build", 
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "cap:add": "npx cap add ios",
     "cap:sync": "npx cap sync",
-    "cap:run": "npx cap run ios",
+    "cap:run": "npx cap run ios", 
     "cap:open": "npx cap open ios",
-    "ios:build": "npm run build && npx cap sync && npx cap open ios"
+    "ios:build": "npm run build && npx cap sync && npx cap open ios",
+    "ios:cloud": "npm run build && npx cap sync ios --no-build && cd ios/App && pod install"
   },
   "eslintConfig": {
     "extends": [
