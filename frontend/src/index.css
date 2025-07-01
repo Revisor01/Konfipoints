@@ -7,7 +7,40 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* 🆕 SAFE AREA CSS HINZUFÜGEN */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Add to your CSS or style block */
+input[type="date"] {
+  position: relative;
+  background: white;
+}
+
+/* iOS Safari specific */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  position: absolute;
+  right: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+/* Better mobile styling */
+@media (max-width: 768px) {
+  input[type="date"] {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+}
+
