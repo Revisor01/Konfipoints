@@ -2,7 +2,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'de.godsapp.konfiquest',
-  appName: 'Konfi Quest',
+  appName: 'KonfiQuest',
   webDir: 'build',
   server: {
     androidScheme: 'https'

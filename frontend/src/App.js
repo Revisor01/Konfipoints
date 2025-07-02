@@ -2,11 +2,21 @@ import React, { useState, useEffect, createPortal, useRef } from 'react';
 import { Preferences } from '@capacitor/preferences';
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { PushNotifications } from '@capacitor/push-notifications';
-import { Toast } from '@capacitor/toast';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
-import axios from 'axios';
 import ChatView from './components/ChatView';
+
+import { 
+  BonusPointsModal, 
+  AdminModal, 
+  EditModal, 
+  DeleteConfirmModal, 
+  RequestManagementModal 
+} from './components/admin/AdminModals';
+
+import { BadgeModal as MobileBadgeModal } from './components/admin/BadgeModal';
+
+import axios from 'axios';
 import { 
   Users, Award, Calendar, Settings, LogIn, LogOut, Plus, Edit, Eye, Star, 
   Loader, RefreshCw, Copy, Check, BookOpen, UserPlus, Trash2, Search, Gift,
@@ -22,29 +32,15 @@ const api = axios.create({
   baseURL: API_BASE_URL,
 });
 
-// Toast Helper Functions - FIXED
-const showToast = async (message, duration = 'short', position = 'bottom') => {
-  // Komplett auskommentiert - keine Toasts mehr
-  // try {
-  //   await Toast.show({
-  //     text: message,
-  //     duration: duration,
-  //     position: position
-  //   });
-  // } catch (error) {
-  //   console.log('Toast:', message);
-  // }
-};
-
-const showSuccessToast = (message) => {
-  // Nur noch Console-Log statt Toast
-  console.log('✅', message);
-};
-
-const showErrorToast = (message) => {
-  // Nur noch Console-Log statt Toast
-  console.error('❌', message);
-};
+// Add token to requests
+api.interceptors.request.use((config) => {
+  // Fallback zu localStorage für Web-Kompatibilität
+  const token = localStorage.getItem('konfi_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 const useBadgeManager = (user, activityRequests) => {
   useEffect(() => {
@@ -333,116 +329,6 @@ const RequestStatusBadge = ({ status }) => {
     <Icon className="w-3 h-3" />
     {config.label}
     </span>
-  );
-};
-
-// RequestManagementModal
-// RequestManagementModal - IMPROVED STYLING
-const RequestManagementModal = ({ 
-  show, 
-  onClose, 
-  request,
-  onUpdateStatus, 
-  loading,
-  onSetCurrentImageData,
-  onSetShowImageViewer
-}) => {
-  const [status, setStatus] = useState(request?.status || 'pending');
-  const [adminComment, setAdminComment] = useState(request?.admin_comment || '');
-  
-  useEffect(() => {
-    if (request) {
-      setStatus(request.status || 'pending');
-      setAdminComment(request.admin_comment || '');
-    }
-  }, [request]);
-  
-  if (!show || !request) return null;
-  
-  const handleSubmit = () => {
-    onUpdateStatus(request.id, status, adminComment);
-    onClose();
-  };
-  
-  return (
-    <Modal
-    show={show}
-    onClose={onClose}
-    title="Antrag bearbeiten"
-    submitButtonText="Speichern"
-    onSubmit={handleSubmit}
-    submitDisabled={loading || (status === 'rejected' && !adminComment.trim())}
-    loading={loading}
-    >
-    <div className="p-6 space-y-6">
-    <div className="bg-gray-50 p-4 rounded-lg">
-    <h4 className="font-bold text-lg">{request.konfi_name}</h4>
-    <p className="text-sm text-gray-600">{request.activity_name} ({request.activity_points} Punkte)</p>
-    <p className="text-xs text-gray-500">{formatDate(request.requested_date)}</p>
-    {request.comment && (
-      <p className="text-xs text-gray-700 italic mt-2 bg-white p-2 rounded">"{request.comment}"</p>
-    )}
-    </div>
-    
-    {request.photo_filename && (
-      <button 
-      onClick={() => {
-        onSetCurrentImageData({
-          url: `${API_BASE_URL}/activity-requests/${request.id}/photo`,
-          title: `Foto für ${request.activity_name}`
-        });
-        onSetShowImageViewer(true);
-      }}
-      className="w-full bg-blue-100 text-blue-700 px-4 py-3 rounded-lg hover:bg-blue-200 flex items-center justify-center gap-2 text-sm font-medium"
-      >
-      <Camera className="w-4 h-4" />
-      Foto anzeigen
-      </button>
-    )}
-    
-    <div>
-    <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-    <div className="relative">
-    <select
-    value={status}
-    onChange={(e) => setStatus(e.target.value)}
-    className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white appearance-none"
-    style={{ 
-      WebkitAppearance: 'none',
-      MozAppearance: 'textfield',
-      maxWidth: '100%',
-      boxSizing: 'border-box'
-    }}
-    >
-    <option value="pending">Ausstehend</option>
-    <option value="approved">Genehmigt</option>
-    <option value="rejected">Abgelehnt</option>
-    </select>
-    
-    {/* iOS-Style dropdown icon */}
-    <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
-    <ChevronDown className="w-5 h-5 text-gray-400" />
-    </div>
-    </div>
-    </div>
-    
-    <div>
-    <label className="block text-sm font-medium text-gray-700 mb-2">
-    Admin-Kommentar {status === 'rejected' && <span className="text-red-500">*</span>}
-    </label>
-    <textarea
-    value={adminComment}
-    onChange={(e) => setAdminComment(e.target.value)}
-    className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-    rows="4"
-    placeholder={status === 'rejected' ? 'Grund für Ablehnung...' : 'Optionaler Kommentar...'}
-    />
-    {status === 'rejected' && !adminComment.trim() && (
-      <p className="text-xs text-red-500 mt-1">Grund für Ablehnung ist erforderlich</p>
-    )}
-    </div>
-    </div>
-    </Modal>
   );
 };
 
@@ -800,7 +686,6 @@ const ImageModal = ({ show, onClose, imageUrl, title }) => {
 };
 
 // Bottom Sheet Component für mobile Aktionen
-// Enhanced Bottom Sheet Component OHNE AUTO-REFRESH
 const BottomSheet = ({ show, onClose, children, title }) => {
   const [startY, setStartY] = useState(0);
   const [currentY, setCurrentY] = useState(0);
@@ -1666,7 +1551,7 @@ const ActivityRequestForm = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.activity_id || !formData.requested_date) {
-      showErrorToast('Bitte Aktivität und Datum auswählen');
+      console.error('Bitte Aktivität und Datum auswählen');
       return;
     }
     
@@ -1806,10 +1691,10 @@ const ActivityRequestForm = ({
           const photoData = await takePicture();
           if (photoData) {
             setFormData({...formData, photo: photoData});
-            showSuccessToast('Foto aufgenommen!');
+            console.log('Foto aufgenommen!');
           }
         } catch (error) {
-          showErrorToast('Fehler beim Foto aufnehmen');
+          console.error('Fehler beim Foto aufnehmen');
         }
       }}
       className="bg-blue-500 text-white px-6 py-4 rounded-lg font-medium w-full flex items-center justify-center gap-2 text-base"
@@ -1829,13 +1714,13 @@ const ActivityRequestForm = ({
           
           // Check file size (5MB limit)
           if (file.size > 5 * 1024 * 1024) {
-            showErrorToast('Foto zu groß (max. 5MB). Bitte wählen Sie ein kleineres Foto.');
+            console.error('Foto zu groß (max. 5MB). Bitte wählen Sie ein kleineres Foto.');
             e.target.value = '';
             return;
           }
           
           setFormData({...formData, photo: file});
-          showSuccessToast('Foto ausgewählt!');
+          console.log('Foto ausgewählt!');
         }
       }}
       className="hidden"
@@ -1995,387 +1880,6 @@ const UniversalModal = ({
   );
 };
 
-
-const MobileBadgeModal = ({ 
-  show, 
-  onClose, 
-  badge, 
-  criteriaTypes, 
-  activities,
-  onSubmit, 
-  loading 
-}) => {
-  const [formData, setFormData] = useState({
-    name: '',
-    icon: '',
-    description: '',
-    criteria_type: '',
-    criteria_value: 1,
-    criteria_extra: {},
-    is_active: true,
-    is_hidden: false
-  });
-  
-  const [categories, setCategories] = useState([]);
-  
-  // Organize criteria types by category
-  const criteriaCategories = [
-    {
-      title: "🎯 Punkte-basierte Kriterien",
-      subtitle: "Einfach zu verwenden, basierend auf Punktzahlen",
-      types: ['total_points', 'gottesdienst_points', 'gemeinde_points', 'both_categories']
-    },
-    {
-      title: "📊 Aktivitäts-basierte Kriterien", 
-      subtitle: "Basierend auf Anzahl und Art der Aktivitäten",
-      types: ['activity_count', 'unique_activities']
-    },
-    {
-      title: "🎯 Spezifische Aktivitäts-Kriterien",
-      subtitle: "Für bestimmte Aktivitäten oder Kombinationen",
-      types: ['specific_activity', 'category_activities', 'activity_combination']
-    },
-    {
-      title: "⏰ Zeit-basierte Kriterien",
-      subtitle: "Für zeitabhängige Leistungen und Serien",
-      types: ['time_based', 'streak']
-    },
-    {
-      title: "💎 Spezial-Kriterien",
-      subtitle: "Für besondere Situationen",
-      types: ['bonus_points']
-    }
-  ];
-  
-  // Load categories when modal opens
-  useEffect(() => {
-    if (show) {
-      api.get('/activity-categories').then(res => {
-        setCategories(res.data);
-      }).catch(err => {
-        console.error('Error loading categories:', err);
-        setCategories([]);
-      });
-    }
-  }, [show]);
-  
-  useEffect(() => {
-    if (badge) {
-      setFormData({
-        name: badge.name || '',
-        icon: badge.icon || '',
-        description: badge.description || '',
-        criteria_type: badge.criteria_type || '',
-        criteria_value: badge.criteria_value || 1,
-        criteria_extra: badge.criteria_extra ? 
-        (typeof badge.criteria_extra === 'string' ? JSON.parse(badge.criteria_extra) : badge.criteria_extra) : {},
-        is_active: badge.is_active == 1, // Korrekte Boolean-Konvertierung
-        is_hidden: badge.is_hidden == 1  // Korrekte Boolean-Konvertierung
-      });
-    } else {
-      setFormData({
-        name: '',
-        icon: '',
-        description: '',
-        criteria_type: '',
-        criteria_value: 1,
-        criteria_extra: {},
-        is_active: true,
-        is_hidden: false
-      });
-    }
-  }, [badge]);
-  
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit(formData);
-  };
-  
-  const getHelpText = () => {
-    if (!formData.criteria_type || !criteriaTypes[formData.criteria_type]) {
-      return null;
-    }
-    return criteriaTypes[formData.criteria_type].help;
-  };
-  
-  const renderExtraFields = () => {
-    switch (formData.criteria_type) {
-      case 'activity_combination':
-        return (
-          <div className="space-y-3">
-          <label className="block text-sm font-medium text-gray-700">Erforderliche Aktivitäten</label>
-          <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3 bg-gray-50">
-          {activities.map(activity => (
-            <label key={activity.id} className="flex items-center gap-3 p-2 hover:bg-white rounded cursor-pointer">
-            <input
-            type="checkbox"
-            checked={(formData.criteria_extra.required_activities || []).includes(activity.name)}
-            onChange={(e) => {
-              const current = formData.criteria_extra.required_activities || [];
-              const updated = e.target.checked 
-              ? [...current, activity.name]
-              : current.filter(name => name !== activity.name);
-              setFormData({
-                ...formData,
-                criteria_extra: { ...formData.criteria_extra, required_activities: updated }
-              });
-            }}
-            className="w-4 h-4"
-            />
-            <span className="text-sm flex-1">{activity.name}</span>
-            <span className="text-xs text-gray-500">{activity.points}P</span>
-            </label>
-          ))}
-          </div>
-          <div className="text-xs text-blue-600 bg-blue-50 p-3 rounded-lg">
-          💡 Alle ausgewählten Aktivitäten müssen mindestens einmal absolviert werden.
-          </div>
-          </div>
-        );
-      
-      case 'category_activities':
-        return (
-          <div className="space-y-3">
-          <label className="block text-sm font-medium text-gray-700">Kategorie wählen</label>
-          <div className="relative">
-          <select
-          value={formData.criteria_extra.required_category || ''}
-          onChange={(e) => setFormData({
-            ...formData,
-            criteria_extra: { ...formData.criteria_extra, required_category: e.target.value }
-          })}
-          className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white appearance-none"
-          >
-          <option value="">Kategorie wählen...</option>
-          {categories.map(category => (
-            <option key={category} value={category}>{category}</option>
-          ))}
-          </select>
-          <ChevronDown className="w-5 h-5 absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
-          </div>
-          <div className="text-xs text-blue-600 bg-blue-50 p-3 rounded-lg">
-          💡 Beispiel: {formData.criteria_value} Aktivitäten aus Kategorie "{formData.criteria_extra.required_category || '...'}"
-          </div>
-          </div>
-        );
-      
-      case 'specific_activity':
-        return (
-          <div className="space-y-3">
-          <label className="block text-sm font-medium text-gray-700">Aktivität wählen</label>
-          <div className="relative">
-          <select
-          value={formData.criteria_extra.required_activity_name || ''}
-          onChange={(e) => setFormData({
-            ...formData,
-            criteria_extra: { ...formData.criteria_extra, required_activity_name: e.target.value }
-          })}
-          className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white appearance-none"
-          >
-          <option value="">Aktivität wählen...</option>
-          {activities.map(activity => (
-            <option key={activity.id} value={activity.name}>
-            {activity.name} ({activity.points} Punkte - {activity.type === 'gottesdienst' ? 'Gottesdienst' : 'Gemeinde'})
-            </option>
-          ))}
-          </select>
-          <ChevronDown className="w-5 h-5 absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
-          </div>
-          <div className="text-xs text-blue-600 bg-blue-50 p-3 rounded-lg">
-          💡 Beispiel: {formData.criteria_value}x "{formData.criteria_extra.required_activity_name || '...'}" absolvieren
-          </div>
-          </div>
-        );
-      
-      case 'time_based':
-        return (
-          <div className="space-y-3">
-          <label className="block text-sm font-medium text-gray-700">Zeitraum (Tage)</label>
-          <input
-          type="number"
-          value={formData.criteria_extra.days || 7}
-          onChange={(e) => setFormData({
-            ...formData,
-            criteria_extra: { ...formData.criteria_extra, days: parseInt(e.target.value) || 7 }
-          })}
-          className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-          min="1"
-          max="365"
-          />
-          <div className="text-xs text-blue-600 bg-blue-50 p-3 rounded-lg">
-          💡 Beispiel: {formData.criteria_value} Aktivitäten in {formData.criteria_extra.days || 7} Tagen
-          </div>
-          </div>
-        );
-      
-      default:
-        return null;
-    }
-  };
-  
-  return (
-    <UniversalModal
-    show={show}
-    onClose={onClose}
-    title={badge ? 'Badge bearbeiten' : 'Neues Badge erstellen'}
-    size="large"
-    preventBodyScroll={true}
-    footer={
-      <div className="space-y-3">
-      <button
-      onClick={handleSubmit}
-      disabled={loading || !formData.name.trim() || !formData.icon.trim() || !formData.criteria_type}
-      className="w-full bg-orange-500 text-white py-4 rounded-xl hover:bg-orange-600 disabled:opacity-50 flex items-center justify-center gap-3 text-base font-medium"
-      >
-      {loading && <Loader className="w-5 h-5 animate-spin" />}
-      <Save className="w-5 h-5" />
-      {badge ? 'Aktualisieren' : 'Erstellen'}
-      </button>
-      <button
-      onClick={onClose}
-      className="w-full bg-gray-200 text-gray-700 py-4 rounded-xl hover:bg-gray-300 flex items-center justify-center gap-3 text-base font-medium"
-      >
-      Abbrechen
-      </button>
-      </div>
-    }
-    >
-    <form onSubmit={handleSubmit} className="p-6 space-y-6">
-    {/* Basic Info */}
-    <div className="grid grid-cols-2 gap-4">
-    <div>
-    <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
-    <input
-    type="text"
-    value={formData.name}
-    onChange={(e) => setFormData({...formData, name: e.target.value})}
-    className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-    placeholder="z.B. All-Rounder"
-    required
-    />
-    </div>
-    <div>
-    <label className="block text-sm font-medium text-gray-700 mb-2">Icon *</label>
-    <input
-    type="text"
-    value={formData.icon}
-    onChange={(e) => setFormData({...formData, icon: e.target.value})}
-    className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-orange-500 focus:border-transparent text-center text-2xl"
-    placeholder="🏆"
-    required
-    />
-    </div>
-    </div>
-    
-    <div>
-    <label className="block text-sm font-medium text-gray-700 mb-2">Beschreibung</label>
-    <textarea
-    value={formData.description}
-    onChange={(e) => setFormData({...formData, description: e.target.value})}
-    className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-    rows="3"
-    placeholder="z.B. Drei verschiedene Aktivitäten in einer Woche"
-    />
-    </div>
-    
-    <div className="grid grid-cols-2 gap-4">
-    <div>
-    <label className="block text-sm font-medium text-gray-700 mb-2">Kriterium *</label>
-    <div className="relative">
-    <select
-    value={formData.criteria_type}
-    onChange={(e) => setFormData({...formData, criteria_type: e.target.value})}
-    className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white appearance-none"
-    required
-    >
-    <option value="">Kriterium wählen...</option>
-    {criteriaCategories.map(category => (
-      <optgroup key={category.title} label={category.title}>
-      {category.types.map(typeKey => (
-        <option key={typeKey} value={typeKey}>
-        {criteriaTypes[typeKey]?.label}
-        </option>
-      ))}
-      </optgroup>
-    ))}
-    </select>
-    <ChevronDown className="w-5 h-5 absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
-    </div>
-    {formData.criteria_type && (
-      <p className="text-xs text-gray-600 mt-2">
-      {criteriaTypes[formData.criteria_type]?.description}
-      </p>
-    )}
-    </div>
-    <div>
-    <label className="block text-sm font-medium text-gray-700 mb-2">Wert *</label>
-    <input
-    type="number"
-    value={formData.criteria_value}
-    onChange={(e) => setFormData({...formData, criteria_value: parseInt(e.target.value) || 1})}
-    className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-    min="1"
-    required
-    />
-    </div>
-    </div>
-    
-    {/* Help Text */}
-    {getHelpText() && (
-      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-      <div className="flex items-start gap-3">
-      <span className="text-yellow-600 text-lg">💡</span>
-      <p className="text-sm text-yellow-800 leading-relaxed">{getHelpText()}</p>
-      </div>
-      </div>
-    )}
-    
-    {/* Extra Fields */}
-    {renderExtraFields()}
-    
-    {/* Toggles */}
-    <div className="space-y-4">
-    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-    <div>
-    <label className="text-base font-medium text-gray-900">Badge aktiv</label>
-    <p className="text-sm text-gray-600">Badge kann von Konfis erreicht werden</p>
-    </div>
-    <button
-    type="button"
-    onClick={() => setFormData({...formData, is_active: !formData.is_active})}
-    className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
-      formData.is_active ? 'bg-green-500' : 'bg-gray-300'
-    }`}
-    >
-    <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
-      formData.is_active ? 'translate-x-7' : 'translate-x-1'
-    }`} />
-    </button>
-    </div>
-    
-    <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg">
-    <div>
-    <label className="text-base font-medium text-gray-900">Geheimes Badge 🎭</label>
-    <p className="text-sm text-gray-600">Erst sichtbar, wenn erreicht</p>
-    </div>
-    <button
-    type="button"
-    onClick={() => setFormData({...formData, is_hidden: !formData.is_hidden})}
-    className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
-      formData.is_hidden ? 'bg-purple-500' : 'bg-gray-300'
-    }`}
-    >
-    <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
-      formData.is_hidden ? 'translate-x-7' : 'translate-x-1'
-    }`} />
-    </button>
-    </div>
-    </div>
-    </form>
-    </UniversalModal>
-  );
-};
-// Statistics Dashboard
 // Statistics Dashboard - MOBILE OPTIMIERT
 const StatisticsDashboard = ({ konfiData, allStats, badges, settings }) => {
   const countdown = getConfirmationCountdown(konfiData.confirmation_date);
@@ -2490,7 +1994,6 @@ const KonfiPointsSystem = () => {
   const [selectedActionJahrgang, setSelectedActionJahrgang] = useState(null);
   const [showAdminActionSheet, setShowAdminActionSheet] = useState(false);
   const [selectedActionAdmin, setSelectedActionAdmin] = useState(null);
-  const [chatUnreadCounts, setChatUnreadCounts] = useState({});
   
   const [isRefreshing, setIsRefreshing] = useState(false);
   
@@ -2558,82 +2061,6 @@ const KonfiPointsSystem = () => {
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [currentImageData, setCurrentImageData] = useState(null);
   
-  const handleLogout = async () => {
-    // Badge löschen
-    try {
-      if (Capacitor.isNativePlatform()) {
-        const { Badge } = await import('@capawesome/capacitor-badge');
-        await Badge.clear();
-      }
-      document.title = 'Konfi-Punkte-System';
-    } catch (error) {
-      console.log('Badge clear failed:', error);
-    }
-    
-    // Gespeicherte Daten löschen
-    await Preferences.remove({ key: 'konfi_token' });
-    await Preferences.remove({ key: 'konfi_user' });
-    
-    // Push-Notifications deaktivieren
-    try {
-      await PushNotifications.removeAllListeners();
-    } catch (err) {
-      console.error('Error removing push listeners:', err);
-    }
-    
-    // Token aus axios entfernen
-    delete api.defaults.headers.Authorization;
-    setUser(null);
-    setKonfis([]);
-    setActivities([]);
-    setJahrgaenge([]);
-    setCurrentView('overview');
-    setSelectedKonfi(null);
-    showSuccessToast('Erfolgreich abgemeldet');
-  };
-  
-  const validateToken = () => {
-    const token = localStorage.getItem('konfi_token');
-    if (!token) return false;
-    
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const now = Date.now() / 1000;
-      
-      if (payload.exp < now) {
-        console.log('Token expired');
-        handleLogout();
-        return false;
-      }
-      return true;
-    } catch (error) {
-      console.error('Invalid token format');
-      handleLogout();
-      return false;
-    }
-  };
-  
-  
-  api.interceptors.response.use(
-    (response) => response,
-    async (error) => {
-      if (error.response?.status === 401) {
-        console.log('Token expired, logging out...');
-        await handleLogout();
-        showErrorToast('Sitzung abgelaufen. Bitte neu anmelden.');
-      }
-      return Promise.reject(error);
-    }
-  );
-  
-  api.interceptors.request.use((config) => {
-    const token = localStorage.getItem('konfi_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  });
-  
   const handleRefresh = async () => {
     if (isRefreshing) return; // Prevent double refresh
     
@@ -2644,9 +2071,9 @@ const KonfiPointsSystem = () => {
       } else {
         await loadKonfiData(user.id);
       }
-      showSuccessToast('Daten aktualisiert!');
+      console.log('Daten aktualisiert!');
     } catch (err) {
-      showErrorToast('Fehler beim Aktualisieren');
+      console.error('Fehler beim Aktualisieren');
     } finally {
       setIsRefreshing(false);
     }
@@ -2774,7 +2201,7 @@ const KonfiPointsSystem = () => {
           } while (blob.size > 5 * 1024 * 1024 && quality > 0.1);
           
           if (blob.size > 5 * 1024 * 1024) {
-            showErrorToast('Foto zu groß. Bitte versuchen Sie es mit einem anderen Foto.');
+            console.error('Foto zu groß. Bitte versuchen Sie es mit einem anderen Foto.');
             resolve(null);
             return;
           }
@@ -2788,7 +2215,7 @@ const KonfiPointsSystem = () => {
       
     } catch (error) {
       console.error('Camera error:', error);
-      showErrorToast('Kamera-Fehler');
+      console.error('Kamera-Fehler');
       return null;
     }
   };
@@ -2848,17 +2275,6 @@ const KonfiPointsSystem = () => {
       
       // Gespeicherten Token laden
       const { value: savedToken } = await Preferences.get({ key: 'konfi_token' });
-      if (savedToken) {
-        // Token-Gültigkeit prüfen
-        const payload = JSON.parse(atob(savedToken.split('.')[1]));
-        const now = Date.now() / 1000;
-        
-        if (payload.exp < now) {
-          console.log('Saved token expired, clearing...');
-          await handleLogout();
-          return;
-        }
-      }
       const { value: savedUser } = await Preferences.get({ key: 'konfi_user' });
       
       if (savedToken && savedUser) {
@@ -2881,7 +2297,7 @@ const KonfiPointsSystem = () => {
           await loadKonfiData(userData.id);
         }
         
-        showSuccessToast(`Willkommen zurück, ${userData.display_name || userData.name}!`);
+        console.log(`Willkommen zurück, ${userData.display_name || userData.name}!`);
       }
     } catch (err) {
       console.error('Auto-login failed:', err);
@@ -2913,20 +2329,20 @@ const KonfiPointsSystem = () => {
         PushNotifications.addListener('pushNotificationReceived', (notification) => {
           console.log('Push received: ', notification);
           
-          // Badge-Animation oder Toast zeigen
+          // Badge-Animation zeigen
           if (notification.data?.type === 'badge') {
-            showSuccessToast(`🏆 Neues Badge erhalten: ${notification.data.badgeName}!`);
+            console.log(`🏆 Neues Badge erhalten: ${notification.data.badgeName}!`);
             // Badge-Daten neu laden
             if (user.type === 'konfi') {
               loadKonfiData(user.id);
             }
           } else if (notification.data?.type === 'activity') {
-            showSuccessToast(`✅ Neue Aktivität bestätigt: +${notification.data.points} Punkte!`);
+            console.log(`✅ Neue Aktivität bestätigt: +${notification.data.points} Punkte!`);
             if (user.type === 'konfi') {
               loadKonfiData(user.id);
             }
           } else if (notification.data?.type === 'request') {
-            showSuccessToast(`📋 Antrag ${notification.data.status}: ${notification.data.activityName}`);
+            console.log(`📋 Antrag ${notification.data.status}: ${notification.data.activityName}`);
             if (user.type === 'konfi') {
               loadKonfiData(user.id);
             } else {
@@ -3015,14 +2431,13 @@ const KonfiPointsSystem = () => {
       
     } catch (err) {
       console.error('Error loading konfi data:', err);
-      showErrorToast('Fehler beim Laden der Konfi-Daten: ' + (err.response?.data?.error || err.message));
+      console.error('Fehler beim Laden der Konfi-Daten: ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
   };
   
   const loadData = async () => {
-    if (!validateToken()) return;
     setLoading(true);
     try {
       const [konfisRes, activitiesRes, settingsRes, jahrgaengeRes, adminsRes, badgesRes, criteriaRes, requestsRes, statsRes, rankingRes] = await Promise.all([
@@ -3055,18 +2470,48 @@ const KonfiPointsSystem = () => {
         setNewKonfiJahrgang(jahrgaengeRes.data[0]?.id || '');
       }
     } catch (err) {
-      if (err.response?.status === 401) {
-        showErrorToast('Sitzung abgelaufen. Bitte neu anmelden.');
-        await handleLogout();
-      } else {
-        showErrorToast('Fehler beim Laden: ' + err.message);
-      }
+      console.error('Fehler beim Laden der Daten: ' + (err.response?.data?.error || err.message));
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
   
-    const togglePasswordVisibility = (id) => {
+  const handleLogout = async () => {
+    // Badge löschen
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const { Badge } = await import('@capawesome/capacitor-badge');
+        await Badge.clear();
+      }
+      document.title = 'Konfi-Punkte-System';
+    } catch (error) {
+      console.log('Badge clear failed:', error);
+    }
+    
+    // Gespeicherte Daten löschen
+    await Preferences.remove({ key: 'konfi_token' });
+    await Preferences.remove({ key: 'konfi_user' });
+    
+    // Push-Notifications deaktivieren
+    try {
+      await PushNotifications.removeAllListeners();
+    } catch (err) {
+      console.error('Error removing push listeners:', err);
+    }
+    
+    // Token aus axios entfernen
+    delete api.defaults.headers.Authorization;
+    setUser(null);
+    setKonfis([]);
+    setActivities([]);
+    setJahrgaenge([]);
+    setCurrentView('overview');
+    setSelectedKonfi(null);
+    console.log('Erfolgreich abgemeldet');
+  };
+  
+  const togglePasswordVisibility = (id) => {
     setPasswordVisibility(prev => ({
       ...prev,
       [id]: !prev[id]
@@ -3081,7 +2526,7 @@ const KonfiPointsSystem = () => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      showSuccessToast('Antrag erfolgreich gestellt!');
+      console.log('Antrag erfolgreich gestellt!');
       setShowRequestModal(false);
       
       // Reload requests immediately
@@ -3095,7 +2540,7 @@ const KonfiPointsSystem = () => {
       // Switch back to requests view to see the new request
       setCurrentView('konfi-requests');
     } catch (err) {
-      showErrorToast('Fehler beim Stellen des Antrags: ' + (err.response?.data?.error || err.message));
+      console.error('Fehler beim Stellen des Antrags: ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
@@ -3110,19 +2555,19 @@ const KonfiPointsSystem = () => {
         admin_comment: adminComment 
       });
       
-      showSuccessToast(`Antrag ${status === 'approved' ? 'genehmigt' : 'abgelehnt'}!`);
+      console.log(`Antrag ${status === 'approved' ? 'genehmigt' : 'abgelehnt'}!`);
       
       // VERBESSERTE BADGE NOTIFICATION
       if (response.data.newBadges && response.data.newBadges.length > 0) {
         response.data.newBadges.forEach(badge => {
-          showSuccessToast(`🏆 Neues Badge erhalten: "${badge.name}" - ${badge.description}!`);
+          console.log(`🏆 Neues Badge erhalten: "${badge.name}" - ${badge.description}!`);
         });
       }
       
       // Reload data
       await loadData();
     } catch (err) {
-      showErrorToast('Fehler beim Aktualisieren: ' + (err.response?.data?.error || err.message));
+      console.error('Fehler beim Aktualisieren: ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
@@ -3133,14 +2578,14 @@ const KonfiPointsSystem = () => {
     setLoading(true);
     try {
       await api.post('/badges', badgeData);
-      showSuccessToast('Badge erfolgreich erstellt!');
+      console.log('Badge erfolgreich erstellt!');
       setShowMobileBadgeModal(false);
       setEditBadge(null);
       
       const badgesRes = await api.get('/badges');
       setBadges(badgesRes.data);
     } catch (err) {
-      showErrorToast('Fehler beim Erstellen des Badges: ' + (err.response?.data?.error || err.message));
+      console.error('Fehler beim Erstellen des Badges: ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
@@ -3150,14 +2595,14 @@ const KonfiPointsSystem = () => {
     setLoading(true);
     try {
       await api.put(`/badges/${editBadge.id}`, badgeData);
-      showSuccessToast('Badge erfolgreich aktualisiert!');
+      console.log('Badge erfolgreich aktualisiert!');
       setShowMobileBadgeModal(false);
       setEditBadge(null);
       
       const badgesRes = await api.get('/badges');
       setBadges(badgesRes.data);
     } catch (err) {
-      showErrorToast('Fehler beim Aktualisieren des Badges: ' + (err.response?.data?.error || err.message));
+      console.error('Fehler beim Aktualisieren des Badges: ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
@@ -3167,12 +2612,12 @@ const KonfiPointsSystem = () => {
     setLoading(true);
     try {
       await api.delete(`/badges/${badgeId}`);
-      showSuccessToast('Badge erfolgreich gelöscht!');
+      console.log('Badge erfolgreich gelöscht!');
       
       const badgesRes = await api.get('/badges');
       setBadges(badgesRes.data);
     } catch (err) {
-      showErrorToast('Fehler beim Löschen des Badges: ' + (err.response?.data?.error || err.message));
+      console.error('Fehler beim Löschen des Badges: ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
@@ -3188,10 +2633,10 @@ const KonfiPointsSystem = () => {
       else if (type === 'jahrgaenge') setJahrgaenge([response.data, ...jahrgaenge]);
       else if (type === 'admins') setAdmins([...admins, response.data]);
       
-      showSuccessToast(`${type.slice(0, -1)} erfolgreich hinzugefügt`);
+      console.log(`${type.slice(0, -1)} erfolgreich hinzugefügt`);
       resetForms();
     } catch (err) {
-      showErrorToast('Fehler beim Hinzufügen: ' + (err.response?.data?.error || err.message));
+      console.error('Fehler beim Hinzufügen: ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
@@ -3202,11 +2647,11 @@ const KonfiPointsSystem = () => {
     try {
       await api.put(`/${type}/${id}`, data);
       await loadData();
-      showSuccessToast(`${type.slice(0, -1)} erfolgreich aktualisiert`);
+      console.log(`${type.slice(0, -1)} erfolgreich aktualisiert`);
       setShowEditModal(false);
       setEditItem(null);
     } catch (err) {
-      showErrorToast('Fehler beim Aktualisieren: ' + (err.response?.data?.error || err.message));
+      console.error('Fehler beim Aktualisieren: ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
@@ -3222,11 +2667,11 @@ const KonfiPointsSystem = () => {
       
       await api.delete(`/${apiRoute}/${id}`);
       await loadData();
-      showSuccessToast(`${type.slice(0, -1)} erfolgreich gelöscht`);
+      console.log(`${type.slice(0, -1)} erfolgreich gelöscht`);
       setShowDeleteModal(false);
       setDeleteItem(null);
     } catch (err) {
-      showErrorToast('Fehler beim Löschen: ' + (err.response?.data?.error || err.message));
+      console.error('Fehler beim Löschen: ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
@@ -3245,7 +2690,7 @@ const KonfiPointsSystem = () => {
   
   const assignActivityToKonfi = async (konfiId, activityId) => {
     if (!activityDate) {
-      showErrorToast('Bitte wählen Sie ein Datum aus');
+      console.error('Bitte wählen Sie ein Datum aus');
       return;
     }
     
@@ -3265,9 +2710,9 @@ const KonfiPointsSystem = () => {
       if (response.data.newBadges > 0) {
         successMsg += ` + ${response.data.newBadges} neue Badge(s)!`;
       }
-      showSuccessToast(successMsg);
+      console.log(successMsg);
     } catch (err) {
-      showErrorToast('Fehler beim Zuordnen: ' + (err.response?.data?.error || err.message));
+      console.error('Fehler beim Zuordnen: ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
@@ -3281,9 +2726,9 @@ const KonfiPointsSystem = () => {
       if (selectedKonfi && selectedKonfi.id === parseInt(konfiId)) {
         await loadKonfiDetails(konfiId);
       }
-      showSuccessToast('Aktivität erfolgreich entfernt');
+      console.log('Aktivität erfolgreich entfernt');
     } catch (err) {
-      showErrorToast('Fehler beim Entfernen: ' + (err.response?.data?.error || err.message));
+      console.error('Fehler beim Entfernen: ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
@@ -3291,7 +2736,7 @@ const KonfiPointsSystem = () => {
   
   const addBonusPoints = async () => {
     if (!bonusDescription.trim() || !bonusPoints || !bonusKonfiId) {
-      showErrorToast('Alle Felder sind erforderlich');
+      console.error('Alle Felder sind erforderlich');
       return;
     }
     
@@ -3318,9 +2763,9 @@ const KonfiPointsSystem = () => {
       if (response.data.newBadges > 0) {
         successMsg += ` + ${response.data.newBadges} neue Badge(s)!`;
       }
-      showSuccessToast(successMsg);
+      console.log(successMsg);
     } catch (err) {
-      showErrorToast('Fehler beim Vergeben: ' + (err.response?.data?.error || err.message));
+      console.error('Fehler beim Vergeben: ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
@@ -3334,9 +2779,9 @@ const KonfiPointsSystem = () => {
       if (selectedKonfi && selectedKonfi.id === parseInt(konfiId)) {
         await loadKonfiDetails(konfiId);
       }
-      showSuccessToast('Zusatzpunkte erfolgreich entfernt');
+      console.log('Zusatzpunkte erfolgreich entfernt');
     } catch (err) {
-      showErrorToast('Fehler beim Entfernen: ' + (err.response?.data?.error || err.message));
+      console.error('Fehler beim Entfernen: ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
@@ -3347,9 +2792,9 @@ const KonfiPointsSystem = () => {
     try {
       const response = await api.post(`/konfis/${konfiId}/regenerate-password`);
       await loadData();
-      showSuccessToast(`Neues Passwort generiert: ${response.data.password}`);
+      console.log(`Neues Passwort generiert: ${response.data.password}`);
     } catch (err) {
-      showErrorToast('Fehler beim Generieren: ' + (err.response?.data?.error || err.message));
+      console.error('Fehler beim Generieren: ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
@@ -3359,9 +2804,9 @@ const KonfiPointsSystem = () => {
     setLoading(true);
     try {
       await api.put('/settings', settings);
-      showSuccessToast('Einstellungen erfolgreich gespeichert');
+      console.log('Einstellungen erfolgreich gespeichert');
     } catch (err) {
-      showErrorToast('Fehler beim Speichern: ' + (err.response?.data?.error || err.message));
+      console.error('Fehler beim Speichern: ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
@@ -3383,10 +2828,10 @@ const KonfiPointsSystem = () => {
       
       setSelectedKonfi(response.data);
       setCurrentView('konfi-detail');
-      showErrorToast('');
+      console.error('');
     } catch (err) {
       console.error('Frontend: Error loading konfi details:', err);
-      showErrorToast('Fehler beim Laden der Konfi-Details: ' + (err.response?.data?.error || err.message));
+      console.error('Fehler beim Laden der Konfi-Details: ' + (err.response?.data?.error || err.message));
       setSelectedKonfi(null);
     } finally {
       setLoading(false);
@@ -3399,7 +2844,7 @@ const KonfiPointsSystem = () => {
       setCopiedPassword(id);
       setTimeout(() => setCopiedPassword(null), 2000);
     } catch (err) {
-      showErrorToast('Fehler beim Kopieren');
+      console.error('Fehler beim Kopieren');
     }
   };
   
@@ -3432,34 +2877,30 @@ const KonfiPointsSystem = () => {
     return 'bg-blue-500';
   };
   
-  // Navigation items - KÜRZERE TITEL
   const navigationItems = user?.type === 'admin' ? [
-    { 
-      id: 'chat', 
-      label: 'Chat', 
-      icon: MessageSquare,
-      notification: Object.values(chatUnreadCounts).reduce((a, b) => a + b, 0)
-    },
-    { id: 'konfis', label: 'Konfis', icon: Users },
-    { id: 'manage-activities', label: 'Aktionen', icon: Calendar },
+    { id: 'chat', label: 'Chat', icon: MessageSquare, notification: 0 },
     { 
       id: 'requests', 
       label: 'Anträge', 
       icon: Clock,
       notification: activityRequests.filter(r => r.status === 'pending').length
     },
-    { id: 'settings', label: 'Mehr', icon: Settings }
+    { id: 'konfis', label: 'Konfis', icon: UserPlus },
+    { id: 'manage-activities', label: 'Aktionen', icon: Calendar },
+    { id: 'manage-badges', label: 'Badges', icon: Award },
+    { id: 'settings', label: 'Einstellungen', icon: Settings }
   ] : [
-    { id: 'konfi-dashboard', label: 'Start', icon: BarChart3 },
+    // Für Konfi:
+    { id: 'konfi-dashboard', label: 'Dashboard', icon: BarChart3 },
+    { id: 'konfi-requests', label: 'Anträge', icon: Upload },
+    // DIESE ZEILE HINZUFÜGEN:
     { 
       id: 'konfi-chat', 
       label: 'Chat', 
       icon: MessageSquare,
-      notification: Object.values(chatUnreadCounts).reduce((a, b) => a + b, 0)
+      notification: 0 // TODO: Später echte Unread-Counts
     },
-    { id: 'konfi-requests', label: 'Anträge', icon: Upload },
-    { id: 'konfi-events', label: 'Events', icon: Calendar },
-    { id: 'konfi-settings', label: 'Profil', icon: Settings }
+    { id: 'konfi-badges', label: 'Badges', icon: Award }
   ];
   
   // Check if targets should be shown (not 0)
@@ -3629,419 +3070,6 @@ const KonfiPointsSystem = () => {
     );
   };
     
-  // BONUS POINTS Modal
-  const BonusPointsModal = ({ 
-    show, 
-    onClose, 
-    konfiId, 
-    konfis, 
-    description, 
-    setDescription, 
-    points, 
-    setPoints, 
-    type, 
-    setType, 
-    date,
-    setDate,
-    onSubmit, 
-    loading 
-  }) => {
-    if (!show) return null;
-    
-    const konfi = konfis.find(k => k.id === konfiId);
-    
-    const handleSubmit = (e) => {
-      e.preventDefault();
-      onSubmit();
-    };
-    
-    return (
-      <UniversalModal
-      show={show}
-      onClose={onClose}
-      title={`Zusatzpunkte für ${konfi?.name}`}
-      size="default"
-      footer={
-        <div className="space-y-3">
-          <button
-            onClick={handleSubmit}
-            disabled={loading || !description.trim()}
-            className="w-full bg-orange-500 text-white py-4 rounded-xl hover:bg-orange-600 disabled:opacity-50 flex items-center justify-center gap-3 text-base font-medium"
-          >
-            {loading && <Loader className="w-5 h-5 animate-spin" />}
-            <Gift className="w-5 h-5" />
-            Vergeben
-          </button>
-          <button
-            onClick={onClose}
-            className="w-full bg-gray-200 text-gray-700 py-4 rounded-xl hover:bg-gray-300 flex items-center justify-center gap-3 text-base font-medium"
-          >
-            Abbrechen
-          </button>
-        </div>
-      }
-    >
-      <form onSubmit={handleSubmit} className="p-6 space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Beschreibung *</label>
-          <input
-            type="text"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-            placeholder="z.B. Besondere Hilfe bei Gemeindefest"
-            autoFocus
-          />
-        </div>
-        
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Punkte *</label>
-            <input
-              type="number"
-              value={points}
-              onChange={(e) => setPoints(parseInt(e.target.value) || 1)}
-              min="1"
-              max="10"
-              className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Typ *</label>
-            <div className="relative">
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-                className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white appearance-none"
-              >
-                <option value="gottesdienst">Gottesdienstlich</option>
-                <option value="gemeinde">Gemeindlich</option>
-              </select>
-              <ChevronDown className="w-5 h-5 absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
-            </div>
-          </div>
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Datum *</label>
-          <div className="relative">
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white appearance-none"
-              style={{ 
-                WebkitAppearance: 'none',
-                MozAppearance: 'textfield'
-              }}
-            />
-            <Calendar className="w-5 h-5 absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
-          </div>
-        </div>
-      </form>
-    </UniversalModal>
-  );
-};
-
-// EDIT Modal (für Konfis, Activities, etc.)
-const EditModal = () => {
-  const [formData, setFormData] = useState(editItem || {});
-  
-  useEffect(() => {
-    setFormData(editItem || {});
-  }, [editItem]);
-  
-  if (!showEditModal) return null;
-  
-  const handleSave = () => {
-    if (editType === 'konfi') {
-      handleUpdate('konfis', formData.id, {
-        name: formData.name,
-        jahrgang_id: formData.jahrgang_id
-      });
-    } else if (editType === 'activity') {
-      handleUpdate('activities', formData.id, {
-        name: formData.name,
-        points: formData.points,
-        type: formData.type,
-        category: formData.category
-      });
-    } else if (editType === 'jahrgang') {
-      handleUpdate('jahrgaenge', formData.id, {
-        name: formData.name,
-        confirmation_date: formData.confirmation_date
-      });
-    } else if (editType === 'admin') {
-      handleUpdate('admins', formData.id, {
-        username: formData.username,
-        display_name: formData.display_name,
-        password: formData.password || undefined
-      });
-    }
-  };
-  
-  const titles = {
-    konfi: 'Konfi bearbeiten',
-    activity: 'Aktivität bearbeiten', 
-    jahrgang: 'Jahrgang bearbeiten',
-    admin: 'Admin bearbeiten'
-  };
-  
-  return (
-    <UniversalModal
-      show={showEditModal}
-      onClose={() => {
-        setShowEditModal(false);
-        setEditItem(null);
-      }}
-      title={titles[editType]}
-      size="default"
-      footer={
-        <div className="space-y-3">
-          <button
-            onClick={handleSave}
-            disabled={loading}
-            className="w-full bg-blue-500 text-white py-4 rounded-xl hover:bg-blue-600 disabled:opacity-50 flex items-center justify-center gap-3 text-base font-medium"
-          >
-            {loading && <Loader className="w-5 h-5 animate-spin" />}
-            <Save className="w-5 h-5" />
-            Speichern
-          </button>
-          <button
-            onClick={() => {
-              setShowEditModal(false);
-              setEditItem(null);
-            }}
-            className="w-full bg-gray-200 text-gray-700 py-4 rounded-xl hover:bg-gray-300 flex items-center justify-center gap-3 text-base font-medium"
-          >
-            Abbrechen
-          </button>
-        </div>
-      }
-    >
-      <div className="p-6 space-y-6">
-        {editType === 'konfi' && (
-          <>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
-              <input
-                type="text"
-                value={formData.name || ''}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Jahrgang *</label>
-              <div className="relative">
-                <select
-                  value={formData.jahrgang_id || ''}
-                  onChange={(e) => setFormData({...formData, jahrgang_id: e.target.value})}
-                  className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white appearance-none"
-                >
-                  {jahrgaenge.map(j => (
-                    <option key={j.id} value={j.id}>{j.name}</option>
-                  ))}
-                </select>
-                <ChevronDown className="w-5 h-5 absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
-              </div>
-            </div>
-          </>
-        )}
-        
-        {editType === 'activity' && (
-          <>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
-              <input
-                type="text"
-                value={formData.name || ''}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Punkte *</label>
-                <input
-                  type="number"
-                  value={formData.points || 1}
-                  onChange={(e) => setFormData({...formData, points: parseInt(e.target.value) || 1})}
-                  min="1"
-                  max="10"
-                  className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Typ *</label>
-                <div className="relative">
-                  <select
-                    value={formData.type || 'gottesdienst'}
-                    onChange={(e) => setFormData({...formData, type: e.target.value})}
-                    className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white appearance-none"
-                  >
-                    <option value="gottesdienst">Gottesdienstlich</option>
-                    <option value="gemeinde">Gemeindlich</option>
-                  </select>
-                  <ChevronDown className="w-5 h-5 absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
-                </div>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Kategorie</label>
-              <input
-                type="text"
-                value={formData.category || ''}
-                onChange={(e) => setFormData({...formData, category: e.target.value})}
-                className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="z.B. sonntagsgottesdienst"
-              />
-            </div>
-          </>
-        )}
-        
-        {editType === 'jahrgang' && (
-          <>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
-              <input
-                type="text"
-                value={formData.name || ''}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="z.B. 2025/26"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Konfirmationsdatum</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={formData.confirmation_date || ''}
-                  onChange={(e) => setFormData({...formData, confirmation_date: e.target.value})}
-                  className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white appearance-none"
-                  style={{ 
-                    WebkitAppearance: 'none',
-                    MozAppearance: 'textfield'
-                  }}
-                />
-                <Calendar className="w-5 h-5 absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
-              </div>
-            </div>
-          </>
-        )}
-        
-        {editType === 'admin' && (
-          <>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Benutzername *</label>
-              <input
-                type="text"
-                value={formData.username || ''}
-                onChange={(e) => setFormData({...formData, username: e.target.value})}
-                className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Anzeigename *</label>
-              <input
-                type="text"
-                value={formData.display_name || ''}
-                onChange={(e) => setFormData({...formData, display_name: e.target.value})}
-                className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Neues Passwort (optional)</label>
-              <input
-                type="password"
-                value={formData.password || ''}
-                onChange={(e) => setFormData({...formData, password: e.target.value})}
-                className="w-full p-4 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Leer lassen für keine Änderung"
-              />
-            </div>
-          </>
-        )}
-      </div>
-    </UniversalModal>
-  );
-};
-
-// DELETE Confirmation Modal
-const DeleteConfirmModal = () => {
-  if (!showDeleteModal) return null;
-  
-  return (
-    <UniversalModal
-      show={showDeleteModal}
-      onClose={() => {
-        setShowDeleteModal(false);
-        setDeleteItem(null);
-      }}
-      title="Löschen bestätigen"
-      size="small"
-      footer={
-        <div className="space-y-3">
-          <button
-            onClick={() => handleDelete(deleteType, deleteItem.id)}
-            disabled={loading}
-            className="w-full bg-red-500 text-white py-4 rounded-xl hover:bg-red-600 disabled:opacity-50 flex items-center justify-center gap-3 text-base font-medium"
-          >
-            {loading && <Loader className="w-5 h-5 animate-spin" />}
-            <Trash2 className="w-5 h-5" />
-            Löschen
-          </button>
-          <button
-            onClick={() => {
-              setShowDeleteModal(false);
-              setDeleteItem(null);
-            }}
-            className="w-full bg-gray-200 text-gray-700 py-4 rounded-xl hover:bg-gray-300 flex items-center justify-center gap-3 text-base font-medium"
-          >
-            Abbrechen
-          </button>
-        </div>
-      }
-    >
-      <div className="p-6">
-        <div className="flex items-center gap-4 mb-4">
-          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-            <AlertTriangle className="w-6 h-6 text-red-600" />
-          </div>
-          <div className="flex-1">
-            <h4 className="font-medium text-gray-900">Wirklich löschen?</h4>
-            <p className="text-sm text-gray-600 mt-1">
-              <strong>{deleteItem?.name || deleteItem?.username}</strong> wird unwiderruflich gelöscht.
-            </p>
-          </div>
-        </div>
-        
-        {deleteType === 'konfi' && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-            <p className="text-sm text-red-800">
-              ⚠️ Alle Aktivitäten und Punkte werden ebenfalls gelöscht.
-            </p>
-          </div>
-        )}
-        {deleteType === 'jahrgang' && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-            <p className="text-sm text-yellow-800">
-              ℹ️ Dies ist nur möglich wenn keine Konfis zugeordnet sind.
-            </p>
-          </div>
-        )}
-        {deleteType === 'activity' && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-            <p className="text-sm text-yellow-800">
-              ℹ️ Dies ist nur möglich wenn die Aktivität nie zugeordnet wurde.
-            </p>
-          </div>
-        )}
-      </div>
-    </UniversalModal>
-  );
-};
   
   const LoginView = () => {
     const [loginData, setLoginData] = useState({ username: '', password: '' });
@@ -4050,7 +3078,7 @@ const DeleteConfirmModal = () => {
     const handleLoginSubmit = async (e) => {
       e.preventDefault();
       if (!loginData.username || !loginData.password) {
-        showErrorToast('Bitte alle Felder ausfüllen');
+        console.error('Bitte alle Felder ausfüllen');
         return;
       }
       
@@ -4095,9 +3123,9 @@ const DeleteConfirmModal = () => {
           await loadKonfiData(userData.id);
         }
         
-        showSuccessToast(`Willkommen, ${userData.display_name || userData.name || userData.username}!`);
+        console.log(`Willkommen, ${userData.display_name || userData.name || userData.username}!`);
       } catch (err) {
-        showErrorToast(err.message || 'Anmeldung fehlgeschlagen');
+        console.error(err.message || 'Anmeldung fehlgeschlagen');
       } finally {
         setLoginLoading(false);
       }
@@ -4181,6 +3209,13 @@ const DeleteConfirmModal = () => {
           <LoginView />
         </div>
         
+        <div className="bg-white border-t mt-auto">
+          <div className="max-w-md mx-auto px-4 py-3">
+            <div className="text-center text-xs text-gray-500">
+              © 2025 Pastor Simon Luthe • Konfi-Punkte-System v2.0.0
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -4300,19 +3335,6 @@ if (user.type === 'konfi') {
               <Loader className="w-8 h-8 animate-spin text-blue-500" />
             </div>
           )}
-
-{currentView === 'konfi-chat' && user?.type === 'konfi' && (
-  <div className="space-y-4 pt-10">
-    <ChatView
-      user={user}
-      api={api}
-      showSuccessToast={showSuccessToast}
-      showErrorToast={showErrorToast}
-      formatDate={formatDate}
-      isAdmin={false}
-    />
-  </div>
-)}
           
           {/* Konfi Dashboard - STANDARDISIERT */}
           {currentView === 'konfi-dashboard' && selectedKonfi && (
@@ -4453,6 +3475,18 @@ if (user.type === 'konfi') {
             </div>
           )}
           
+          {/* KONFI CHAT - NACH den anderen Konfi-Views einfügen */}
+{currentView === 'konfi-chat' && user?.type === 'konfi' && (
+  <div className="h-full">
+    <ChatView
+      user={user}
+      api={api}
+      formatDate={formatDate}
+      isAdmin={false}
+    />
+  </div>
+)}
+
           {/* Konfi Requests - STANDARDISIERT */}
           {currentView === 'konfi-requests' && (
             <div className="space-y-4">
@@ -4573,42 +3607,35 @@ if (user.type === 'konfi') {
       </div>
       
       {/* Bottom Tab Navigation - STANDARDISIERT */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-lg safe-area-bottom z-40">
-        <div className="flex justify-around items-center py-2 px-2">
-          {navigationItems.map(({ id, label, icon: Icon, notification }) => (
-            <button
-              key={id}
-              onClick={() => {
-                setCurrentView(id);
-                setMobileMenuOpen(false);
-              }}
-              className={`flex flex-col items-center justify-center py-3 px-2 min-w-0 flex-1 transition-colors relative ${
-          currentView === id 
-          ? 'text-blue-600' 
-          : 'text-gray-400'
-        }`}
-            >
-              <div className="relative">
-                <Icon className={`w-5 h-5 ${currentView === id ? 'text-blue-600' : 'text-gray-400'}`} />
-                {notification > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold text-[10px]">
-                    {notification > 9 ? '9+' : notification}
-                  </span>
-                )}
-              </div>
-              <span className={`text-[10px] font-medium truncate max-w-full leading-tight mt-1 ${
-          currentView === id ? 'text-blue-600' : 'text-gray-400'
-        }`}>
-                {label}
-              </span>
-            </button>
-          ))}
-        </div>
+    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-lg z-40 safe-area-bottom">
+    <div className="flex justify-around items-center py-2 px-2">
+    {navigationItems.map(({ id, label, icon: Icon, notification }) => (
+      <button
+      key={id}
+      onClick={() => {
+        setCurrentView(id);
+        setMobileMenuOpen(false);
+      }}
+      className={`flex flex-col items-center justify-center py-3 px-2 min-w-0 flex-1 transition-colors relative ${
+        currentView === id ? 'text-blue-600' : 'text-gray-400'
+      }`}
+      >
+      <div className="relative">
+      <Icon className="w-5 h-5" />
+      {notification > 0 && (
+        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold text-[10px]">
+        {notification > 9 ? '9+' : notification}
+        </span>
+      )}
       </div>
-      
-      {/* Footer */}
-      <div className="bg-white border-t mt-auto pb-20">
-      </div>
+      <span className="text-[10px] font-medium truncate max-w-full leading-tight mt-1">
+      {label}
+      </span>
+      </button>
+    ))}
+    </div>
+    </div>
+
     </div>
   );
 }
@@ -4652,7 +3679,43 @@ if (user.type === 'konfi') {
       onSubmit={addBonusPoints}
       loading={loading}
       />
-      <EditModal />
+      <EditModal 
+      show={showEditModal}
+      onClose={() => {
+        setShowEditModal(false);
+        setEditItem(null);
+      }}
+      editType={editType}
+      editItem={editItem}
+      jahrgaenge={jahrgaenge}
+      onSave={(type, id, data) => {
+        if (type === 'konfi') {
+          handleUpdate('konfis', id, {
+            name: data.name,
+            jahrgang_id: data.jahrgang_id
+          });
+        } else if (type === 'activity') {
+          handleUpdate('activities', id, {
+            name: data.name,
+            points: data.points,
+            type: data.type,
+            category: data.category
+          });
+        } else if (type === 'jahrgang') {
+          handleUpdate('jahrgaenge', id, {
+            name: data.name,
+            confirmation_date: data.confirmation_date
+          });
+        } else if (type === 'admin') {
+          handleUpdate('admins', id, {
+            username: data.username,
+            display_name: data.display_name,
+            password: data.password || undefined
+          });
+        }
+      }}
+      loading={loading}
+      />
       <AdminModal 
       show={showAdminModal}
       onClose={() => {
@@ -4908,22 +3971,9 @@ if (user.type === 'konfi') {
   </div>
 )}
 
-{currentView === 'chat' && user?.type === 'admin' && (
-  <div className="space-y-4 pt-10">
-    <ChatView
-      user={user}
-      api={api}
-      showSuccessToast={showSuccessToast}
-      showErrorToast={showErrorToast}
-      formatDate={formatDate}
-      isAdmin={true}
-    />
-  </div>
-)}
-
       {/* REQUESTS MANAGEMENT */}
       {currentView === 'requests' && (
-        <div className="space-y-4 pt-10">
+        <div className="space-y-4">
         {/* Action Sheets */}
         <RequestActionSheet
         show={showRequestActionSheet}
@@ -5434,6 +4484,18 @@ if (user.type === 'konfi') {
         </div>
       )}
       
+      {/* ADMIN CHAT - NACH den anderen Admin-Views einfügen */}
+{currentView === 'chat' && user?.type === 'admin' && (
+  <div className="h-full">
+    <ChatView
+      user={user}
+      api={api}
+      formatDate={formatDate}
+      isAdmin={true}
+    />
+  </div>
+)}
+
       {/* SETTINGS MIT JAHRGÄNGEN - VERBESSERT */}
 
 {currentView === 'settings' && (

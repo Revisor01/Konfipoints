@@ -1,6 +1,6 @@
 // ChatView.js
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Users, Plus, Settings, Search, Bell, BellOff } from 'lucide-react';
+import { MessageSquare, Users, Plus, Settings, Search, Bell, BellOff, MessageCircle } from 'lucide-react';
 import ChatRoom from './ChatRoom';
 import CreateChatModal from './CreateChatModal';
 
@@ -98,110 +98,124 @@ const ChatView = ({
   }
 
   return (
-    <div className="flex flex-col h-full max-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 p-4 flex-shrink-0">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-            <MessageSquare className="w-6 h-6 text-blue-500" />
-            Chat
-          </h1>
-          
-          <div className="flex gap-2">
-            {isAdmin && (
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition-colors"
-                title="Neuen Chat erstellen"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Search */}
-        <div className="relative">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Chats durchsuchen..."
-            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-          />
-        </div>
+    <div className="flex flex-col h-full bg-gray-50">
+    {/* Fixierter Header */}
+    <div className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-40 safe-area-top">
+    <div className="p-4">
+    <div className="flex items-center justify-between mb-4">
+    <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+    <MessageSquare className="w-6 h-6 text-blue-500" />
+    Chat
+    </h1>
+    
+    <div className="flex gap-2">
+    {isAdmin && (
+      <button
+      onClick={() => setShowCreateModal(true)}
+      className="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition-colors"
+      title="Neuen Chat erstellen"
+      >
+      <Plus className="w-5 h-5" />
+      </button>
+    )}
+    
+    <button
+    onClick={() => setShowAdminContact(true)}
+    className="bg-purple-500 text-white p-2 rounded-lg hover:bg-purple-600 transition-colors"
+    title="Admin kontaktieren"
+    >
+    <MessageCircle className="w-5 h-5" />
+    </button>
+    </div>
+    </div>
+    
+    {/* Search */}
+    <div className="relative">
+    <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+    <input
+    type="text"
+    value={searchTerm}
+    onChange={(e) => setSearchTerm(e.target.value)}
+    placeholder="Chats durchsuchen..."
+    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
+    />
+    </div>
+    </div>
+    </div>
+    
+    {/* Scrollbare Chat-Liste */}
+    <div 
+    className="flex-1 overflow-y-auto"
+    style={{ 
+      paddingTop: '140px', // Header-Höhe
+      paddingBottom: '80px', // Bottom Navigation
+      height: '100vh'
+    }}
+    >
+    {loading ? (
+      <div className="flex items-center justify-center py-8">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
       </div>
-
-      {/* Room List */}
-      <div className="flex-1 overflow-y-auto">
-        {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-          </div>
-        ) : filteredRooms.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-            <p>Keine Chats gefunden</p>
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className="text-blue-500 hover:text-blue-700 mt-2 text-sm"
-              >
-                Filter zurücksetzen
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-200">
-            {filteredRooms.map(room => (
-              <ChatRoomItem
-                key={room.id}
-                room={room}
-                unreadCount={unreadCounts[room.id] || 0}
-                onClick={() => handleRoomSelect(room)}
-                formatDate={formatDate}
-              />
-            ))}
-          </div>
-        )}
+    ) : filteredRooms.length === 0 ? (
+      <div className="text-center py-12 text-gray-500 px-4">
+      <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+      <p>Keine Chats gefunden</p>
+      {searchTerm && (
+        <button
+        onClick={() => setSearchTerm('')}
+        className="text-blue-500 hover:text-blue-700 mt-2 text-sm"
+        >
+        Filter zurücksetzen
+        </button>
+      )}
       </div>
-
-      {/* Create Chat Modal */}
-      {showCreateModal && (
-        <CreateChatModal
-          show={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
-          user={user}
-          api={api}
-          onChatCreated={() => {
-            setShowCreateModal(false);
-            loadRooms();
-            showSuccessToast('Chat erstellt!');
-          }}
-          showErrorToast={showErrorToast}
+    ) : (
+      <div className="divide-y divide-gray-200 bg-white">
+      {filteredRooms.map(room => (
+        <ChatRoomItem
+        key={room.id}
+        room={room}
+        unreadCount={unreadCounts[room.id] || 0}
+        onClick={() => handleRoomSelect(room)}
+        formatDate={formatDate}
         />
-      )}
-
-      {/* Admin Contact Modal */}
-      {showAdminContact && (
-        <AdminContactModal
-          show={showAdminContact}
-          onClose={() => setShowAdminContact(false)}
-          api={api}
-          onSelectAdmin={(roomId) => {
-            setShowAdminContact(false);
-            // Find and select the room
-            const room = rooms.find(r => r.id === roomId);
-            if (room) handleRoomSelect(room);
-          }}
-        />
-      )}
+      ))}
+      </div>
+    )}
+    </div>
+    
+    {/* Modals */}
+    {showCreateModal && (
+      <CreateChatModal
+      show={showCreateModal}
+      onClose={() => setShowCreateModal(false)}
+      user={user}
+      api={api}
+      onChatCreated={() => {
+        setShowCreateModal(false);
+        loadRooms();
+        showSuccessToast('Chat erstellt!');
+      }}
+      showErrorToast={showErrorToast}
+      />
+    )}
+    
+    {showAdminContact && (
+      <AdminContactModal
+      show={showAdminContact}
+      onClose={() => setShowAdminContact(false)}
+      api={api}
+      onSelectAdmin={(roomId) => {
+        setShowAdminContact(false);
+        const room = rooms.find(r => r.id === roomId);
+        if (room) handleRoomSelect(room);
+      }}
+      />
+    )}
     </div>
   );
 };
 
-// KORRIGIERTE AdminContactModal mit api prop
 const AdminContactModal = ({ show, onClose, api, onSelectAdmin }) => {
   const [admins, setAdmins] = useState([]);
   
