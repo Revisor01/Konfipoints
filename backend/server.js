@@ -2681,13 +2681,27 @@ app.put('/api/chat/rooms/:roomId/read', verifyToken, (req, res) => {
   const userId = req.user.id;
   const userType = req.user.type;
   
+  // First try to update existing participant record
   db.run("UPDATE chat_participants SET last_read_at = CURRENT_TIMESTAMP WHERE room_id = ? AND user_id = ? AND user_type = ?",
     [roomId, userId, userType], function(err) {
       if (err) {
         console.error('Error marking room as read:', err);
         return res.status(500).json({ error: 'Database error' });
       }
-      res.json({ message: 'Marked as read' });
+      
+      // If no rows were affected, insert a new participant record
+      if (this.changes === 0) {
+        db.run("INSERT INTO chat_participants (room_id, user_id, user_type, last_read_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)",
+          [roomId, userId, userType], function(insertErr) {
+            if (insertErr) {
+              console.error('Error inserting participant record:', insertErr);
+              return res.status(500).json({ error: 'Database error' });
+            }
+            res.json({ message: 'Marked as read' });
+          });
+      } else {
+        res.json({ message: 'Marked as read' });
+      }
     });
 });
 
