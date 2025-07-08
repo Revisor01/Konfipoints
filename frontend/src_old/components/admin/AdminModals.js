@@ -3,6 +3,7 @@ import {
   Loader, Plus, Save, X, Edit, Gift, AlertTriangle, Trash2,
   Eye, EyeOff, Camera, Clock, CheckCircle, XCircle
 } from 'lucide-react';
+import Modal from '../Modal';
 
 // Bonus Points Modal
 export const BonusPointsModal = ({ 
@@ -21,82 +22,70 @@ export const BonusPointsModal = ({
   onSubmit, 
   loading 
 }) => {
-  if (!show) return null;
-  
   const konfi = konfis.find(k => k.id === konfiId);
   
+  const handleSubmit = () => {
+    onSubmit();
+  };
+  
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h3 className="text-lg font-bold mb-4">
-          Zusatzpunkte vergeben für {konfi?.name}
-        </h3>
-        
-        <div className="mb-3">
-          <label className="block text-sm font-medium mb-1">Beschreibung</label>
+    <Modal
+      show={show}
+      onClose={onClose}
+      title={`Zusatzpunkte für ${konfi?.name || ''}`}
+      onSubmit={handleSubmit}
+      submitButtonText="Vergeben"
+      submitDisabled={loading || !description.trim()}
+      loading={loading}
+    >
+      <div className="p-4 space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-2">Beschreibung</label>
           <input
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full p-2 border rounded"
+            className="w-full p-3 border border-gray-300 rounded-lg text-base"
             placeholder="z.B. Besondere Hilfe bei Gemeindefest"
             autoFocus
           />
         </div>
         
-        <div className="mb-3">
-          <label className="block text-sm font-medium mb-1">Punkte</label>
+        <div>
+          <label className="block text-sm font-medium mb-2">Punkte</label>
           <input
             type="number"
             value={points}
             onChange={(e) => setPoints(parseInt(e.target.value) || 1)}
             min="1"
             max="10"
-            className="w-full p-2 border rounded"
+            className="w-full p-3 border border-gray-300 rounded-lg text-base"
           />
         </div>
         
-        <div className="mb-3">
-          <label className="block text-sm font-medium mb-1">Typ</label>
+        <div>
+          <label className="block text-sm font-medium mb-2">Typ</label>
           <select
             value={type}
             onChange={(e) => setType(e.target.value)}
-            className="w-full p-2 border rounded"
+            className="w-full p-3 border border-gray-300 rounded-lg text-base"
           >
             <option value="gottesdienst">Gottesdienstlich</option>
             <option value="gemeinde">Gemeindlich</option>
           </select>
         </div>
         
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-1">Datum</label>
+        <div>
+          <label className="block text-sm font-medium mb-2">Datum</label>
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full p-2 border rounded"
+            className="w-full p-3 border border-gray-300 rounded-lg text-base"
           />
         </div>
-        
-        <div className="flex gap-2">
-          <button
-            onClick={onSubmit}
-            disabled={loading}
-            className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 disabled:opacity-50 flex items-center gap-2"
-          >
-            {loading && <Loader className="w-4 h-4 animate-spin" />}
-            <Gift className="w-4 h-4" />
-            Vergeben
-          </button>
-          <button
-            onClick={onClose}
-            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-          >
-            Abbrechen
-          </button>
-        </div>
       </div>
-    </div>
+    </Modal>
   );
 };
 
@@ -109,63 +98,51 @@ export const AdminModal = ({
   onSubmit, 
   loading 
 }) => {
-  if (!show) return null;
+  const handleSubmit = () => {
+    onSubmit();
+  };
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h3 className="text-lg font-bold mb-4">Neuen Admin hinzufügen</h3>
-        
-        <div className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">Benutzername</label>
-            <input
-              type="text"
-              value={adminForm.username}
-              onChange={(e) => setAdminForm({...adminForm, username: e.target.value})}
-              className="w-full p-2 border rounded"
-              autoFocus
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Anzeigename</label>
-            <input
-              type="text"
-              value={adminForm.display_name}
-              onChange={(e) => setAdminForm({...adminForm, display_name: e.target.value})}
-              className="w-full p-2 border rounded"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Passwort</label>
-            <input
-              type="password"
-              value={adminForm.password}
-              onChange={(e) => setAdminForm({...adminForm, password: e.target.value})}
-              className="w-full p-2 border rounded"
-            />
-          </div>
+    <Modal
+      show={show}
+      onClose={onClose}
+      title="Neuen Admin hinzufügen"
+      onSubmit={handleSubmit}
+      submitButtonText="Hinzufügen"
+      submitDisabled={loading || !adminForm.username || !adminForm.display_name || !adminForm.password}
+      loading={loading}
+    >
+      <div className="p-4 space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-2">Benutzername</label>
+          <input
+            type="text"
+            value={adminForm.username}
+            onChange={(e) => setAdminForm({...adminForm, username: e.target.value})}
+            className="w-full p-3 border border-gray-300 rounded-lg text-base"
+            autoFocus
+          />
         </div>
-        
-        <div className="flex gap-2 mt-4">
-          <button
-            onClick={onSubmit}
-            disabled={loading}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50 flex items-center gap-2"
-          >
-            {loading && <Loader className="w-4 h-4 animate-spin" />}
-            <Plus className="w-4 h-4" />
-            Hinzufügen
-          </button>
-          <button
-            onClick={onClose}
-            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-          >
-            Abbrechen
-          </button>
+        <div>
+          <label className="block text-sm font-medium mb-2">Anzeigename</label>
+          <input
+            type="text"
+            value={adminForm.display_name}
+            onChange={(e) => setAdminForm({...adminForm, display_name: e.target.value})}
+            className="w-full p-3 border border-gray-300 rounded-lg text-base"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-2">Passwort</label>
+          <input
+            type="password"
+            value={adminForm.password}
+            onChange={(e) => setAdminForm({...adminForm, password: e.target.value})}
+            className="w-full p-3 border border-gray-300 rounded-lg text-base"
+          />
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };
 

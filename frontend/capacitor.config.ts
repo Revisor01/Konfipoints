@@ -17,11 +17,25 @@ const config: CapacitorConfig = {
     Badge: {
       persist: true,
       autoClear: false
+    },
+    StatusBar: {
+      overlaysWebView: false,
+      style: "DARK",
+      backgroundColor: "#ffffff"
+    },
+    Keyboard: {
+      resize: "ionic",
+      style: "dark"
+    },
+    Share: {
+      // Native iOS sharing
     }
   },
   ios: {
     contentInset: 'automatic',
-    backgroundColor: '#ffffff'
+    backgroundColor: '#ffffff',
+    swipeBackEnabled: true,
+    allowsLinkPreview: false
   }
 };
 

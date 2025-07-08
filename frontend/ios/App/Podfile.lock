@@ -6,13 +6,19 @@ PODS:
   - CapacitorCamera (7.0.1):
     - Capacitor
   - CapacitorCordova (7.4.0)
+  - CapacitorKeyboard (7.0.1):
+    - Capacitor
   - CapacitorPreferences (7.0.1):
     - Capacitor
   - CapacitorPushNotifications (7.0.1):
     - Capacitor
-  - CapacitorToast (7.0.1):
+  - CapacitorShare (7.0.1):
+    - Capacitor
+  - CapacitorStatusBar (7.0.1):
     - Capacitor
   - CapawesomeCapacitorBadge (7.0.1):
+    - Capacitor
+  - CapawesomeCapacitorFilePicker (7.2.0):
     - Capacitor
 
 DEPENDENCIES:
@@ -20,10 +26,13 @@ DEPENDENCIES:
   - "CapacitorApp (from `../../node_modules/@capacitor/app`)"
   - "CapacitorCamera (from `../../node_modules/@capacitor/camera`)"
   - "CapacitorCordova (from `../../node_modules/@capacitor/ios`)"
+  - "CapacitorKeyboard (from `../../node_modules/@capacitor/keyboard`)"
   - "CapacitorPreferences (from `../../node_modules/@capacitor/preferences`)"
   - "CapacitorPushNotifications (from `../../node_modules/@capacitor/push-notifications`)"
-  - "CapacitorToast (from `../../node_modules/@capacitor/toast`)"
+  - "CapacitorShare (from `../../node_modules/@capacitor/share`)"
+  - "CapacitorStatusBar (from `../../node_modules/@capacitor/status-bar`)"
   - "CapawesomeCapacitorBadge (from `../../node_modules/@capawesome/capacitor-badge`)"
+  - "CapawesomeCapacitorFilePicker (from `../../node_modules/@capawesome/capacitor-file-picker`)"
 
 EXTERNAL SOURCES:
   Capacitor:
@@ -34,25 +43,34 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/@capacitor/camera"
   CapacitorCordova:
     :path: "../../node_modules/@capacitor/ios"
+  CapacitorKeyboard:
+    :path: "../../node_modules/@capacitor/keyboard"
   CapacitorPreferences:
     :path: "../../node_modules/@capacitor/preferences"
   CapacitorPushNotifications:
     :path: "../../node_modules/@capacitor/push-notifications"
-  CapacitorToast:
-    :path: "../../node_modules/@capacitor/toast"
+  CapacitorShare:
+    :path: "../../node_modules/@capacitor/share"
+  CapacitorStatusBar:
+    :path: "../../node_modules/@capacitor/status-bar"
   CapawesomeCapacitorBadge:
     :path: "../../node_modules/@capawesome/capacitor-badge"
+  CapawesomeCapacitorFilePicker:
+    :path: "../../node_modules/@capawesome/capacitor-file-picker"
 
 SPEC CHECKSUMS:
   Capacitor: a162db7c9c90f383740a78e8935dff4958158b6b
   CapacitorApp: d63334c052278caf5d81585d80b21905c6f93f39
   CapacitorCamera: eb8687d8687fed853598ec9460d94bcd5e16babe
   CapacitorCordova: 723e017d8a80ab2ede9959fbe37556c35ac860d5
+  CapacitorKeyboard: 969647d0ca2e5c737d7300088e2517aa832434e2
   CapacitorPreferences: cbf154e5e5519b7f5ab33817a334dda1e98387f9
   CapacitorPushNotifications: 0b653a3264d56daccf0e8769fff15d2f48306de6
-  CapacitorToast: c0f64abc0fae75c54e504db9be180a7f5f7d7476
+  CapacitorShare: 58d6c2da63b093e8693287b2d36db92435538435
+  CapacitorStatusBar: 275cbf2f4dfc00388f519ef80c7ec22edda342c9
   CapawesomeCapacitorBadge: 48e5431c8b9909568ac5e5bf24163d92e1d9ed18
+  CapawesomeCapacitorFilePicker: 005c33082078c1dd528ba9204aa49e97d62b68b7
 
-PODFILE CHECKSUM: 466d896cb1fd784112ef96f3e38dc46a2cc53115
+PODFILE CHECKSUM: 36c65729cfba2df9fb7e0fb98a2b043f5a36266b
 
 COCOAPODS: 1.15.2

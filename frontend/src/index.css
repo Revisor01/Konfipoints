@@ -1,20 +1,87 @@
-/* index.css - ERSETZE DEINE AKTUELLEN STYLES */
+/* Core CSS required for Ionic components to work properly */
+@import '~@ionic/react/css/core.css';
 
-body {
+/* Basic CSS for apps built with Ionic */
+@import '~@ionic/react/css/normalize.css';
+@import '~@ionic/react/css/structure.css';
+@import '~@ionic/react/css/typography.css';
+
+/* Optional CSS utils that can be commented out */
+@import '~@ionic/react/css/padding.css';
+@import '~@ionic/react/css/float-elements.css';
+@import '~@ionic/react/css/text-alignment.css';
+@import '~@ionic/react/css/text-transformation.css';
+@import '~@ionic/react/css/flex-utils.css';
+@import '~@ionic/react/css/display.css';
+
+/**
+ * Ionic Dark Mode
+ * -----------------------------------------------------
+ * For more info, please see:
+ * https://ionicframework.com/docs/theming/dark-mode
+ */
+
+/* @import '@ionic/react/css/palettes/dark.always.css'; */
+/* @import '@ionic/react/css/palettes/dark.class.css'; */
+@import '~@ionic/react/css/palettes/dark.system.css';
+
+html, body {
   margin: 0;
+  padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* ENTFERNE: overflow: hidden; position: fixed; */
-  overscroll-behavior-y: contain; /* Verhindert Pull-to-Refresh */
+  background: linear-gradient(to bottom, #eff6ff 0%, #eff6ff calc(100% - env(safe-area-inset-bottom) - 84px), white calc(100% - env(safe-area-inset-bottom) - 84px), white 100%);
 }
 
 #root {
-  /* ENTFERNE: height: 100vh; overflow: hidden; */
-  min-height: 100vh;
-  min-height: -webkit-fill-available;
+  background: inherit;
+}
+
+/* Ionic Tab Bar - Native positioning */
+ion-tab-bar {
+  --background: white;
+  --border: 1px solid #e5e7eb;
+  --color: #6b7280;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Safe area bottom override for tabs */
+ion-tabs {
+  background-color: white;
+}
+
+
+
+/* Ionic Content - No padding to avoid double frame */
+ion-content {
+  --padding-bottom: 0;
+  --padding-start: 0;
+  --padding-end: 0;
+  --padding-top: 0;
+}
+
+/* Status Bar - Overlay mode with safe area top and blur effect */
+ion-header {
+  --background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Ionic Tabs - Full height and proper structure */
+ion-tabs {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure tab bar stays at bottom */
+ion-router-outlet {
+  flex: 1;
+  overflow: hidden;
 }
 
 code {
@@ -22,7 +89,7 @@ code {
     monospace;
 }
 
-/* Safe Area CSS - KORRIGIERT */
+/* Safe Area CSS - VERBESSERT */
 .safe-area-top {
   padding-top: env(safe-area-inset-top);
 }
@@ -31,13 +98,43 @@ code {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* Zusätzliche Safe Area Klassen für verschiedene Anwendungsfälle */
+.safe-area-bottom-margin {
+  margin-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-area-bottom-min {
+  padding-bottom: max(env(safe-area-inset-bottom), 20px);
+}
+
+/* Buttons die ganz unten sind aber trotzdem klickbar */
+.safe-bottom-button {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 16px);
+  padding-top: 16px;
+  background: white;
+  border-top: 1px solid #e5e7eb;
+  z-index: 10;
+}
+
 @supports (padding: max(0px)) {
   .safe-area-top {
-    padding-top: max(8px, env(safe-area-inset-top));
+    padding-top: max(env(safe-area-inset-top));
   }
   
   .safe-area-bottom {
-    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    padding-bottom: max(env(safe-area-inset-bottom));
+  }
+  
+  .safe-area-bottom-min {
+    padding-bottom: max(env(safe-area-inset-bottom), 20px);
+  }
+  
+  .safe-bottom-button {
+    padding-bottom: max(calc(env(safe-area-inset-bottom) + 16px), 36px);
   }
 }
 
@@ -85,8 +182,8 @@ button {
 .app-layout {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  min-height: -webkit-fill-available;
+  min-height: 100%;
+  height: 100%;
 }
 
 .app-header {
@@ -112,4 +209,63 @@ button {
 .app-footer {
   flex-shrink: 0;
   margin-top: auto;
+}
+
+/* Chat-specific Ionic component styles */
+.attachment-btn {
+  --padding-start: 8px;
+  --padding-end: 8px;
+  --padding-top: 8px;
+  --padding-bottom: 8px;
+  margin: 0;
+  height: 40px;
+}
+
+/* IonTextarea in chat */
+ion-textarea.chat-input {
+  --background: transparent;
+  --color: #1f2937;
+  --placeholder-color: #6b7280;
+  --border-radius: 0;
+  --border-color: transparent;
+  --border-style: none;
+  --border-width: 0;
+  --padding-start: 8px;
+  --padding-end: 8px;
+  --padding-top: 8px;
+  --padding-bottom: 8px;
+  font-size: 16px;
+  min-height: 40px;
+}
+
+/* Action sheet styling */
+ion-action-sheet {
+  --background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+}
+
+/* Footer mit Input - Klebt an Tastatur */
+ion-footer {
+  /* Ionic handled keyboard behavior */
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+/* Footer klebt direkt an Tastatur ohne Abstand */
+.keyboard-open ion-footer {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* Ionic Tab Bar - Native iOS Verhalten */
+ion-tab-bar {
+  --background: white;
+  --border: 1px solid #e5e7eb;
+  --color: #6b7280;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Ionic Tabs - Standard Layout */
+ion-tabs {
+  background-color: white;
 }
