@@ -28,7 +28,7 @@ import api from '../../services/api';
 
 // Import your existing components
 import KonfisView from '../admin/KonfisView';
-// import KonfiDetailView from '../admin/KonfiDetailView';
+import KonfiDetailView from '../admin/KonfiDetailView';
 import BadgesView from '../admin/BadgesView';
 import ActivitiesView from '../admin/ActivitiesView';
 import MoreView from '../admin/MoreView';
@@ -92,7 +92,13 @@ const IonicAdminTabs = () => {
 
   const KonfisTab = () => {
     const content = selectedKonfi ? (
-      <div>Temporär deaktiviert</div>
+      <KonfiDetailView
+        konfi={selectedKonfi}
+        onBack={() => setSelectedKonfi(null)}
+        activities={activities}
+        settings={settings}
+        onUpdate={loadData}
+      />
     ) : (
       <KonfisView
         konfis={konfis}

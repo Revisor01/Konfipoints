@@ -4,7 +4,7 @@ import { useApp } from '../../contexts/AppContext';
 import api from '../../services/api';
 import LoadingSpinner from '../common/LoadingSpinner';
 import KonfisView from './KonfisView';
-// import KonfiDetailView from './KonfiDetailView';
+import KonfiDetailView from './KonfiDetailView';
 import BadgesView from './BadgesView';
 import ActivitiesView from './ActivitiesView';
 import MoreView from './MoreView';
@@ -129,10 +129,13 @@ const AdminLayout = () => {
     // Show Konfi Detail if selected
     if (selectedKonfi && currentView === 'konfis') {
       return (
-        <div className="p-4">
-          <button onClick={() => setSelectedKonfi(null)} className="text-blue-500">← Zurück</button>
-          <p>KonfiDetailView temporär deaktiviert</p>
-        </div>
+        <KonfiDetailView
+          konfi={selectedKonfi}
+          onBack={() => setSelectedKonfi(null)}
+          activities={activities}
+          settings={settings}
+          onUpdate={loadData}
+        />
       );
     }
 
