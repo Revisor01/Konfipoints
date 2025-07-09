@@ -17,7 +17,12 @@
       "Bash(npm start)",
       "Bash(npx cap open:*)",
       "Bash(rg:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(git reset:*)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+      "Bash(npm run sync:ios:*)",
+      "Bash(git commit:*)"
     ],
     "deny": []
   }

@@ -91,7 +91,7 @@ const ChatView = ({ onNavigate, onNavigateToRoom }) => {
       console.error('Error marking room as read:', err);
     }
     
-    // Navigate to chat room - use IonNav if available, otherwise router
+    // Navigate to chat room - use callback if available, otherwise router
     if (onNavigateToRoom) {
       onNavigateToRoom(room);
     } else {

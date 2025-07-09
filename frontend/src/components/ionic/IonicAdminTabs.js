@@ -95,41 +95,53 @@ const IonicAdminTabs = () => {
   }, []);
 
   const KonfisTab = () => {
+    const navRef = useRef(null);
+    
     const doRefresh = async (event) => {
       await loadData();
       event.detail.complete();
     };
 
-    const content = selectedKonfi ? (
-      <KonfiDetailView
-        konfi={selectedKonfi}
-        onBack={() => setSelectedKonfi(null)}
-        activities={activities}
-        settings={settings}
-        onUpdate={loadData}
-      />
-    ) : (
-      <KonfisView
-        konfis={konfis}
-        jahrgaenge={jahrgaenge}
-        settings={settings}
-        onSelectKonfi={setSelectedKonfi}
-        onUpdate={loadData}
-      />
-    );
+    const handleSelectKonfi = (konfi) => {
+      navRef.current?.push(KonfiDetailView, { 
+        konfi,
+        activities,
+        settings,
+        onUpdate: loadData,
+        onBack: () => navRef.current?.pop()
+      });
+    };
 
     return (
       <IonContent fullscreen className="ion-padding app-gradient-background">
-        <IonRefresher slot="fixed" onIonRefresh={doRefresh}>
-          <IonRefresherContent></IonRefresherContent>
-        </IonRefresher>
-        {content}
+        <IonNav 
+          ref={navRef}
+          root={() => (
+            <div>
+              <IonRefresher slot="fixed" onIonRefresh={doRefresh}>
+                <IonRefresherContent></IonRefresherContent>
+              </IonRefresher>
+              <KonfisView
+                konfis={konfis}
+                jahrgaenge={jahrgaenge}
+                settings={settings}
+                onSelectKonfi={handleSelectKonfi}
+                onUpdate={loadData}
+              />
+            </div>
+          )}
+        />
       </IonContent>
     );
   };
 
   const ChatTab = () => {
     const navRef = useRef(null);
+    
+    const doRefresh = async (event) => {
+      await loadData();
+      event.detail.complete();
+    };
     
     const handleNavigateToRoom = (room) => {
       navRef.current?.push(ChatRoom, { 
@@ -141,13 +153,10 @@ const IonicAdminTabs = () => {
     
     return (
       <IonContent fullscreen className="ion-padding app-gradient-background">
-        <IonNav 
-          ref={navRef}
-          root={ChatView}
-          rootParams={{ 
-            onNavigateToRoom: handleNavigateToRoom 
-          }}
-        />
+        <IonRefresher slot="fixed" onIonRefresh={doRefresh}>
+          <IonRefresherContent></IonRefresherContent>
+        </IonRefresher>
+        <ChatView onNavigateToRoom={handleNavigateToRoom} />
       </IonContent>
     );
   };
