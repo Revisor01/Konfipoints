@@ -8,7 +8,7 @@ import { formatDate } from '../../utils/formatters';
 import CreateChatModal from './CreateChatModal';
 import { ADMIN_NAV_ITEMS } from '../../utils/constants';
 
-const ChatView = ({ onNavigate, onNavigateToRoom }) => {
+const ChatView = ({ onNavigate }) => {
   const { user, setSuccess, setError } = useApp();
   const router = useIonRouter();
   const isAdmin = user?.type === 'admin';
@@ -91,12 +91,8 @@ const ChatView = ({ onNavigate, onNavigateToRoom }) => {
       console.error('Error marking room as read:', err);
     }
     
-    // Navigate to chat room - use callback if available, otherwise router
-    if (onNavigateToRoom) {
-      onNavigateToRoom(room);
-    } else {
-      router.push(`/admin/chat/${room.id}`, 'forward', { room });
-    }
+    // Navigate to chat room using router
+    router.push(`/chat/${room.id}`, 'forward', { room });
   };
 
   const filteredRooms = rooms.filter(room => 
@@ -203,14 +199,10 @@ const ChatView = ({ onNavigate, onNavigateToRoom }) => {
         onClose={() => setShowAdminContact(false)}
         onSelectAdmin={(roomId) => {
           setShowAdminContact(false);
-          // Find room by ID and pass it
+          // Find room by ID and navigate
           const room = rooms.find(r => r.id === roomId);
           if (room) {
-            if (onNavigateToRoom) {
-              onNavigateToRoom(room);
-            } else {
-              router.push(`/admin/chat/${roomId}`, 'forward', { room });
-            }
+            router.push(`/chat/${roomId}`, 'forward', { room });
           }
         }}
       />

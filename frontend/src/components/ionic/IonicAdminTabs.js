@@ -131,35 +131,17 @@ const IonicAdminTabs = () => {
   };
 
   const ChatTab = () => {
-    const [selectedRoom, setSelectedRoom] = useState(null);
-    
     const doRefresh = async (event) => {
       await loadData();
       event.detail.complete();
     };
     
-    const handleNavigateToRoom = (room) => {
-      setSelectedRoom(room);
-    };
-    
-    const content = selectedRoom ? (
-      <ChatRoom
-        room={selectedRoom}
-        onBack={() => setSelectedRoom(null)}
-        isInTab={true}
-      />
-    ) : (
-      <>
+    return (
+      <IonContent fullscreen className="ion-padding app-gradient-background">
         <IonRefresher slot="fixed" onIonRefresh={doRefresh}>
           <IonRefresherContent></IonRefresherContent>
         </IonRefresher>
-        <ChatView onNavigateToRoom={handleNavigateToRoom} />
-      </>
-    );
-    
-    return (
-      <IonContent fullscreen className="ion-padding app-gradient-background">
-        {content}
+        <ChatView />
       </IonContent>
     );
   };

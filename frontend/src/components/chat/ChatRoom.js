@@ -31,10 +31,11 @@ import MessageBubble from './MessageBubble';
 import PollComponent from './PollComponent';
 import CreatePollModal from './CreatePollModal';
 
-const ChatRoom = ({ room, roomId, onBack, nav, isInTab = false }) => {
+const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...props }) => {
   const { user } = useApp();
   const router = useIonRouter();
   const isAdmin = user?.type === 'admin';
+  const roomId = match?.params?.roomId;
   const [currentRoom, setCurrentRoom] = useState(room);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +54,11 @@ const ChatRoom = ({ room, roomId, onBack, nav, isInTab = false }) => {
   // KEIN useCapacitorKeyboard Hook in ChatRoom - lass Ionic das machen
 
   useEffect(() => {
-    if (!currentRoom && roomId) {
+    // Get room from route params if available
+    const routeRoom = location?.state?.room;
+    if (routeRoom) {
+      setCurrentRoom(routeRoom);
+    } else if (!currentRoom && roomId) {
       // Load room from API if not provided
       const loadRoom = async () => {
         try {
@@ -68,7 +73,7 @@ const ChatRoom = ({ room, roomId, onBack, nav, isInTab = false }) => {
       };
       loadRoom();
     }
-  }, [roomId, currentRoom]);
+  }, [roomId, currentRoom, location]);
 
   useEffect(() => {
     if (currentRoom) {
@@ -292,11 +297,7 @@ const ChatRoom = ({ room, roomId, onBack, nav, isInTab = false }) => {
                       nav.pop();
                     } else {
                       // Native navigation back to chat list
-                      if (router.canGoBack()) {
-                        router.goBack();
-                      } else {
-                        router.push('/admin/chat', 'back');
-                      }
+                      router.push('/admin/chat', 'back');
                     }
                   }}
                   className="text-white/90 hover:text-white"

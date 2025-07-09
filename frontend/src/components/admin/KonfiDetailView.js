@@ -1,17 +1,6 @@
 // frontend/src/components/admin/KonfiDetailView.js
 import React, { useState } from 'react';
 import { ArrowLeft, Gift, Eye, EyeOff, Copy, Check, Trash2, Plus, RefreshCw, BookOpen, Heart, Star, Award } from 'lucide-react';
-import { 
-  IonPage, 
-  IonHeader, 
-  IonToolbar, 
-  IonTitle, 
-  IonContent, 
-  IonButtons, 
-  IonBackButton,
-  IonRefresher,
-  IonRefresherContent
-} from '@ionic/react';
 import { useApp } from '../../contexts/AppContext';
 import api from '../../services/api';
 import { formatDate, formatShortDate } from '../../utils/formatters';
@@ -149,56 +138,42 @@ const KonfiDetailView = ({ konfi, onBack, activities, settings, onUpdate }) => {
   };
 
   return (
-    <IonPage>
-      <IonHeader>
-        <IonToolbar>
-          <IonButtons slot="start">
-            <IonBackButton 
-              defaultHref="/admin/konfis" 
-              onClick={() => {
-                if (onBack) {
-                  onBack();
-                }
-              }}
-            />
-          </IonButtons>
-          <IonTitle>{konfi.name}</IonTitle>
-        </IonToolbar>
-      </IonHeader>
-      
-      <IonContent fullscreen className="ion-padding app-gradient-background">
-        <IonRefresher slot="fixed" onIonRefresh={doRefresh}>
-          <IonRefresherContent></IonRefresherContent>
-        </IonRefresher>
-        
-        <div className="space-y-6">
-          {/* Header Stats */}
-          <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl p-6 shadow-sm">
-            <div className="mb-4">
-              <div>
-                <h2 className="text-xl font-bold text-white">{konfi.name}</h2>
-                <p className="text-sm text-white/80">
-                  Jahrgang {konfi.jahrgang_name} • {(konfi.points?.gottesdienst || 0) + (konfi.points?.gemeinde || 0)} Punkte
-                </p>
-              </div>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 gap-4">
-              {showGottesdienstTarget && (
-                <div className="bg-white/20 rounded-lg p-3">
-                  <div className="text-sm text-white/80">Gottesdienste</div>
-                  <div className="text-lg font-bold">{konfi.points?.gottesdienst || 0}/{settings.target_gottesdienst}</div>
-                </div>
-              )}
-              {showGemeindeTarget && (
-                <div className="bg-white/20 rounded-lg p-3">
-                  <div className="text-sm text-white/80">Gemeinde</div>
-                  <div className="text-lg font-bold">{konfi.points?.gemeinde || 0}/{settings.target_gemeinde}</div>
-                </div>
-              )}
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onBack}
+              className="text-white/80 hover:text-white p-1"
+            >
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+            <div>
+              <h2 className="text-xl font-bold text-white">{konfi.name}</h2>
+              <p className="text-sm text-white/80">
+                Jahrgang {konfi.jahrgang_name} • {(konfi.points?.gottesdienst || 0) + (konfi.points?.gemeinde || 0)} Punkte
+              </p>
             </div>
           </div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-4">
+          {showGottesdienstTarget && (
+            <div className="bg-white/20 rounded-lg p-3">
+              <div className="text-sm text-white/80">Gottesdienste</div>
+              <div className="text-lg font-bold">{konfi.points?.gottesdienst || 0}/{settings.target_gottesdienst}</div>
+            </div>
+          )}
+          {showGemeindeTarget && (
+            <div className="bg-white/20 rounded-lg p-3">
+              <div className="text-sm text-white/80">Gemeinde</div>
+              <div className="text-lg font-bold">{konfi.points?.gemeinde || 0}/{settings.target_gemeinde}</div>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Login Info */}
       <div className="bg-white rounded-xl shadow-sm">
@@ -469,9 +444,7 @@ const KonfiDetailView = ({ konfi, onBack, activities, settings, onUpdate }) => {
           </div>
         </Modal>
       )}
-        </div>
-      </IonContent>
-    </IonPage>
+    </div>
   );
 };
 

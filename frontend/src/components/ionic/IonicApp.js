@@ -9,6 +9,7 @@ import LoginView from '../auth/LoginView';
 import IonicAdminTabs from './IonicAdminTabs';
 import IonicKonfiTabs from './IonicKonfiTabs';
 import LoadingSpinner from '../common/LoadingSpinner';
+import ChatRoom from '../chat/ChatRoom';
 import api from '../../services/api';
 // Setup Ionic React with Context7 recommended iOS configuration
 setupIonicReact({
@@ -56,6 +57,7 @@ const IonicApp = () => {
             </>
           ) : user.type === 'admin' ? (
             <>
+              <Route path="/chat/:roomId" component={ChatRoom} />
               <Route path="/admin" render={() => <IonicAdminTabs />} />
               <Route exact path="/" render={() => <Redirect to="/admin/konfis" />} />
             </>

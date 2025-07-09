@@ -33,7 +33,7 @@ html, body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(to bottom, #eff6ff 0%, #eff6ff calc(100% - env(safe-area-inset-bottom) - 84px), white calc(100% - env(safe-area-inset-bottom) - 84px), white 100%);
+  background: #eff6ff;
 }
 
 #root {
@@ -42,10 +42,12 @@ html, body {
 
 /* Ionic Tab Bar - Native positioning */
 ion-tab-bar {
-  --background: white;
-  --border: 1px solid #e5e7eb;
+  --background: rgba(255, 255, 255, 0.9);
+  --border: 1px solid rgba(0, 0, 0, 0.1);
   --color: #6b7280;
   padding-bottom: env(safe-area-inset-bottom);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
 /* iOS specific optimizations */
