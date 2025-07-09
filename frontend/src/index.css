@@ -161,20 +161,7 @@ code {
   padding-bottom: 80px; /* Abstand für Tab Bar */
 }
 
-/* ChatRoom Header - Normal Ionic Header */
-.chat-room-page ion-header {
-  background-color: #eef6ff !important;
-  --border-width: 0 !important;
-  --border-style: none !important;
-  --box-shadow: none !important;
-}
-
-.chat-room-page ion-header ion-toolbar {
-  --border-width: 0 !important;
-  --border-style: none !important;
-  --box-shadow: none !important;
-  --background: transparent !important;
-}
+/* Let Ionic handle native header styling */
 
 
 
@@ -261,15 +248,13 @@ ion-textarea {
 }
 
 
-/* iOS keyboard env() support - CSS-basierte Keyboard-Unterstützung */
-@supports (padding-bottom: env(keyboard-inset-height)) {
-  .chat-room-page ion-content {
-    padding-bottom: calc(env(keyboard-inset-height, 0px) + 80px);
-  }
-  
-  .chat-room-page .chat-input-footer {
-    transform: translateY(calc(-1 * env(keyboard-inset-height, 0px)));
-  }
+/* iOS keyboard support - Better handling */
+.chat-room-page .chat-input-footer {
+  position: sticky;
+  bottom: 0;
+  background: #f8f8f8;
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 1000;
 }
 
 ion-footer.footer-toolbar-padding ion-toolbar {
@@ -529,48 +514,7 @@ ion-modal {
   --background: #000;
 }
 
-/* iOS Poll Modal */
-ion-modal {
-  --width: 100%;
-  --height: 100%;
-  --max-height: 100%;
-  --border-radius: 0;
-  --box-shadow: none;
-  --backdrop-opacity: 0.6;
-}
-
-.ios-poll-modal ion-header {
-  --background: rgba(249, 249, 249, 0.94);
-  --color: #000;
-  --border-color: rgba(60, 60, 67, 0.29);
-  border-bottom: 0.5px solid var(--border-color);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-}
-
-.ios-poll-modal ion-header ion-toolbar {
-  --background: transparent;
-  --color: #000;
-  --border-color: transparent;
-  --min-height: 44px;
-}
-
-.ios-poll-modal ion-content {
-  --background: #fff;
-  --color: #000;
-  --padding-bottom: env(safe-area-inset-bottom);
-}
-
-.ios-poll-modal ion-item {
-  --background: transparent;
-  --border-color: rgba(60, 60, 67, 0.29);
-  --border-style: solid;
-  --border-width: 0 0 0.5px 0;
-}
-
-.ios-poll-modal ion-item:last-child {
-  --border-width: 0;
-}
+/* Let ion-modal use its default fullscreen behavior */
 
 
 ion-header ion-toolbar:first-of-type {

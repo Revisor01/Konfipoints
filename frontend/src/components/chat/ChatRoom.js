@@ -55,24 +55,17 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
   const contentRef = useRef(null);
 
 
-  // Verwende CSS-basierte Keyboard-Unterstützung statt JavaScript transforms
+  // Simplified keyboard handling - let Ionic handle it
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
       const keyboardWillShow = () => {
-        // Nur noch scrollen, keine transforms mehr
-        scrollToBottom("auto");
-      };
-      
-      const keyboardWillHide = () => {
-        // Cleanup falls nötig
+        setTimeout(() => scrollToBottom("auto"), 150);
       };
       
       const showListener = Keyboard.addListener('keyboardWillShow', keyboardWillShow);
-      const hideListener = Keyboard.addListener('keyboardWillHide', keyboardWillHide);
       
       return () => {
         showListener.remove();
-        hideListener.remove();
       };
     }
   }, []);
@@ -185,15 +178,15 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
       const response = await api.post(`/chat/rooms/${currentRoom.id}/polls`, pollData);
       console.log('Poll created successfully:', response.data);
       
-      setShowCreatePoll(false);
+      // Add the poll immediately to the messages state
+      setMessages(prev => [...prev, response.data]);
       
-      // Refresh messages to show new poll
-      await loadMessages();
+      setShowCreatePoll(false);
       
       // Scroll to bottom to show new poll
       setTimeout(() => {
         scrollToBottom();
-      }, 500);
+      }, 300);
       
     } catch (err) {
       console.error('Poll creation error:', err);
@@ -296,7 +289,7 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
   };
 
   const handleBackToChatList = () => {
-    router.push('/admin/chat', 'back', 'replace');
+    router.push('/admin/chat', 'back');
   };
 
   if (loading || !currentRoom) {
@@ -309,39 +302,14 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
 
   return (
     <IonPage className="chat-room-page">
-      <IonHeader className="ion-no-border">
-        <IonToolbar className="ion-no-border">
-          <div className="px-4 pt-4 pb-4">
-            <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={handleBackToChatList}
-                    className="text-white/80 hover:text-white p-1"
-                  >
-                    <ArrowLeft className="w-6 h-6" />
-                  </button>
-                  <div>
-                    <h2 className="text-xl font-bold text-white">{getRoomTitle()}</h2>
-                    <p className="text-sm text-white/80">
-                      {currentRoom.type === 'jahrgang' ? 'Jahrgangs-Chat' :
-                        currentRoom.type === 'admin' ? 'Admin-Support' : 'Direktnachricht'}
-                    </p>
-                  </div>
-                </div>
-                
-                {isAdmin && (
-                  <button
-                    onClick={() => setShowCreatePoll(true)}
-                    className="bg-white/20 text-white p-3 rounded-lg hover:bg-white/30 transition-colors"
-                    title="Umfrage erstellen"
-                  >
-                    <BarChart3 className="w-5 h-5" />
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
+      <IonHeader>
+        <IonToolbar>
+          <IonButtons slot="start">
+            <IonButton onClick={handleBackToChatList}>
+              <ArrowLeft className="w-5 h-5" />
+            </IonButton>
+          </IonButtons>
+          <IonTitle>{getRoomTitle()}</IonTitle>
         </IonToolbar>
       </IonHeader>
 
@@ -387,21 +355,47 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
         )}
 
         <div className="px-4 pb-4">
-          <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
-            {messages.map((msg, idx) => (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-                isOwnMessage={msg.sender_id === user.id}
-                showSender={!msg.isOwnMessage && (idx === 0 || messages[idx - 1]?.sender_id !== msg.sender_id)}
-                onDelete={isAdmin ? () => handleDeleteMessage(msg.id) : null}
-                formatDate={formatDate}
-              />
-            ))}
-
-            {currentRoom.poll && (
-              <PollComponent poll={currentRoom.poll} />
-            )}
+          <div className="space-y-4">
+            {messages.map((msg, idx) => {
+              const isOwnMessage = msg.user_id === user.id;
+              const prevMsg = messages[idx - 1];
+              const showSender = !isOwnMessage && (idx === 0 || prevMsg?.user_id !== msg.user_id);
+              
+              return (
+                <div key={msg.id}>
+                  {msg.message_type === 'poll' ? (
+                    <div className="w-full">
+                      <PollComponent 
+                        message={{
+                          id: msg.id,
+                          question: msg.question || msg.content,
+                          options: msg.options ? JSON.parse(msg.options) : [],
+                          multiple_choice: msg.multiple_choice,
+                          expires_at: msg.expires_at,
+                          sender_name: msg.sender_name,
+                          created_at: msg.created_at,
+                          votes: msg.votes || []
+                        }}
+                        user={user}
+                        api={api}
+                        isOwnMessage={isOwnMessage}
+                        showSender={showSender}
+                        formatDate={formatDate}
+                        onDelete={isAdmin ? () => handleDeleteMessage(msg.id) : null}
+                      />
+                    </div>
+                  ) : (
+                    <MessageBubble
+                      message={msg}
+                      isOwnMessage={isOwnMessage}
+                      showSender={showSender}
+                      onDelete={isAdmin ? () => handleDeleteMessage(msg.id) : null}
+                      formatDate={formatDate}
+                    />
+                  )}
+                </div>
+              );
+            })}
 
             <div ref={messagesEndRef} />
           </div>
@@ -525,6 +519,14 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
               setShowActionSheet(false);
             }
           },
+          ...(isAdmin ? [{
+            text: 'Umfrage erstellen',
+            icon: send, // Using send icon since BarChart3 is not available here
+            handler: () => {
+              setShowCreatePoll(true);
+              setShowActionSheet(false);
+            }
+          }] : []),
           {
             text: 'Abbrechen',
             icon: close,

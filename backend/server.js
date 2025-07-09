@@ -2573,7 +2573,8 @@ app.get('/api/chat/rooms/:roomId/messages', verifyToken, (req, res) => {
                 WHEN m.user_type = 'admin' THEN a.username
                 ELSE k.username  
               END as sender_username,
-              p.question, p.options, p.expires_at, p.multiple_choice
+              p.question, p.options, p.expires_at, p.multiple_choice,
+              p.id as poll_id
       FROM chat_messages m
       LEFT JOIN admins a ON m.user_id = a.id AND m.user_type = 'admin'
       LEFT JOIN konfis k ON m.user_id = k.id AND m.user_type = 'konfi'
@@ -2583,12 +2584,47 @@ app.get('/api/chat/rooms/:roomId/messages', verifyToken, (req, res) => {
       LIMIT ? OFFSET ?
     `;
     
-    db.all(messagesQuery, [roomId, limit, offset], (err, messages) => {
+    db.all(messagesQuery, [roomId, limit, offset], async (err, messages) => {
       if (err) {
         console.error('Error fetching messages:', err);
         return res.status(500).json({ error: 'Database error' });
       }
-      res.json(messages.reverse());
+      
+      // Load votes for poll messages
+      const processedMessages = await Promise.all(messages.map(async (msg) => {
+        if (msg.message_type === 'poll' && msg.options) {
+          try {
+            msg.options = JSON.parse(msg.options);
+            
+            // Load votes for this poll
+            const votes = await new Promise((resolve, reject) => {
+              db.all(`
+                SELECT v.*, 
+                       CASE 
+                         WHEN v.user_type = 'admin' THEN a.display_name
+                         ELSE k.name
+                       END as voter_name
+                FROM chat_poll_votes v
+                LEFT JOIN admins a ON v.user_id = a.id AND v.user_type = 'admin'
+                LEFT JOIN konfis k ON v.user_id = k.id AND v.user_type = 'konfi'
+                WHERE v.poll_id = ?
+              `, [msg.poll_id], (err, votes) => {
+                if (err) reject(err);
+                else resolve(votes || []);
+              });
+            });
+            
+            msg.votes = votes;
+          } catch (e) {
+            console.error('Error parsing poll options:', e);
+            msg.options = [];
+            msg.votes = [];
+          }
+        }
+        return msg;
+      }));
+      
+      res.json(processedMessages.reverse());
     });
   });
 });
@@ -2859,6 +2895,109 @@ app.post('/api/chat/rooms/:roomId/polls', verifyToken, (req, res) => {
           res.json(pollData);
         });
       });
+    });
+  });
+});
+
+// Vote on a poll
+app.post('/api/chat/polls/:pollId/vote', verifyToken, (req, res) => {
+  const pollId = req.params.pollId;
+  const { option_index } = req.body;
+  const userId = req.user.id;
+  const userType = req.user.type;
+  
+  if (option_index === undefined || option_index === null) {
+    return res.status(400).json({ error: 'Option index is required' });
+  }
+  
+  // First, get the poll to check if it exists and get poll details
+  const getPollQuery = `
+    SELECT p.*, m.room_id FROM chat_polls p
+    JOIN chat_messages m ON p.message_id = m.id
+    WHERE p.message_id = ?
+  `;
+  
+  db.get(getPollQuery, [pollId], (err, poll) => {
+    if (err) {
+      console.error('Error fetching poll:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    if (!poll) {
+      return res.status(404).json({ error: 'Poll not found' });
+    }
+    
+    // Check if poll has expired
+    if (poll.expires_at && new Date(poll.expires_at) < new Date()) {
+      return res.status(400).json({ error: 'Poll has expired' });
+    }
+    
+    // Check if user has access to this room
+    const accessQuery = userType === 'admin' ? 
+      "SELECT 1 FROM chat_rooms WHERE id = ?" :
+      "SELECT 1 FROM chat_participants WHERE room_id = ? AND user_id = ? AND user_type = ?";
+    const accessParams = userType === 'admin' ? [poll.room_id] : [poll.room_id, userId, userType];
+    
+    db.get(accessQuery, accessParams, (err, access) => {
+      if (err || !access) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      
+      // Parse options to validate option_index
+      const options = JSON.parse(poll.options);
+      if (option_index < 0 || option_index >= options.length) {
+        return res.status(400).json({ error: 'Invalid option index' });
+      }
+      
+      // Check if this is a single choice poll and user already voted
+      if (!poll.multiple_choice) {
+        // Remove existing vote for single choice polls
+        db.run("DELETE FROM chat_poll_votes WHERE poll_id = ? AND user_id = ? AND user_type = ?",
+          [poll.id, userId, userType], (err) => {
+            if (err) {
+              console.error('Error removing existing vote:', err);
+              return res.status(500).json({ error: 'Database error' });
+            }
+            
+            // Add new vote
+            insertVote();
+          });
+      } else {
+        // For multiple choice, check if user already voted for this option
+        db.get("SELECT 1 FROM chat_poll_votes WHERE poll_id = ? AND user_id = ? AND user_type = ? AND option_index = ?",
+          [poll.id, userId, userType, option_index], (err, existingVote) => {
+            if (err) {
+              console.error('Error checking existing vote:', err);
+              return res.status(500).json({ error: 'Database error' });
+            }
+            
+            if (existingVote) {
+              // Remove vote (toggle)
+              db.run("DELETE FROM chat_poll_votes WHERE poll_id = ? AND user_id = ? AND user_type = ? AND option_index = ?",
+                [poll.id, userId, userType, option_index], (err) => {
+                  if (err) {
+                    console.error('Error removing vote:', err);
+                    return res.status(500).json({ error: 'Database error' });
+                  }
+                  res.json({ message: 'Vote removed successfully' });
+                });
+            } else {
+              // Add new vote
+              insertVote();
+            }
+          });
+      }
+      
+      function insertVote() {
+        db.run("INSERT INTO chat_poll_votes (poll_id, user_id, user_type, option_index) VALUES (?, ?, ?, ?)",
+          [poll.id, userId, userType, option_index], function(err) {
+            if (err) {
+              console.error('Error inserting vote:', err);
+              return res.status(500).json({ error: 'Database error' });
+            }
+            res.json({ message: 'Vote recorded successfully' });
+          });
+      }
     });
   });
 });

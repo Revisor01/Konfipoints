@@ -86,9 +86,8 @@ const CreatePollModal = ({ isOpen, onDismiss, onSubmit }) => {
     <IonModal 
       isOpen={isOpen} 
       onDidDismiss={onDismiss}
+      onWillDismiss={onDismiss}
       presentingElement={undefined}
-      showBackdrop={true}
-      backdropDismiss={true}
     >
       <IonHeader className="ion-no-border">
         <IonToolbar style={{ paddingTop: 'env(safe-area-inset-top)' }}>

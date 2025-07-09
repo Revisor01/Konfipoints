@@ -36,9 +36,12 @@ const MessageBubble = ({
       return 'Ungültige Zeit';
     }
     
-    return date.toLocaleTimeString('de-DE', { 
+    return date.toLocaleString('de-DE', { 
       hour: '2-digit', 
       minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
       timeZone: 'Europe/Berlin' // Explicitly set German timezone
     });
   };
@@ -258,6 +261,7 @@ const MessageBubble = ({
           </div>
         );
 
+
       default:
         return (
           <p className="text-sm whitespace-pre-wrap break-words">
@@ -270,7 +274,7 @@ const MessageBubble = ({
   return (
     <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-2`}>
       <div 
-        className={`relative max-w-[70%] ${isOwnMessage ? 'order-1' : 'order-2'}`}
+        className={`relative max-w-[85%] ${isOwnMessage ? 'order-1' : 'order-2'}`}
         onTouchStart={handleLongPressStart}
         onTouchEnd={handleLongPressEnd}
         onTouchCancel={handleLongPressEnd}
