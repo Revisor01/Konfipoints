@@ -1,18 +1,18 @@
 /* Core CSS required for Ionic components to work properly */
-@import '~@ionic/react/css/core.css';
+@import '@ionic/react/css/core.css';
 
 /* Basic CSS for apps built with Ionic */
-@import '~@ionic/react/css/normalize.css';
-@import '~@ionic/react/css/structure.css';
-@import '~@ionic/react/css/typography.css';
+@import '@ionic/react/css/normalize.css';
+@import '@ionic/react/css/structure.css';
+@import '@ionic/react/css/typography.css';
 
 /* Optional CSS utils that can be commented out */
-@import '~@ionic/react/css/padding.css';
-@import '~@ionic/react/css/float-elements.css';
-@import '~@ionic/react/css/text-alignment.css';
-@import '~@ionic/react/css/text-transformation.css';
-@import '~@ionic/react/css/flex-utils.css';
-@import '~@ionic/react/css/display.css';
+@import '@ionic/react/css/padding.css';
+@import '@ionic/react/css/float-elements.css';
+@import '@ionic/react/css/text-alignment.css';
+@import '@ionic/react/css/text-transformation.css';
+@import '@ionic/react/css/flex-utils.css';
+@import '@ionic/react/css/display.css';
 
 /**
  * Ionic Dark Mode
@@ -33,67 +33,35 @@ html, body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #eff6ff;
+  background: #f2f2f7; /* iOS system background color */
 }
 
 #root {
   background: inherit;
 }
 
-/* Ionic Tab Bar - Native positioning */
+/* Ionic Tab Bar - Native iOS styling */
+/* DIESE REGELN SIND NUR FÜR ION-TAB-BAR GEDACHT! */
 ion-tab-bar {
-  --background: rgba(255, 255, 255, 0.9);
-  --border: 1px solid rgba(0, 0, 0, 0.1);
-  --color: #6b7280;
+  --background: rgba(248, 248, 248, 0.94); /* iOS tab bar background */
+  --border: 1px solid rgba(0, 0, 0, 0.08);
+  --color: #8e8e93; /* iOS inactive tab color */
+  --color-selected: #007AFF; /* iOS blue */
   padding-bottom: env(safe-area-inset-bottom);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }
 
-/* iOS specific optimizations */
-.ios ion-content {
-  --keyboard-offset: 0px;
-  --padding-bottom: env(safe-area-inset-bottom);
-}
-
-/* ChatRoom specific optimizations */
-.chatroom-content {
-  --padding-bottom: 0px;
-}
-
-.chatroom-content .scroll-content {
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-/* Native iOS swipe gestures - Global configuration */
-.ios ion-router-outlet {
-  --ion-swipe-to-go-back-enabled: true;
-}
-
-.ios ion-nav {
-  --ion-swipe-to-go-back-enabled: true;
-}
-
-.ios .swipe-back {
-  --padding-start: 0px;
-  --padding-end: 0px;
-}
-
-/* Enhanced pull-to-refresh styling */
-.ios ion-refresher {
-  --threshold: 100px;
-  --min-height: 60px;
-  --max-height: 150px;
-}
-
-.ios ion-refresher-content {
-  --refreshing-spinner-size: 28px;
-  --pulling-icon-size: 24px;
-}
-
-/* Footer keyboard attachment */
-ion-footer.keyboard-attach {
-  padding-bottom: env(safe-area-inset-bottom);
+/* Safe Area unter TabBar in iOS grau/braun färben */
+.ios ion-tab-bar::after {
+  content: '';
+  position: absolute;
+  bottom: -100px; /* Extends below the tab bar to cover safe area */
+  left: 0;
+  right: 0;
+  height: 100px;
+  background: rgba(248, 248, 248, 0.94);
+  z-index: -1;
 }
 
 /* Better input handling on iOS */
@@ -109,13 +77,9 @@ ion-footer.keyboard-attach {
   padding-top: env(safe-area-inset-top);
 }
 
-.ios .safe-area-bottom {
+/*.ios .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom);
-}
-
-/* Safe area bottom override for tabs - removed as redundant */
-
-
+}*/
 
 /* Ionic Content - No padding to avoid double frame */
 ion-content {
@@ -135,7 +99,6 @@ ion-header {
   --background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  /* Remove padding-top as it's handled per component */
 }
 
 /* Ionic Tabs - Full height and proper structure */
@@ -153,7 +116,8 @@ ion-router-outlet {
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
 }
 
 /* Chat Page Layout - Native Ionic OHNE Tab Bar */
@@ -166,17 +130,77 @@ code {
 .chat-page ion-content {
   flex: 1;
   min-height: 0;
-  /* KEINE Tab Bar mehr - nur safe area */
-  --padding-bottom: env(safe-area-inset-bottom);
   --padding-top: 0;
 }
 
-.chat-page ion-footer {
-  flex-shrink: 0;
-  /* Normale z-index - keine Tab Bar mehr */
-  z-index: 10;
+/* ----------------------------------------------- */
+/* NEUE UND ANGEPASSTE REGELN FÜR DEN CHAT-FOOTER  */
+/* ----------------------------------------------- */
+
+.chat-input-footer {
   position: relative;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #f8f8f8;
+  box-shadow: 0 -1px 5px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+  padding-bottom: 0 !important;
 }
+
+/* Chat Content - Abstand zum Footer damit Nachrichten nicht dahinter verschwinden */
+.chat-room-content ion-content::part(scroll) {
+  padding-bottom: 80px; /* Abstand für Footer + etwas Extra */
+}
+
+/* ChatRoom Header - Border komplett entfernen */
+.chat-room-page ion-header {
+  border: none !important;
+  --border-width: 0 !important;
+  --border-style: none !important;
+  --box-shadow: none !important;
+}
+
+.chat-room-page ion-toolbar {
+  --border-width: 0 !important;
+  --border-style: none !important;
+  --box-shadow: none !important;
+}
+
+
+/* Toolbar innerhalb des Footers - Höhe an die Input-Leiste anpassen */
+.chat-input-footer ion-toolbar {
+  --min-height: 56px; /* 40px (textarea min-height) + 8px (top padding) + 8px (bottom padding) */
+  --padding-top: 0px;
+  --padding-bottom: 0px;
+  --background: transparent; /* Toolbar-Hintergrund transparent lassen, Footer-Hintergrund nutzen */
+  display: flex; /* Sicherstellen, dass die Toolbar Flexbox verwendet */
+  align-items: center; /* Vertikal zentrieren */
+  justify-content: center; /* Horizontal zentrieren (für den Item-Inhalt) */
+}
+
+/* Item innerhalb der Toolbar - Höhe an die Input-Leiste anpassen */
+.chat-input-footer ion-item {
+  --min-height: 56px; /* Gleiche Höhe wie die Toolbar */
+  --padding-start: 0;
+  --padding-end: 0;
+  --inner-padding-end: 0px; /* Zusätzliche Sicherheit für Ionic Items */
+  width: 100%; /* Sicherstellen, dass das Item die volle Breite einnimmt */
+  display: flex; /* WICHTIG: Flexbox für das Item, um Inhalt auszurichten */
+  align-items: center; /* WICHTIG: Vertikale Zentrierung der Elemente (Textarea, Buttons) */
+  justify-content: space-between; /* WICHTIG: Elemente am Anfang/Ende und dazwischen verteilt */
+  --background: transparent; /* Sicherstellen, dass das Item transparent ist */
+}
+
+.chat-input-footer ion-textarea {
+  flex: 1;
+  margin: 0;
+  --padding-top: 6px;
+  --padding-bottom: 6px;
+}
+
 
 /* Header bleibt fest - nicht scrollbar */
 .chat-page ion-header {
@@ -185,46 +209,69 @@ code {
   z-index: 10;
 }
 
-/* Additional keyboardAttach optimizations */
-ion-footer[keyboard-attach] ion-toolbar {
-  --min-height: 60px;
+/* IonTextarea in chat - Optimized for keyboardAttach (Beibehalten) */
+ion-textarea {
+  --background: transparent;
+  --color: #1f2937;
+  --placeholder-color: #6b7280;
+  --border-radius: 0;
+  --border-color: transparent;
+  --border-style: none;
+  --border-width: 0;
+  --padding-start: 8px;
+  --padding-end: 8px;
   --padding-top: 8px;
   --padding-bottom: 8px;
+  font-size: 16px;
+  min-height: 40px;
+  /* Flexbox-Anpassung für die Textarea selbst, damit sie den verfügbaren Platz ausfüllt */
+  flex-grow: 1; /* WICHTIG: Erlaubt der Textarea, den verfügbaren Platz einzunehmen */
+  align-self: center; /* Sicherstellen, dass sie innerhalb des Flex-Containers zentriert ist */
 }
 
-ion-footer[keyboard-attach] ion-item {
-  --min-height: 44px;
-  --padding-start: 0;
-  --padding-end: 0;
+/* attachment-btn - (Beibehalten) */
+.attachment-btn {
+  --padding-start: 8px;
+  --padding-end: 8px;
+  --padding-top: 8px;
+  --padding-bottom: 8px;
+  margin: 0;
+  height: 40px; /* Die Basis-Höhe für den Button */
+  display: flex; /* Sicherstellen, dass der Button selbst flex ist */
+  align-items: center; /* Inhalt vertikal zentrieren */
+  justify-content: center; /* Inhalt horizontal zentrieren */
 }
 
-/* iOS keyboard env() support - CRITICAL für native keyboard */
+/* iOS keyboard env() support - KRITISCH für native Tastatur (Beibehalten) */
+/* Diese Regel ist korrekt und entscheidend, wenn vom Browser/WebView unterstützt. */
 @supports (padding-bottom: env(keyboard-inset-height)) {
   .chat-page ion-content {
-    /* Nur keyboard height und safe area - KEINE Tab Bar */
-    padding-bottom: calc(env(keyboard-inset-height, 0px) + env(safe-area-inset-bottom));
+    /* Nur Tastaturhöhe und Safe Area - KEINE Tab Bar */
+    /* padding-bottom: calc(env(keyboard-inset-height, 0px) + env(safe-area-inset-bottom)); */
   }
 }
 
-/* IonFooter mit keyboardAttach - Native Ionic */
-ion-footer[keyboard-attach] {
-  /* Ionic handles the keyboard attachment */
-  transform: translateY(0) !important;
-  position: relative !important;
-  z-index: 10 !important;
+ion-item.sc-ion-textarea-ios-h, ion-item .sc-ion-textarea-ios-h {
+  align-self:center !important; /* Setzt das Padding auf Null und erzwingt es */
 }
 
-/* Safe Area CSS - VERBESSERT */
+
+ion-footer.footer-toolbar-padding ion-toolbar {
+  padding-bottom: 0 !important; /* Setzt das Padding auf Null und erzwingt es */
+}
+ion-footer.footer-toolbar-padding ion-toolbar:last-of-type {
+  padding-bottom: 0 !important; /* Doppelte Sicherheit, falls :last-of-type noch greift */
+}
+
+/* Safe Area CSS - VERBESSERT (Beibehalten) */
 .safe-area-top {
   padding-top: env(safe-area-inset-top);
 }
 
-.safe-area-bottom {
-  padding-bottom: env(safe-area-inset-bottom);
-}
 
-/* Zusätzliche Safe Area Klassen für verschiedene Anwendungsfälle */
-.safe-area-bottom-margin {
+
+/* Zusätzliche Safe Area Klassen für verschiedene Anwendungsfälle (Beibehalten) */
+/* .safe-area-bottom-margin {
   margin-bottom: env(safe-area-inset-bottom);
 }
 
@@ -232,15 +279,14 @@ ion-footer[keyboard-attach] {
   padding-bottom: max(env(safe-area-inset-bottom), 20px);
 }
 
-/* Buttons die ganz unten sind aber trotzdem klickbar */
+/* Buttons die ganz unten sind aber trotzdem klickbar (Beibehalten) */
 .safe-bottom-button {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  padding-bottom: calc(env(safe-area-inset-bottom) + 16px);
   padding-top: 16px;
-  background: white;
+  background: red;
   border-top: 1px solid #e5e7eb;
   z-index: 10;
 }
@@ -249,21 +295,9 @@ ion-footer[keyboard-attach] {
   .safe-area-top {
     padding-top: max(env(safe-area-inset-top));
   }
-  
-  .safe-area-bottom {
-    padding-bottom: max(env(safe-area-inset-bottom));
-  }
-  
-  .safe-area-bottom-min {
-    padding-bottom: max(env(safe-area-inset-bottom), 20px);
-  }
-  
-  .safe-bottom-button {
-    padding-bottom: max(calc(env(safe-area-inset-bottom) + 16px), 36px);
-  }
 }
 
-/* Date Input Fixes */
+/* Date Input Fixes (Beibehalten) */
 input[type="date"] {
   position: relative;
   background: white;
@@ -279,7 +313,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
 }
 
-/* Form Input Fixes - Verhindert Zoom bei Input-Focus auf iOS */
+/* Form Input Fixes - Verhindert Zoom bei Input-Focus auf iOS (Beibehalten) */
 input[type="text"],
 input[type="email"],
 input[type="number"],
@@ -291,19 +325,19 @@ select {
   -webkit-appearance: none;
 }
 
-/* Scrolling Optimierungen */
+/* Scrolling Optimierungen (Beibehalten) */
 .overflow-y-auto {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
 }
 
-/* Touch Targets für iOS */
+/* Touch Targets für iOS (Beibehalten) */
 button {
   min-height: 44px;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Layout Helper Classes */
+/* Layout Helper Classes (Beibehalten) */
 .app-layout {
   display: flex;
   flex-direction: column;
@@ -336,39 +370,8 @@ button {
   margin-top: auto;
 }
 
-/* Chat-specific Ionic component styles */
-.attachment-btn {
-  --padding-start: 8px;
-  --padding-end: 8px;
-  --padding-top: 8px;
-  --padding-bottom: 8px;
-  margin: 0;
-  height: 40px;
-}
-
-/* IonTextarea in chat - Optimized for keyboardAttach */
-ion-textarea {
-  --background: transparent;
-  --color: #1f2937;
-  --placeholder-color: #6b7280;
-  --border-radius: 0;
-  --border-color: transparent;
-  --border-style: none;
-  --border-width: 0;
-  --padding-start: 8px;
-  --padding-end: 8px;
-  --padding-top: 8px;
-  --padding-bottom: 8px;
-  font-size: 16px;
-  min-height: 40px;
-}
-
-/* Action sheet styling */
+/* Action sheet styling (Beibehalten) */
 ion-action-sheet {
   --background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
 }
-
-/* Footer mit Input - Ionic 8 native keyboardAttach */
-
-/* Doppelte Regel entfernt - siehe oben */

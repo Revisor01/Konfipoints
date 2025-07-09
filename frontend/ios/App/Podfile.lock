@@ -1,11 +1,11 @@
 PODS:
-  - Capacitor (7.4.0):
+  - Capacitor (7.4.1):
     - CapacitorCordova
   - CapacitorApp (7.0.1):
     - Capacitor
   - CapacitorCamera (7.0.1):
     - Capacitor
-  - CapacitorCordova (7.4.0)
+  - CapacitorCordova (7.4.1)
   - CapacitorKeyboard (7.0.1):
     - Capacitor
   - CapacitorPreferences (7.0.1):
@@ -59,10 +59,10 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/@capawesome/capacitor-file-picker"
 
 SPEC CHECKSUMS:
-  Capacitor: a162db7c9c90f383740a78e8935dff4958158b6b
+  Capacitor: 4738747ece274c45e4d9bec9ae394a6269169e64
   CapacitorApp: d63334c052278caf5d81585d80b21905c6f93f39
   CapacitorCamera: eb8687d8687fed853598ec9460d94bcd5e16babe
-  CapacitorCordova: 723e017d8a80ab2ede9959fbe37556c35ac860d5
+  CapacitorCordova: 34618fa1b14b6b091fd60a7658f7654044ae8d8a
   CapacitorKeyboard: 969647d0ca2e5c737d7300088e2517aa832434e2
   CapacitorPreferences: cbf154e5e5519b7f5ab33817a334dda1e98387f9
   CapacitorPushNotifications: 0b653a3264d56daccf0e8769fff15d2f48306de6

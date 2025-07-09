@@ -20,12 +20,10 @@ const config: CapacitorConfig = {
     },
     StatusBar: {
       overlaysWebView: false,
-      style: "DARK",
       backgroundColor: "#ffffff"
     },
     Keyboard: {
-      resize: "ionic",
-      style: "dark",
+      resize: "none",
       resizeOnFullScreen: true
     },
     Share: {

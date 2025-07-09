@@ -77,16 +77,12 @@ const ChatView = ({ onNavigate }) => {
   const handleRoomSelect = async (room) => {
     // Mark as read
     try {
-      console.log('Marking room as read:', room.id, room.type, room.name);
       await api.put(`/chat/rooms/${room.id}/read`);
       // Update unread count locally
-      setUnreadCounts(prev => {
-        console.log('Updating unread counts for room:', room.id, 'from', prev[room.id], 'to 0');
-        return {
-          ...prev,
-          [room.id]: 0
-        };
-      });
+      setUnreadCounts(prev => ({
+        ...prev,
+        [room.id]: 0
+      }));
     } catch (err) {
       console.error('Error marking room as read:', err);
     }

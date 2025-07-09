@@ -1,4 +1,3 @@
-// frontend/src/components/ionic/IonicAdminTabs.js
 import React, { useState, useEffect, useRef } from 'react';
 import {
   IonTabs,
@@ -29,25 +28,22 @@ import useStatusBar from '../../hooks/useStatusBar';
 import { useApp } from '../../contexts/AppContext';
 import api from '../../services/api';
 
-// Import your existing components
 import KonfisView from '../admin/KonfisView';
 import KonfiDetailView from '../admin/KonfiDetailView';
 import BadgesView from '../admin/BadgesView';
 import ActivitiesView from '../admin/ActivitiesView';
 import MoreView from '../admin/MoreView';
 import ChatView from '../chat/ChatView';
-import ChatRoom from '../chat/ChatRoom';
+// ChatRoom is NOT imported here, as it's a top-level route in IonicApp.js
 
 const IonicAdminTabs = () => {
   const { user, setError } = useApp();
   const [loading, setLoading] = useState(true);
   const [selectedKonfi, setSelectedKonfi] = useState(null);
   const [notifications, setNotifications] = useState({});
-  
-  // Setup status bar
+
   useStatusBar();
-  
-  // Data states
+
   const [konfis, setKonfis] = useState([]);
   const [activities, setActivities] = useState([]);
   const [jahrgaenge, setJahrgaenge] = useState([]);
@@ -135,7 +131,7 @@ const IonicAdminTabs = () => {
       await loadData();
       event.detail.complete();
     };
-    
+
     return (
       <IonContent fullscreen className="ion-padding app-gradient-background">
         <IonRefresher slot="fixed" onIonRefresh={doRefresh}>
@@ -145,7 +141,6 @@ const IonicAdminTabs = () => {
       </IonContent>
     );
   };
-
 
   const ActivitiesTab = () => {
     const doRefresh = async (event) => {
