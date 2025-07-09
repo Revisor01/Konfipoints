@@ -153,7 +153,14 @@ const KonfiDetailView = ({ konfi, onBack, activities, settings, onUpdate }) => {
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
-            <IonBackButton defaultHref="/admin/konfis" />
+            <IonBackButton 
+              defaultHref="/admin/konfis" 
+              onClick={() => {
+                if (onBack) {
+                  onBack();
+                }
+              }}
+            />
           </IonButtons>
           <IonTitle>{konfi.name}</IonTitle>
         </IonToolbar>

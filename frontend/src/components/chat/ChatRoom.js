@@ -286,10 +286,10 @@ const ChatRoom = ({ room, roomId, onBack, nav, isInTab = false }) => {
                   icon={arrowBack}
                   text=""
                   onClick={() => {
-                    if (nav) {
-                      nav.pop();
-                    } else if (onBack) {
+                    if (onBack) {
                       onBack();
+                    } else if (nav) {
+                      nav.pop();
                     } else {
                       // Native navigation back to chat list
                       if (router.canGoBack()) {

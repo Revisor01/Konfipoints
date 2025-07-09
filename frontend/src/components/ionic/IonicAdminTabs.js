@@ -95,48 +95,43 @@ const IonicAdminTabs = () => {
   }, []);
 
   const KonfisTab = () => {
-    const navRef = useRef(null);
-    
     const doRefresh = async (event) => {
       await loadData();
       event.detail.complete();
     };
 
-    const handleSelectKonfi = (konfi) => {
-      navRef.current?.push(KonfiDetailView, { 
-        konfi,
-        activities,
-        settings,
-        onUpdate: loadData,
-        onBack: () => navRef.current?.pop()
-      });
-    };
+    const content = selectedKonfi ? (
+      <KonfiDetailView
+        konfi={selectedKonfi}
+        onBack={() => setSelectedKonfi(null)}
+        activities={activities}
+        settings={settings}
+        onUpdate={loadData}
+      />
+    ) : (
+      <>
+        <IonRefresher slot="fixed" onIonRefresh={doRefresh}>
+          <IonRefresherContent></IonRefresherContent>
+        </IonRefresher>
+        <KonfisView
+          konfis={konfis}
+          jahrgaenge={jahrgaenge}
+          settings={settings}
+          onSelectKonfi={setSelectedKonfi}
+          onUpdate={loadData}
+        />
+      </>
+    );
 
     return (
       <IonContent fullscreen className="ion-padding app-gradient-background">
-        <IonNav 
-          ref={navRef}
-          root={() => (
-            <div>
-              <IonRefresher slot="fixed" onIonRefresh={doRefresh}>
-                <IonRefresherContent></IonRefresherContent>
-              </IonRefresher>
-              <KonfisView
-                konfis={konfis}
-                jahrgaenge={jahrgaenge}
-                settings={settings}
-                onSelectKonfi={handleSelectKonfi}
-                onUpdate={loadData}
-              />
-            </div>
-          )}
-        />
+        {content}
       </IonContent>
     );
   };
 
   const ChatTab = () => {
-    const navRef = useRef(null);
+    const [selectedRoom, setSelectedRoom] = useState(null);
     
     const doRefresh = async (event) => {
       await loadData();
@@ -144,19 +139,27 @@ const IonicAdminTabs = () => {
     };
     
     const handleNavigateToRoom = (room) => {
-      navRef.current?.push(ChatRoom, { 
-        room, 
-        nav: navRef.current,
-        onBack: () => navRef.current?.pop()
-      });
+      setSelectedRoom(room);
     };
     
-    return (
-      <IonContent fullscreen className="ion-padding app-gradient-background">
+    const content = selectedRoom ? (
+      <ChatRoom
+        room={selectedRoom}
+        onBack={() => setSelectedRoom(null)}
+        isInTab={true}
+      />
+    ) : (
+      <>
         <IonRefresher slot="fixed" onIonRefresh={doRefresh}>
           <IonRefresherContent></IonRefresherContent>
         </IonRefresher>
         <ChatView onNavigateToRoom={handleNavigateToRoom} />
+      </>
+    );
+    
+    return (
+      <IonContent fullscreen className="ion-padding app-gradient-background">
+        {content}
       </IonContent>
     );
   };
