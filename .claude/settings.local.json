@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npm run cap:sync:*)",
+      "Bash(rm:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(grep:*)",
+      "Bash(sed:*)",
+      "Bash(git add:*)",
+      "Bash(npx cap sync:*)",
+      "Bash(claude mcp add:*)",
+      "Bash(claude mcp view:*)",
+      "Bash(claude mcp)",
+      "Bash(claude mcp:*)",
+      "Bash(npm start)",
+      "Bash(npx cap open:*)",
+      "Bash(rg:*)",
+      "Bash(ls:*)"
+    ],
+    "deny": []
+  }
+}

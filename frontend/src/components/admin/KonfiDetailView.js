@@ -147,7 +147,7 @@ const KonfiDetailView = ({ konfi, onBack, activities, settings, onUpdate }) => {
             <div>
               <h2 className="text-xl font-bold text-white">{konfi.name}</h2>
               <p className="text-sm text-white/80">
-                Jahrgang {konfi.jahrgang_name} • {konfi.points || 0} Punkte
+                Jahrgang {konfi.jahrgang_name} • {(konfi.points?.gottesdienst || 0) + (konfi.points?.gemeinde || 0)} Punkte
               </p>
             </div>
           </div>
@@ -158,13 +158,13 @@ const KonfiDetailView = ({ konfi, onBack, activities, settings, onUpdate }) => {
           {showGottesdienstTarget && (
             <div className="bg-white/20 rounded-lg p-3">
               <div className="text-sm text-white/80">Gottesdienste</div>
-              <div className="text-lg font-bold">{konfi.gottesdienst_count || 0}/{settings.target_gottesdienst}</div>
+              <div className="text-lg font-bold">{konfi.points?.gottesdienst || 0}/{settings.target_gottesdienst}</div>
             </div>
           )}
           {showGemeindeTarget && (
             <div className="bg-white/20 rounded-lg p-3">
               <div className="text-sm text-white/80">Gemeinde</div>
-              <div className="text-lg font-bold">{konfi.gemeinde_count || 0}/{settings.target_gemeinde}</div>
+              <div className="text-lg font-bold">{konfi.points?.gemeinde || 0}/{settings.target_gemeinde}</div>
             </div>
           )}
         </div>

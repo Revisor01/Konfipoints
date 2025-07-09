@@ -25,8 +25,8 @@ const KonfisView = ({ konfis, jahrgaenge, settings, onSelectKonfi, onUpdate }) =
     // Sortierung
     if (sortBy === 'points') {
       result = result.sort((a, b) => {
-        const totalA = a.points.gottesdienst + a.points.gemeinde;
-        const totalB = b.points.gottesdienst + b.points.gemeinde;
+        const totalA = (a.points?.gottesdienst || 0) + (a.points?.gemeinde || 0);
+        const totalB = (b.points?.gottesdienst || 0) + (b.points?.gemeinde || 0);
         return totalB - totalA; // Absteigende Reihenfolge
       });
     } else {
@@ -71,12 +71,12 @@ const KonfisView = ({ konfis, jahrgaenge, settings, onSelectKonfi, onUpdate }) =
           </div>
           <div>
             <div className="text-2xl font-bold">
-              {filteredAndSortedKonfis.reduce((sum, k) => sum + k.points.gottesdienst + k.points.gemeinde, 0)}
+              {filteredAndSortedKonfis.reduce((sum, k) => sum + (k.points?.gottesdienst || 0) + (k.points?.gemeinde || 0), 0)}
             </div>
             <div className="text-xs opacity-80">Punkte</div>
           </div>
           <div>
-            <div className="text-2xl font-bold">{jahrgaenge.length}</div>
+            <div className="text-2xl font-bold">{jahrgaenge?.length || 0}</div>
             <div className="text-xs opacity-80">Jahrgänge</div>
           </div>
         </div>
@@ -167,7 +167,7 @@ const KonfisView = ({ konfis, jahrgaenge, settings, onSelectKonfi, onUpdate }) =
                     {showGottesdienstTarget && (
                       <div className="text-center p-2 bg-blue-100 rounded">
                         <div className="font-bold text-blue-800">
-                          {konfi.points.gottesdienst}/{settings.target_gottesdienst}
+                          {konfi.points?.gottesdienst || 0}/{settings.target_gottesdienst}
                         </div>
                         <div className="text-blue-600">Gottesdienst</div>
                       </div>
@@ -175,14 +175,14 @@ const KonfisView = ({ konfis, jahrgaenge, settings, onSelectKonfi, onUpdate }) =
                     {showGemeindeTarget && (
                       <div className="text-center p-2 bg-green-100 rounded">
                         <div className="font-bold text-green-800">
-                          {konfi.points.gemeinde}/{settings.target_gemeinde}
+                          {konfi.points?.gemeinde || 0}/{settings.target_gemeinde}
                         </div>
                         <div className="text-green-600">Gemeinde</div>
                       </div>
                     )}
                     <div className="text-center p-2 bg-purple-100 rounded">
                       <div className="font-bold text-purple-800">
-                        {konfi.points.gottesdienst + konfi.points.gemeinde}
+                        {(konfi.points?.gottesdienst || 0) + (konfi.points?.gemeinde || 0)}
                       </div>
                       <div className="text-purple-600">Gesamt</div>
                     </div>

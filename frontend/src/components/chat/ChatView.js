@@ -1,22 +1,36 @@
 // ChatView.js
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Users, Plus, Settings, Search, Bell, BellOff, MessageCircle } from 'lucide-react';
+import { useIonRouter } from '@ionic/react';
+import { MessageSquare, Users, Plus, Settings, Search, Bell, BellOff, MessageCircle, Clock, UserPlus, Calendar, Award } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import api from '../../services/api';
 import { formatDate } from '../../utils/formatters';
-import ChatRoom from './ChatRoom';
 import CreateChatModal from './CreateChatModal';
+import { ADMIN_NAV_ITEMS } from '../../utils/constants';
 
-const ChatView = () => {
+const ChatView = ({ onNavigate, onNavigateToRoom }) => {
   const { user, setSuccess, setError } = useApp();
+  const router = useIonRouter();
   const isAdmin = user?.type === 'admin';
   const [rooms, setRooms] = useState([]);
-  const [selectedRoom, setSelectedRoom] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [unreadCounts, setUnreadCounts] = useState({});
   const [showAdminContact, setShowAdminContact] = useState(false);
+  
+  const iconMap = {
+    MessageSquare,
+    Clock,
+    UserPlus,
+    Calendar,
+    Award,
+    Settings
+  };
+
+  const getIconComponent = (iconName) => {
+    return iconMap[iconName] || MessageSquare;
+  };
 
   useEffect(() => {
     loadRooms();
@@ -24,14 +38,11 @@ const ChatView = () => {
     // Poll for new messages every 30 seconds
     const interval = setInterval(() => {
       loadUnreadCounts();
-      if (selectedRoom) {
-        // Refresh current room
-        loadRooms();
-      }
+      loadRooms();
     }, 30000);
     
     return () => clearInterval(interval);
-  }, [selectedRoom]);
+  }, []);
 
   const loadRooms = async () => {
     try {
@@ -64,8 +75,6 @@ const ChatView = () => {
   };
 
   const handleRoomSelect = async (room) => {
-    setSelectedRoom(room);
-    
     // Mark as read
     try {
       console.log('Marking room as read:', room.id, room.type, room.name);
@@ -81,12 +90,13 @@ const ChatView = () => {
     } catch (err) {
       console.error('Error marking room as read:', err);
     }
-  };
-
-  const handleBackToRooms = () => {
-    setSelectedRoom(null);
-    loadRooms(); // Refresh room list
-    // Keep local unread count state - don't reload immediately
+    
+    // Navigate to chat room - use IonNav if available, otherwise router
+    if (onNavigateToRoom) {
+      onNavigateToRoom(room);
+    } else {
+      router.push(`/admin/chat/${room.id}`, 'forward', { room });
+    }
   };
 
   const filteredRooms = rooms.filter(room => 
@@ -94,19 +104,10 @@ const ChatView = () => {
     (room.last_message && room.last_message.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  if (selectedRoom) {
-    return (
-      <ChatRoom
-        room={selectedRoom}
-        onBack={handleBackToRooms}
-      />
-    );
-  }
-
   return (
-    <div className="space-y-4">
-      {/* Header Card - Original Style */}
-      <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl p-6 shadow-sm">
+    <>
+      {/* Header Card - Add mb-4 for spacing */}
+      <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl p-6 shadow-sm mb-4">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <MessageSquare className="w-8 h-8" />
@@ -202,12 +203,19 @@ const ChatView = () => {
         onClose={() => setShowAdminContact(false)}
         onSelectAdmin={(roomId) => {
           setShowAdminContact(false);
+          // Find room by ID and pass it
           const room = rooms.find(r => r.id === roomId);
-          if (room) handleRoomSelect(room);
+          if (room) {
+            if (onNavigateToRoom) {
+              onNavigateToRoom(room);
+            } else {
+              router.push(`/admin/chat/${roomId}`, 'forward', { room });
+            }
+          }
         }}
       />
     )}
-    </div>
+    </>
   );
 };
 

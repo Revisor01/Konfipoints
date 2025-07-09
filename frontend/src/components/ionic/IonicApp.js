@@ -1,15 +1,15 @@
 // frontend/src/components/ionic/IonicApp.js
-import React from 'react';
-import { IonApp, IonRouterOutlet, setupIonicReact } from '@ionic/react';
+import React, { useState, useEffect } from 'react';
+import { IonApp, IonRouterOutlet, setupIonicReact, IonContent } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
-import { Route, Redirect } from 'react-router-dom';
+import { Route, Redirect, Switch } from 'react-router-dom';
 
 import { useApp } from '../../contexts/AppContext';
 import LoginView from '../auth/LoginView';
 import IonicAdminTabs from './IonicAdminTabs';
 import IonicKonfiTabs from './IonicKonfiTabs';
 import LoadingSpinner from '../common/LoadingSpinner';
-
+import api from '../../services/api';
 // Setup Ionic React
 setupIonicReact({
   rippleEffect: false,
@@ -17,7 +17,11 @@ setupIonicReact({
   swipeBackEnabled: true, // Enable swipe back navigation
   inputBlurring: false, // Prevent input blur issues
   scrollPadding: false, // Let native handle scroll padding
-  scrollAssist: true // Enable scroll assist for inputs
+  scrollAssist: true, // Enable scroll assist for inputs
+  hardwareBackButton: false, // Disable hardware back button for iOS
+  statusTap: false, // Disable status tap scrolling
+  backButtonText: '', // Remove back button text
+  backButtonIcon: 'arrow-back-outline' // Set back button icon
 });
 
 const IonicApp = () => {
@@ -41,7 +45,7 @@ const IonicApp = () => {
   return (
     <IonApp>
       <IonReactRouter>
-        <IonRouterOutlet>
+        <IonRouterOutlet animated={true}>
           {!user ? (
             <>
               <Route path="/login" component={LoginView} exact />

@@ -6,32 +6,12 @@ export const useCapacitorKeyboard = () => {
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
-    // Nichts tun - Layout bleibt komplett unverändert
-    const handleKeyboardWillShow = (info) => {
-      // Kein Code - Layout bleibt fix
-    };
+    // Nur globale Keyboard-Einstellungen - keine DOM-Manipulation
+    Keyboard.setScroll({ isDisabled: false });
+    Keyboard.setResizeMode({ mode: 'ionic' });
 
-    const handleKeyboardWillHide = () => {
-      // Kein Code - Layout bleibt fix
-    };
-
-    const handleKeyboardDidShow = (info) => {
-      // Kein Code - Layout bleibt fix
-    };
-
-    const handleKeyboardDidHide = () => {
-      // Kein Code - Layout bleibt fix
-    };
-
-    // Event listeners hinzufügen
-    Keyboard.addListener('keyboardWillShow', handleKeyboardWillShow);
-    Keyboard.addListener('keyboardWillHide', handleKeyboardWillHide);
-    Keyboard.addListener('keyboardDidShow', handleKeyboardDidShow);
-    Keyboard.addListener('keyboardDidHide', handleKeyboardDidHide);
-
-    // Cleanup
     return () => {
-      Keyboard.removeAllListeners();
+      // Cleanup falls nötig
     };
   }, []);
 };

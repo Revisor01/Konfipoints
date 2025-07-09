@@ -48,10 +48,50 @@ ion-tab-bar {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Safe area bottom override for tabs */
-ion-tabs {
-  background-color: white;
+/* iOS specific optimizations */
+.ios ion-content {
+  --keyboard-offset: 0px;
+  --padding-bottom: env(safe-area-inset-bottom);
 }
+
+/* ChatRoom specific optimizations */
+.chatroom-content {
+  --padding-bottom: 0px;
+}
+
+.chatroom-content .scroll-content {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Native iOS swipe gestures */
+.ios .swipe-back {
+  --padding-start: 0px;
+  --padding-end: 0px;
+}
+
+/* Footer keyboard attachment */
+ion-footer.keyboard-attach {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Better input handling on iOS */
+.ios ion-textarea {
+  --padding-top: 8px;
+  --padding-bottom: 8px;
+  --padding-start: 16px;
+  --padding-end: 16px;
+}
+
+/* Fix for iOS safe area handling */
+.ios .safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.ios .safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Safe area bottom override for tabs - removed as redundant */
 
 
 
@@ -63,12 +103,17 @@ ion-content {
   --padding-top: 0;
 }
 
+/* Shared gradient background for all tabs */
+ion-content.app-gradient-background {
+  --background: linear-gradient(to bottom right, rgb(239 246 255), rgb(245 243 255));
+}
+
 /* Status Bar - Overlay mode with safe area top and blur effect */
 ion-header {
   --background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  padding-top: env(safe-area-inset-top);
+  /* Remove padding-top as it's handled per component */
 }
 
 /* Ionic Tabs - Full height and proper structure */
@@ -87,6 +132,64 @@ ion-router-outlet {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+/* Chat Page Layout - Native Ionic OHNE Tab Bar */
+.chat-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-page ion-content {
+  flex: 1;
+  min-height: 0;
+  /* KEINE Tab Bar mehr - nur safe area */
+  --padding-bottom: env(safe-area-inset-bottom);
+  --padding-top: 0;
+}
+
+.chat-page ion-footer {
+  flex-shrink: 0;
+  /* Normale z-index - keine Tab Bar mehr */
+  z-index: 10;
+  position: relative;
+}
+
+/* Header bleibt fest - nicht scrollbar */
+.chat-page ion-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* Additional keyboardAttach optimizations */
+ion-footer[keyboard-attach] ion-toolbar {
+  --min-height: 60px;
+  --padding-top: 8px;
+  --padding-bottom: 8px;
+}
+
+ion-footer[keyboard-attach] ion-item {
+  --min-height: 44px;
+  --padding-start: 0;
+  --padding-end: 0;
+}
+
+/* iOS keyboard env() support - CRITICAL für native keyboard */
+@supports (padding-bottom: env(keyboard-inset-height)) {
+  .chat-page ion-content {
+    /* Nur keyboard height und safe area - KEINE Tab Bar */
+    padding-bottom: calc(env(keyboard-inset-height, 0px) + env(safe-area-inset-bottom));
+  }
+}
+
+/* IonFooter mit keyboardAttach - Native Ionic */
+ion-footer[keyboard-attach] {
+  /* Ionic handles the keyboard attachment */
+  transform: translateY(0) !important;
+  position: relative !important;
+  z-index: 10 !important;
 }
 
 /* Safe Area CSS - VERBESSERT */
@@ -221,8 +324,8 @@ button {
   height: 40px;
 }
 
-/* IonTextarea in chat */
-ion-textarea.chat-input {
+/* IonTextarea in chat - Optimized for keyboardAttach */
+ion-textarea {
   --background: transparent;
   --color: #1f2937;
   --placeholder-color: #6b7280;
@@ -244,28 +347,6 @@ ion-action-sheet {
   backdrop-filter: blur(20px);
 }
 
-/* Footer mit Input - Klebt an Tastatur */
-ion-footer {
-  /* Ionic handled keyboard behavior */
-  margin-bottom: 0;
-  padding-bottom: 0;
-}
+/* Footer mit Input - Ionic 8 native keyboardAttach */
 
-/* Footer klebt direkt an Tastatur ohne Abstand */
-.keyboard-open ion-footer {
-  margin-bottom: 0 !important;
-  padding-bottom: 0 !important;
-}
-
-/* Ionic Tab Bar - Native iOS Verhalten */
-ion-tab-bar {
-  --background: white;
-  --border: 1px solid #e5e7eb;
-  --color: #6b7280;
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-/* Ionic Tabs - Standard Layout */
-ion-tabs {
-  background-color: white;
-}
+/* Doppelte Regel entfernt - siehe oben */

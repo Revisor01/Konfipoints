@@ -1,6 +1,7 @@
 // ChatRoom.js - KOMPLETT ERSETZEN
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, BarChart3 } from 'lucide-react';
+import { useIonRouter } from '@ionic/react';
+import { ArrowLeft, BarChart3, ArrowDown } from 'lucide-react';
 import { 
   IonContent,
   IonHeader,
@@ -11,11 +12,18 @@ import {
   IonActionSheet,
   IonRefresher,
   IonRefresherContent,
-  IonPage
+  IonPage,
+  IonToolbar,
+  IonItem,
+  IonTitle,
+  IonButtons,
+  IonBackButton
 } from '@ionic/react';
-import { send, attach, camera, document, image, videocam } from 'ionicons/icons';
+import { send, attach, camera, document, image, videocam, chevronDown, arrowBack, barChart } from 'ionicons/icons';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { FilePicker } from '@capawesome/capacitor-file-picker';
+import { Keyboard } from '@capacitor/keyboard';
+import { Capacitor } from '@capacitor/core';
 import { useApp } from '../../contexts/AppContext';
 import api from '../../services/api';
 import { formatDate } from '../../utils/formatters';
@@ -23,31 +31,88 @@ import MessageBubble from './MessageBubble';
 import PollComponent from './PollComponent';
 import CreatePollModal from './CreatePollModal';
 
-const ChatRoom = ({ room, onBack }) => {
+const ChatRoom = ({ room, roomId, onBack, nav, isInTab = false }) => {
   const { user } = useApp();
+  const router = useIonRouter();
   const isAdmin = user?.type === 'admin';
+  const [currentRoom, setCurrentRoom] = useState(room);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreatePoll, setShowCreatePoll] = useState(false);
   const messagesEndRef = useRef(null);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
   
   // Message input state
   const [message, setMessage] = useState('');
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [attachedFile, setAttachedFile] = useState(null);
+  const textareaRef = useRef(null);
+  
+  // KEIN useCapacitorKeyboard Hook in ChatRoom - lass Ionic das machen
 
   useEffect(() => {
-    loadMessages();
-  }, [room.id]);
+    if (!currentRoom && roomId) {
+      // Load room from API if not provided
+      const loadRoom = async () => {
+        try {
+          const response = await api.get('/chat/rooms');
+          const foundRoom = response.data.find(r => r.id === parseInt(roomId));
+          if (foundRoom) {
+            setCurrentRoom(foundRoom);
+          }
+        } catch (err) {
+          console.error('Error loading room:', err);
+        }
+      };
+      loadRoom();
+    }
+  }, [roomId, currentRoom]);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (currentRoom) {
+      loadMessages();
+    }
+  }, [currentRoom]);
+
+  // Setup native keyboard behavior for iOS
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      // Enable native keyboard behavior
+      Keyboard.setScroll({ isDisabled: false });
+      Keyboard.setResizeMode({ mode: 'native' });
+    }
+    
+    return () => {
+      // Reset on unmount
+      if (Capacitor.isNativePlatform()) {
+        Keyboard.setScroll({ isDisabled: false });
+        Keyboard.setResizeMode({ mode: 'native' });
+      }
+    };
+  }, []);
+
+  // Auto-scroll when new messages arrive - only if user is at bottom
+  useEffect(() => {
+    if (messages.length > 0 && !showScrollButton) {
+      scrollToBottom();
+    }
+  }, [messages, showScrollButton]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Scroll to bottom with proper timing
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
+    setShowScrollButton(false);
+  };
+
+  // Check if user has scrolled up to show scroll button
+  const handleScroll = (e) => {
+    const element = e.target;
+    const isNearBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 100;
+    setShowScrollButton(!isNearBottom && messages.length > 0);
   };
 
   const loadMessages = async (offset = 0) => {
@@ -55,7 +120,7 @@ const ChatRoom = ({ room, onBack }) => {
       if (offset === 0) setLoading(true);
       else setLoadingMore(true);
       
-      const response = await api.get(`/chat/rooms/${room.id}/messages?limit=50&offset=${offset}`);
+      const response = await api.get(`/chat/rooms/${currentRoom.id}/messages?limit=50&offset=${offset}`);
       
       if (offset === 0) {
         setMessages(response.data);
@@ -84,13 +149,16 @@ const ChatRoom = ({ room, onBack }) => {
         formData.append('file', attachedFile);
       }
       
-      const response = await api.post(`/chat/rooms/${room.id}/messages`, formData, {
+      const response = await api.post(`/chat/rooms/${currentRoom.id}/messages`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
       setMessages(prev => [...prev, response.data]);
       setMessage('');
       setAttachedFile(null);
+      
+      // Nach dem Senden zum Ende scrollen
+      scrollToBottom();
     } catch (err) {
       console.error('Send Error:', err);
     }
@@ -98,7 +166,7 @@ const ChatRoom = ({ room, onBack }) => {
 
   const handleCreatePoll = async (pollData) => {
     try {
-      await api.post(`/chat/rooms/${room.id}/polls`, pollData);
+      await api.post(`/chat/rooms/${currentRoom.id}/polls`, pollData);
       setShowCreatePoll(false);
       loadMessages();
     } catch (err) {
@@ -193,11 +261,12 @@ const ChatRoom = ({ room, onBack }) => {
   };
 
   const getRoomTitle = () => {
-    if (room.jahrgang_name) return `Jahrgang ${room.jahrgang_name}`;
-    return room.name;
+    if (!currentRoom) return '';
+    if (currentRoom.jahrgang_name) return `Jahrgang ${currentRoom.jahrgang_name}`;
+    return currentRoom.name;
   };
 
-  if (loading) {
+  if (loading || !currentRoom) {
     return (
       <div className="h-full flex items-center justify-center bg-white">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -207,137 +276,173 @@ const ChatRoom = ({ room, onBack }) => {
 
   return (
     <IonPage>
-      {/* HEADER */}
-      <IonHeader>
-        <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={onBack}
-                className="text-white/80 hover:text-white p-1"
-              >
-                <ArrowLeft className="w-6 h-6" />
-              </button>
-              
-              <div>
-                <h2 className="text-lg font-bold text-white">
-                  {getRoomTitle()}
-                </h2>
-                <p className="text-sm text-white/80">
-                  {room.type === 'jahrgang' ? 'Jahrgangs-Chat' : 
-                   room.type === 'admin' ? 'Admin-Support' : 'Direktnachricht'}
-                </p>
+      <IonHeader className="ion-no-border">
+        <IonToolbar className="ion-no-border">
+          <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-sm" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 8px)', paddingBottom: '16px', paddingLeft: '16px', paddingRight: '16px' }}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <IonBackButton
+                  defaultHref="/admin/chat"
+                  icon={arrowBack}
+                  text=""
+                  onClick={() => {
+                    if (nav) {
+                      nav.pop();
+                    } else if (onBack) {
+                      onBack();
+                    } else {
+                      // Native navigation back to chat list
+                      if (router.canGoBack()) {
+                        router.goBack();
+                      } else {
+                        router.push('/admin/chat', 'back');
+                      }
+                    }
+                  }}
+                  className="text-white/90 hover:text-white"
+                />
+                
+                <div>
+                  <h2 className="text-xl font-bold text-white leading-tight">
+                    {getRoomTitle()}
+                  </h2>
+                  <p className="text-sm text-white/80 mt-1">
+                    {currentRoom.type === 'jahrgang' ? 'Jahrgangs-Chat' : 
+                     currentRoom.type === 'admin' ? 'Admin-Support' : 'Direktnachricht'}
+                  </p>
+                </div>
               </div>
-            </div>
 
-            {isAdmin && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowCreatePoll(true)}
-                  className="bg-white/20 text-white p-2 rounded-lg hover:bg-white/30 transition-colors"
-                  title="Umfrage erstellen"
-                >
-                  <BarChart3 className="w-5 h-5" />
-                </button>
-              </div>
-            )}
+              {isAdmin && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowCreatePoll(true)}
+                    className="bg-white/20 text-white p-3 rounded-lg hover:bg-white/30 transition-colors"
+                    title="Umfrage erstellen"
+                  >
+                    <BarChart3 className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        </IonToolbar>
       </IonHeader>
 
       {/* CONTENT WITH MESSAGES */}
-      <IonContent>
+      <IonContent 
+        fullscreen 
+        scrollEvents={true} 
+        onIonScroll={handleScroll} 
+        className="chatroom-content ion-padding ion-padding-bottom"
+        forceOverscroll={false}
+        scrollX={false}
+        scrollY={true}
+      >
         <IonRefresher slot="fixed" onIonRefresh={doRefresh} pullFactor={0.5} pullMin={100} pullMax={200}>
           <IonRefresherContent
-            pullingIcon="chevron-down-circle-outline"
+            pullingIcon={chevronDown}
             pullingText="Zum Aktualisieren ziehen"
             refreshingSpinner="circles"
             refreshingText="Nachrichten werden geladen..."
           ></IonRefresherContent>
         </IonRefresher>
         
-        <div className="p-4">
-          {hasMore && (
-            <div className="text-center mb-4">
-              <button
-                onClick={loadMoreMessages}
-                disabled={loadingMore}
-                className="text-blue-500 hover:text-blue-700 text-sm font-medium disabled:opacity-50 py-2 px-4 rounded-lg border border-blue-200"
-              >
-                {loadingMore ? 'Wird geladen...' : 'Ältere Nachrichten laden'}
-              </button>
-            </div>
-          )}
-
-          <div className="space-y-4">
-            {messages.map((message, index) => (
-              <MessageBubble
-                key={message.id}
-                message={message}
-                isOwnMessage={message.sender_id === user.id}
-                showSender={!message.isOwnMessage && (index === 0 || messages[index - 1]?.sender_id !== message.sender_id)}
-                onDelete={isAdmin ? () => handleDeleteMessage(message.id) : null}
-                formatDate={formatDate}
-              />
-            ))}
-            <div ref={messagesEndRef} />
+        {hasMore && (
+          <div className="text-center mb-4">
+            <button
+              onClick={loadMoreMessages}
+              disabled={loadingMore}
+              className="text-blue-500 hover:text-blue-700 text-sm font-medium disabled:opacity-50 py-2 px-4 rounded-lg border border-blue-200"
+            >
+              {loadingMore ? 'Wird geladen...' : 'Ältere Nachrichten laden'}
+            </button>
           </div>
+        )}
+
+        <div className="space-y-4">
+          {messages.map((message, index) => (
+            <MessageBubble
+              key={message.id}
+              message={message}
+              isOwnMessage={message.sender_id === user.id}
+              showSender={!message.isOwnMessage && (index === 0 || messages[index - 1]?.sender_id !== message.sender_id)}
+              onDelete={isAdmin ? () => handleDeleteMessage(message.id) : null}
+              formatDate={formatDate}
+            />
+          ))}
+          <div ref={messagesEndRef} />
         </div>
+        
+        {/* Scroll to Bottom Button - positioned within IonContent */}
+        {showScrollButton && (
+          <div style={{ position: 'sticky', bottom: '16px', textAlign: 'right', marginTop: '16px' }}>
+            <button
+              onClick={scrollToBottom}
+              className="bg-blue-500 text-white p-3 rounded-full shadow-lg hover:bg-blue-600 transition-colors"
+              style={{ display: 'inline-block' }}
+            >
+              <ArrowDown className="w-5 h-5" />
+            </button>
+          </div>
+        )}
       </IonContent>
 
-      {/* FOOTER WITH INPUT - STICKS TO KEYBOARD! */}
-      <IonFooter className="ion-no-border">
-        <div className="bg-white border-t border-gray-200 p-4">
+      {/* FOOTER WITH INPUT - NATIVE KEYBOARD ATTACH */}
+      <IonFooter keyboardAttach className="ion-no-border">
+        <IonToolbar className="ion-no-border" style={{ '--min-height': '60px', '--padding-top': '8px', '--padding-bottom': '8px' }}>
           {/* File Preview */}
           {attachedFile && (
-            <div className="mb-3 flex items-center gap-2 p-2 bg-gray-100 rounded-lg">
+            <div className="flex items-center gap-2 p-2 bg-gray-100 mx-4 mt-2 rounded-lg">
               <span className="text-sm">{attachedFile.name}</span>
               <button
                 onClick={() => setAttachedFile(null)}
-                className="text-red-500 text-sm"
+                className="text-red-500 text-sm ml-auto"
               >
                 ✕
               </button>
             </div>
           )}
           
-          <div className="flex items-end gap-3 bg-gray-50 rounded-2xl p-2">
-            <button
+          <IonItem lines="none" className="ion-no-padding">
+            <IonButton 
+              slot="start" 
+              fill="clear" 
               onClick={() => setShowActionSheet(true)}
-              className="flex-shrink-0 p-2 text-gray-500 hover:text-blue-500 transition-colors"
+              className="ion-no-margin"
             >
-              <IonIcon icon={attach} className="w-6 h-6" />
-            </button>
+              <IonIcon icon={attach} />
+            </IonButton>
             
-            <div className="flex-1">
-              <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Nachricht schreiben..."
-                rows={1}
-                maxLength={1000}
-                className="w-full resize-none bg-transparent text-gray-900 placeholder-gray-500 border-none outline-none text-base py-2 px-2"
-                style={{
-                  fontSize: '16px',
-                  minHeight: '40px',
-                  maxHeight: '120px'
-                }}
-                onInput={(e) => {
-                  e.target.style.height = 'auto';
-                  e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
-                }}
-              />
-            </div>
+            <IonTextarea
+              ref={textareaRef}
+              autoGrow={true}
+              placeholder="Nachricht schreiben..."
+              value={message}
+              onIonChange={(e) => setMessage(e.detail.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+              rows={1}
+              maxlength={1000}
+              enterkeyhint="send"
+              inputmode="text"
+            />
             
-            <button
+            <IonButton 
+              slot="end"
               onClick={handleSendMessage}
               disabled={!message.trim() && !attachedFile}
-              className="flex-shrink-0 w-7 h-7 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white rounded-full transition-colors flex items-center justify-center"
+              fill="clear"
+              className="ion-no-margin"
             >
-              <IonIcon icon={send} className="w-3 h-3" />
-            </button>
-          </div>
-        </div>
+              <IonIcon slot="icon-only" icon={send} />
+            </IonButton>
+          </IonItem>
+        </IonToolbar>
       </IonFooter>
 
       {/* Action Sheet for Attachments */}

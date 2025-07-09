@@ -1,5 +1,5 @@
 // frontend/src/components/ionic/IonicAdminTabs.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   IonTabs,
   IonTabBar,
@@ -11,7 +11,8 @@ import {
   IonContent,
   IonHeader,
   IonToolbar,
-  IonTitle
+  IonTitle,
+  IonNav
 } from '@ionic/react';
 import { Route } from 'react-router-dom';
 import {
@@ -33,6 +34,7 @@ import BadgesView from '../admin/BadgesView';
 import ActivitiesView from '../admin/ActivitiesView';
 import MoreView from '../admin/MoreView';
 import ChatView from '../chat/ChatView';
+import ChatRoom from '../chat/ChatRoom';
 
 const IonicAdminTabs = () => {
   const { user, setError } = useApp();
@@ -110,75 +112,57 @@ const IonicAdminTabs = () => {
     );
 
     return (
-      <IonContent>
-        <div style={{ 
-          background: 'linear-gradient(to bottom right, rgb(239 246 255), rgb(245 243 255))', 
-          minHeight: '100%', 
-          padding: '16px',
-          paddingTop: '0px'
-        }}>
-          {content}
-        </div>
+      <IonContent fullscreen className="ion-padding app-gradient-background">
+        {content}
       </IonContent>
     );
   };
 
-  const ChatTab = () => (
-    <IonContent>
-      <div style={{ 
-        background: 'linear-gradient(to bottom right, rgb(239 246 255), rgb(245 243 255))', 
-        minHeight: '100%', 
-        padding: '16px',
-        paddingTop: '0px'
-      }}>
-        <ChatView />
-      </div>
-    </IonContent>
-  );
+  const ChatTab = () => {
+    const navRef = useRef(null);
+    
+    const handleNavigateToRoom = (room) => {
+      navRef.current?.push(ChatRoom, { 
+        room, 
+        nav: navRef.current,
+        onBack: () => navRef.current?.pop()
+      });
+    };
+    
+    return (
+      <IonNav 
+        ref={navRef}
+        root={ChatView}
+        rootParams={{ 
+          onNavigateToRoom: handleNavigateToRoom 
+        }}
+      />
+    );
+  };
+
 
   const ActivitiesTab = () => (
-    <IonContent>
-      <div style={{ 
-        background: 'linear-gradient(to bottom right, rgb(239 246 255), rgb(245 243 255))', 
-        minHeight: '100%', 
-        padding: '16px',
-        paddingTop: '0px'
-      }}>
-        <ActivitiesView activities={activities} onUpdate={loadData} />
-      </div>
+    <IonContent fullscreen className="ion-padding app-gradient-background">
+      <ActivitiesView activities={activities} onUpdate={loadData} />
     </IonContent>
   );
 
   const BadgesTab = () => (
-    <IonContent>
-      <div style={{ 
-        background: 'linear-gradient(to bottom right, rgb(239 246 255), rgb(245 243 255))', 
-        minHeight: '100%', 
-        padding: '16px',
-        paddingTop: '0px'
-      }}>
-        <BadgesView badges={badges} activities={activities} onUpdate={loadData} />
-      </div>
+    <IonContent fullscreen className="ion-padding app-gradient-background">
+      <BadgesView badges={badges} activities={activities} onUpdate={loadData} />
     </IonContent>
   );
 
   const SettingsTab = () => (
-    <IonContent>
-      <div style={{ 
-        background: 'linear-gradient(to bottom right, rgb(239 246 255), rgb(245 243 255))', 
-        minHeight: '100%', 
-        padding: '16px',
-        paddingTop: '0px'
-      }}>
-        <MoreView
-          settings={settings}
-          jahrgaenge={jahrgaenge}
-          requests={requests}
-          konfis={konfis}
-          onUpdate={loadData}
-          notifications={notifications}
-        />
-      </div>
+    <IonContent fullscreen className="ion-padding app-gradient-background">
+      <MoreView
+        settings={settings}
+        jahrgaenge={jahrgaenge}
+        requests={requests}
+        konfis={konfis}
+        onUpdate={loadData}
+        notifications={notifications}
+      />
     </IonContent>
   );
 
