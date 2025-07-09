@@ -133,7 +133,7 @@ const IonicAdminTabs = () => {
     };
 
     return (
-      <IonContent fullscreen className="ion-padding app-gradient-background">
+      <IonContent fullscreen className="ion-padding app-gradient-background chat-overview">
         <IonRefresher slot="fixed" onIonRefresh={doRefresh}>
           <IonRefresherContent></IonRefresherContent>
         </IonRefresher>

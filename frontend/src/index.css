@@ -47,7 +47,7 @@ ion-tab-bar {
   --border: 1px solid rgba(0, 0, 0, 0.08);
   --color: #8e8e93; /* iOS inactive tab color */
   --color-selected: #007AFF; /* iOS blue */
-  padding-bottom: env(safe-area-inset-bottom);
+  /*padding-bottom: env(safe-area-inset-bottom);*/
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }
@@ -143,36 +143,44 @@ code {
   left: 0;
   right: 0;
   background: #f8f8f8;
-  box-shadow: 0 -1px 5px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 -1px 5px rgba(0, 0, 0, 0.05) !important;
   display: flex;
   flex-direction: column;
   z-index: 10;
-  padding-bottom: 0 !important;
+  padding-bottom: 0px !important;
+  /* Sehr kleine Anpassung für bessere Safe Area Positionierung */
 }
 
-/* Chat Content - Abstand zum Footer damit Nachrichten nicht dahinter verschwinden */
+/* Chat Content - Abstand zum Footer damit Nachrichten nicht dahinter verschwinden
 .chat-room-content ion-content::part(scroll) {
-  padding-bottom: 80px; /* Abstand für Footer + etwas Extra */
+  padding-bottom: 120px; /* Erhöhter Abstand für Footer + sicherheitsmarge 
+}*/
+
+/* Chat-Übersicht (ChatView) - Abstand zum Tab Bar */
+.chat-overview ion-content::part(scroll) {
+  padding-bottom: 80px; /* Abstand für Tab Bar */
 }
 
-/* ChatRoom Header - Border komplett entfernen */
+/* ChatRoom Header - Normal Ionic Header */
 .chat-room-page ion-header {
-  border: none !important;
+  background-color: #eef6ff !important;
   --border-width: 0 !important;
   --border-style: none !important;
   --box-shadow: none !important;
 }
 
-.chat-room-page ion-toolbar {
+.chat-room-page ion-header ion-toolbar {
   --border-width: 0 !important;
   --border-style: none !important;
   --box-shadow: none !important;
+  --background: transparent !important;
 }
+
 
 
 /* Toolbar innerhalb des Footers - Höhe an die Input-Leiste anpassen */
 .chat-input-footer ion-toolbar {
-  --min-height: 56px; /* 40px (textarea min-height) + 8px (top padding) + 8px (bottom padding) */
+  --min-height: 40px; /* 40px (textarea min-height) + 8px (top padding) + 8px (bottom padding) */
   --padding-top: 0px;
   --padding-bottom: 0px;
   --background: transparent; /* Toolbar-Hintergrund transparent lassen, Footer-Hintergrund nutzen */
@@ -183,13 +191,13 @@ code {
 
 /* Item innerhalb der Toolbar - Höhe an die Input-Leiste anpassen */
 .chat-input-footer ion-item {
-  --min-height: 56px; /* Gleiche Höhe wie die Toolbar */
+  --min-height: 40px; /* Gleiche Höhe wie die Toolbar */
   --padding-start: 0;
   --padding-end: 0;
   --inner-padding-end: 0px; /* Zusätzliche Sicherheit für Ionic Items */
   width: 100%; /* Sicherstellen, dass das Item die volle Breite einnimmt */
   display: flex; /* WICHTIG: Flexbox für das Item, um Inhalt auszurichten */
-  align-items: center; /* WICHTIG: Vertikale Zentrierung der Elemente (Textarea, Buttons) */
+  align-items: baseline; /* WICHTIG: Vertikale Zentrierung der Elemente (Textarea, Buttons) */
   justify-content: space-between; /* WICHTIG: Elemente am Anfang/Ende und dazwischen verteilt */
   --background: transparent; /* Sicherstellen, dass das Item transparent ist */
 }
@@ -197,8 +205,6 @@ code {
 .chat-input-footer ion-textarea {
   flex: 1;
   margin: 0;
-  --padding-top: 6px;
-  --padding-bottom: 6px;
 }
 
 
@@ -220,8 +226,8 @@ ion-textarea {
   --border-width: 0;
   --padding-start: 8px;
   --padding-end: 8px;
-  --padding-top: 8px;
-  --padding-bottom: 8px;
+  --padding-top: 0px;
+  --padding-bottom: 0px;
   font-size: 16px;
   min-height: 40px;
   /* Flexbox-Anpassung für die Textarea selbst, damit sie den verfügbaren Platz ausfüllt */
@@ -233,14 +239,27 @@ ion-textarea {
 .attachment-btn {
   --padding-start: 8px;
   --padding-end: 8px;
-  --padding-top: 8px;
-  --padding-bottom: 8px;
+  --padding-top: 0px;
+  --padding-bottom: 0px;
   margin: 0;
   height: 40px; /* Die Basis-Höhe für den Button */
   display: flex; /* Sicherstellen, dass der Button selbst flex ist */
   align-items: center; /* Inhalt vertikal zentrieren */
   justify-content: center; /* Inhalt horizontal zentrieren */
 }
+
+.send-btn {
+  --padding-start: 8px;
+  --padding-end: 8px;
+  --padding-top: 0px;
+  --padding-bottom: 0px;
+  margin: 0;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 
 /* iOS keyboard env() support - KRITISCH für native Tastatur (Beibehalten) */
 /* Diese Regel ist korrekt und entscheidend, wenn vom Browser/WebView unterstützt. */
@@ -250,11 +269,6 @@ ion-textarea {
     /* padding-bottom: calc(env(keyboard-inset-height, 0px) + env(safe-area-inset-bottom)); */
   }
 }
-
-ion-item.sc-ion-textarea-ios-h, ion-item .sc-ion-textarea-ios-h {
-  align-self:center !important; /* Setzt das Padding auf Null und erzwingt es */
-}
-
 
 ion-footer.footer-toolbar-padding ion-toolbar {
   padding-bottom: 0 !important; /* Setzt das Padding auf Null und erzwingt es */
@@ -370,8 +384,133 @@ button {
   margin-top: auto;
 }
 
-/* Action sheet styling (Beibehalten) */
+/* Action sheet styling mit Safe Area Support */
 ion-action-sheet {
   --background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
+
+/* iOS Action Sheet Safe Area Fix */
+.ios ion-action-sheet {
+  --background: rgba(248, 248, 248, 0.95);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Action Sheet Backdrop Fix für iOS */
+.ios ion-action-sheet::part(backdrop) {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* iOS Native Modal Styling */
+ion-modal {
+  --backdrop-opacity: 0.4;
+  --border-radius: 16px;
+  --box-shadow: 0 28px 48px rgba(0, 0, 0, 0.4);
+}
+
+.ios ion-modal {
+  --backdrop-opacity: 0.6;
+  --border-radius: 20px;
+  --box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  --height: auto;
+  --max-height: 85vh;
+}
+
+/* iOS Modal Backdrop */
+.ios ion-modal::part(backdrop) {
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* iOS Modal Header */
+.ios ion-modal ion-header {
+  --background: rgba(249, 249, 249, 0.94);
+  --color: #000;
+  --border-color: rgba(60, 60, 67, 0.29);
+  padding-top: 20px;
+  border-bottom: 0.5px solid var(--border-color);
+}
+
+.ios ion-modal ion-header ion-toolbar {
+  --background: transparent;
+  --color: #000;
+  --border-color: transparent;
+  --min-height: 44px;
+}
+
+.ios ion-modal ion-header ion-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #000;
+}
+
+.ios ion-modal ion-header ion-button {
+  --color: #007AFF;
+  font-size: 17px;
+  font-weight: 400;
+}
+
+/* iOS Modal Content */
+.ios ion-modal ion-content {
+  --background: #fff;
+  --color: #000;
+  --padding-top: 0;
+  --padding-bottom: env(safe-area-inset-bottom);
+  height: auto;
+  min-height: 200px;
+}
+
+/* iOS Modal Footer */
+.ios ion-modal ion-footer {
+  --background: rgba(249, 249, 249, 0.94);
+  --color: #000;
+  border-top: 0.5px solid rgba(60, 60, 67, 0.29);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.ios ion-modal ion-footer ion-button {
+  --color: #007AFF;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.ios ion-modal ion-footer ion-button[color="success"] {
+  --color: #007AFF;
+  --background: #007AFF;
+  --color: #fff;
+  --border-radius: 8px;
+}
+
+/* Chat Action Sheet Custom Styling */
+.chat-action-sheet {
+  --background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.ios .chat-action-sheet {
+  --background: rgba(248, 248, 248, 0.95);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.chat-action-sheet .action-sheet-button {
+  --background: transparent;
+  --color: #007aff;
+}
+
+.chat-action-sheet .action-sheet-button[role="cancel"] {
+  --color: #ff3b30;
+  --background: rgba(255, 59, 48, 0.1);
+  font-weight: 600;
+}
+
+
+ion-header ion-toolbar:first-of-type {
+  padding-top: 0px !important;
+}
+
+

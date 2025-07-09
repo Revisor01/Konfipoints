@@ -3,6 +3,18 @@ import React, { useState } from 'react';
 import { Download, Eye, Trash2, Reply, MoreVertical, Share as ShareIcon } from 'lucide-react';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
+import { 
+  IonModal, 
+  IonContent, 
+  IonHeader, 
+  IonToolbar, 
+  IonTitle, 
+  IonButtons, 
+  IonButton, 
+  IonIcon 
+} from '@ionic/react';
+import { close } from 'ionicons/icons';
+import api, { API_URL } from '../../services/api';
 
 const MessageBubble = ({ 
   message, 
@@ -15,12 +27,29 @@ const MessageBubble = ({
   const [showActions, setShowActions] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
   const [longPressTimer, setLongPressTimer] = useState(null);
+  const [showImageModal, setShowImageModal] = useState(false);
+
+  // Get the correct API URL from the global API_URL
+  const getFileUrl = (filePath) => {
+    const token = localStorage.getItem('konfi_token');
+    if (token) {
+      return `${API_URL}/chat/files/${filePath}?token=${token}`;
+    }
+    return `${API_URL}/chat/files/${filePath}`;
+  };
 
   const formatTime = (timeString) => {
+    // Parse the date string properly to handle timezone
     const date = new Date(timeString);
+    // Check if the date is valid
+    if (isNaN(date.getTime())) {
+      return 'Ungültige Zeit';
+    }
+    
     return date.toLocaleTimeString('de-DE', { 
       hour: '2-digit', 
-      minute: '2-digit' 
+      minute: '2-digit',
+      timeZone: 'Europe/Berlin' // Explicitly set German timezone
     });
   };
 
@@ -34,7 +63,7 @@ const MessageBubble = ({
 
   const downloadFile = async () => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/chat/files/${message.file_path}`);
+      const response = await fetch(getFileUrl(message.file_path));
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -57,7 +86,7 @@ const MessageBubble = ({
           await Share.share({
             title: 'Bild aus KonfiQuest',
             text: message.content || 'Bild geteilt aus KonfiQuest',
-            url: `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/chat/files/${message.file_path}`
+            url: getFileUrl(message.file_path)
           });
         } else if (message.message_type === 'file') {
           // For files, share the file info
@@ -115,18 +144,12 @@ const MessageBubble = ({
               </div>
             )}
             <img
-              src={`${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/chat/files/${message.file_path}`}
+              src={getFileUrl(message.file_path)}
               alt={message.file_name}
               className={`max-w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity ${imageLoading ? 'hidden' : ''}`}
               onLoad={handleImageLoad}
               onError={handleImageError}
-              onClick={() => {
-                // Open in full screen
-                const img = new Image();
-                img.src = `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/chat/files/${message.file_path}`;
-                const newWindow = window.open();
-                newWindow.document.write(`<img src="${img.src}" style="max-width:100%;height:auto;" />`);
-              }}
+              onClick={() => setShowImageModal(true)}
             />
             {message.content && (
               <p className="mt-2 text-sm">{message.content}</p>
@@ -168,7 +191,7 @@ const MessageBubble = ({
               className="w-full rounded-lg"
               preload="metadata"
             >
-              <source src={`${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/chat/files/${message.file_path}`} />
+              <source src={getFileUrl(message.file_path)} />
               Video wird nicht unterstützt
             </video>
             {message.content && (
@@ -193,8 +216,6 @@ const MessageBubble = ({
         onTouchStart={handleLongPressStart}
         onTouchEnd={handleLongPressEnd}
         onTouchCancel={handleLongPressEnd}
-        onMouseEnter={() => setShowActions(true)}
-        onMouseLeave={() => setShowActions(false)}
         onClick={() => setShowActions(false)}
       >
         {/* Sender Name */}
@@ -265,6 +286,32 @@ const MessageBubble = ({
           )}
         </div>
       </div>
+      
+      {/* Image Modal for Fullscreen View */}
+      {message.message_type === 'image' && (
+        <IonModal isOpen={showImageModal} onDidDismiss={() => setShowImageModal(false)}>
+          <IonHeader>
+            <IonToolbar>
+              <IonTitle>{message.file_name}</IonTitle>
+              <IonButtons slot="end">
+                <IonButton fill="clear" onClick={() => setShowImageModal(false)}>
+                  <IonIcon icon={close} />
+                </IonButton>
+              </IonButtons>
+            </IonToolbar>
+          </IonHeader>
+          <IonContent class="ion-padding">
+            <div className="w-full h-full flex items-center justify-center">
+              <img 
+                src={getFileUrl(message.file_path)} 
+                alt={message.file_name}
+                className="max-w-full max-h-full object-contain"
+                style={{ maxWidth: '100%', maxHeight: '100%' }}
+              />
+            </div>
+          </IonContent>
+        </IonModal>
+      )}
     </div>
   );
 };

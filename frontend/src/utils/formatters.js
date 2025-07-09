@@ -29,9 +29,15 @@ export const formatTime = (dateString) => {
   if (!dateString) return '';
   
   const date = new Date(dateString);
+  // Check if the date is valid
+  if (isNaN(date.getTime())) {
+    return 'Ungültige Zeit';
+  }
+  
   return date.toLocaleTimeString('de-DE', {
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    timeZone: 'Europe/Berlin' // Explicitly set German timezone
   });
 };
 

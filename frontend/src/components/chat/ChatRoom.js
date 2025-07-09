@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useIonRouter, isPlatform } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 
@@ -19,7 +19,7 @@ import {
   IonButtons,
   IonBackButton
 } from '@ionic/react';
-import { send, attach, camera, document, image, videocam, chevronDown } from 'ionicons/icons';
+import { send, attach, camera, document, image, videocam, chevronDown, close } from 'ionicons/icons';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { FilePicker } from '@capawesome/capacitor-file-picker';
 import { Keyboard, KeyboardResize } from '@capacitor/keyboard';
@@ -53,27 +53,32 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
   const textareaRef = useRef(null);
   const footerRef = useRef(null); // Ref für den Footer
   const contentRef = useRef(null);
-  
-  
+
+
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
       const keyboardWillShow = (info) => {
-        // Prüfe, ob die Elemente existieren
         if (footerRef.current && contentRef.current) {
           const keyboardHeight = info.keyboardHeight;
-          // Safe Area Bottom abziehen um 34px Leerraum zu vermeiden
-          const safeAreaBottom = 34; // iOS safe area bottom
+          const safeAreaBottom = isPlatform('ios') ? 24 : 0;
           const adjustedHeight = Math.max(0, keyboardHeight - safeAreaBottom);
           
-          // 1. Bewege den Footer nach oben (ohne safe area bottom)
+          // 1. Bewege den Footer nach oben
           footerRef.current.style.transition = 'transform 0.3s ease-out';
           footerRef.current.style.transform = `translateY(-${adjustedHeight}px)`;
           
-          // 2. Gib dem Inhalt unten Platz, damit man bis ganz nach unten scrollen kann
-          contentRef.current.style.setProperty('--padding-bottom', `${adjustedHeight}px`);
+          // 2. Gib dem Inhalt unten Platz
+          contentRef.current.style.setProperty('--padding-bottom', `${adjustedHeight + 20}px`);
           
-          // 3. Scrolle nach unten, um das Eingabefeld sichtbar zu machen
+          // 3. Scrolle nach unten
           scrollToBottom("auto");
+          
+          // 4. Stelle sicher, dass die Textarea im Sichtbereich bleibt
+          setTimeout(() => {
+            if (textareaRef.current) {
+              textareaRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }
+          }, 350);
         }
       };
       
@@ -93,8 +98,8 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
         hideListener.remove();
       };
     }
-  }, []); 
-  
+  }, []);
+
   useEffect(() => {
     const routeRoom = location?.state?.room;
     if (routeRoom) {
@@ -130,10 +135,9 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
   const scrollToBottom = (behavior = "smooth") => {
     setTimeout(() => {
       if (contentRef.current) {
-        // Verwende Ionic's native scrollToBottom Methode
         contentRef.current.scrollToBottom(behavior === "smooth" ? 300 : 0);
       }
-    }, 100); // Etwas längerer Timeout für stabileres Verhalten
+    }, 100);
   };
 
   const handleScroll = (e) => {
@@ -191,16 +195,41 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
 
   const handleCreatePoll = async (pollData) => {
     try {
-      await api.post(`/chat/rooms/${currentRoom.id}/polls`, pollData);
+      console.log('Creating poll with data:', pollData);
+      console.log('Room ID:', currentRoom.id);
+      
+      const response = await api.post(`/chat/rooms/${currentRoom.id}/polls`, pollData);
+      console.log('Poll created successfully:', response.data);
+      
       setShowCreatePoll(false);
-      loadMessages();
+      
+      // Refresh messages to show new poll
+      await loadMessages();
+      
+      // Scroll to bottom to show new poll
+      setTimeout(() => {
+        scrollToBottom();
+      }, 500);
+      
     } catch (err) {
       console.error('Poll creation error:', err);
+      console.error('Error details:', err.response?.data);
+      
+      // Show error to user
+      if (err.response?.status === 400) {
+        // Use a custom modal or toast instead of alert
+        console.error('Fehler beim Erstellen der Umfrage: Ungültige Daten');
+      } else if (err.response?.status === 403) {
+        console.error('Fehler: Keine Berechtigung zum Erstellen von Umfragen');
+      } else {
+        console.error('Fehler beim Erstellen der Umfrage. Bitte versuche es erneut.');
+      }
     }
   };
 
   const handleDeleteMessage = async (messageId) => {
-    if (!window.confirm('Nachricht wirklich löschen?')) return;
+    // Use a custom modal for confirmation instead of window.confirm
+    if (!window.confirm('Nachricht wirklich löschen?')) return; // Placeholder, replace with custom modal
 
     try {
       await api.delete(`/chat/messages/${messageId}`);
@@ -283,7 +312,6 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
   };
 
   const handleBackToChatList = () => {
-    // Direkt zur Chat-Übersicht navigieren
     router.push('/admin/chat', 'back', 'replace');
   };
 
@@ -299,8 +327,8 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
     <IonPage className="chat-room-page">
       <IonHeader className="ion-no-border">
         <IonToolbar className="ion-no-border">
-          <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-sm" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 16px)', paddingBottom: '24px', paddingLeft: '0px', paddingRight: '0px' }}>
-            <div className="px-6">
+          <div className="px-4 pt-4 pb-4">
+            <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl p-6 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <button
@@ -317,7 +345,7 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
                     </p>
                   </div>
                 </div>
-
+                
                 {isAdmin && (
                   <button
                     onClick={() => setShowCreatePoll(true)}
@@ -334,11 +362,10 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
       </IonHeader>
 
     <IonContent
-    fullscreen
     scrollEvents={true}
     ref={contentRef}
     onIonScroll={handleScroll}
-    className="chat-room-content"
+    className="app-gradient-background"
     >
         <IonRefresher slot="fixed" onIonRefresh={doRefresh} pullFactor={0.5} pullMin={100} pullMax={200}>
           <IonRefresherContent
@@ -366,23 +393,25 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
           </button>
         )}
 
-        <div className="space-y-4 px-4 pb-4 pt-4">
-          {messages.map((msg, idx) => (
-            <MessageBubble
-              key={msg.id}
-              message={msg}
-              isOwnMessage={msg.sender_id === user.id}
-              showSender={!msg.isOwnMessage && (idx === 0 || messages[idx - 1]?.sender_id !== msg.sender_id)}
-              onDelete={isAdmin ? () => handleDeleteMessage(msg.id) : null}
-              formatDate={formatDate}
-            />
-          ))}
+        <div className="px-4 pb-4">
+          <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
+            {messages.map((msg, idx) => (
+              <MessageBubble
+                key={msg.id}
+                message={msg}
+                isOwnMessage={msg.sender_id === user.id}
+                showSender={!msg.isOwnMessage && (idx === 0 || messages[idx - 1]?.sender_id !== msg.sender_id)}
+                onDelete={isAdmin ? () => handleDeleteMessage(msg.id) : null}
+                formatDate={formatDate}
+              />
+            ))}
 
-          {currentRoom.poll && (
-            <PollComponent poll={currentRoom.poll} />
-          )}
+            {currentRoom.poll && (
+              <PollComponent poll={currentRoom.poll} />
+            )}
 
-          <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} />
+          </div>
         </div>
       </IonContent>
 
@@ -425,6 +454,13 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
               placeholder="Nachricht schreiben..."
               value={message}
               onIonInput={(e) => setMessage(e.detail.value)}
+              onIonFocus={() => {
+                setTimeout(() => {
+                  if (textareaRef.current) {
+                    textareaRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                  }
+                }, 300);
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -451,8 +487,14 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
               onClick={handleSendMessage}
               disabled={!message.trim() && !attachedFile}
               fill="clear"
-              className="ion-no-margin"
-              style={{ '--padding-start': '8px', '--padding-end': '8px' }}
+              className="ion-no-margin send-btn"
+              style={{
+                '--padding-start': '8px',
+                '--padding-end': '8px',
+                '--padding-top': '8px',
+                '--padding-bottom': '8px',
+                '--align-self': 'center',
+              }}
               aria-label="Nachricht senden"
             >
               <IonIcon slot="icon-only" icon={send} />
@@ -464,6 +506,7 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
       <IonActionSheet
         isOpen={showActionSheet}
         onDidDismiss={() => setShowActionSheet(false)}
+        header="Anhang hinzufügen"
         buttons={[
           {
             text: 'Foto aufnehmen',
@@ -491,10 +534,11 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
           },
           {
             text: 'Abbrechen',
-            icon: 'close',
+            icon: close,
             role: 'cancel'
           }
         ]}
+        cssClass="chat-action-sheet"
       />
 
       <CreatePollModal

@@ -6,6 +6,9 @@ const api = axios.create({
   baseURL: API_BASE_URL,
 });
 
+// Export API_BASE_URL für andere Komponenten
+export const API_URL = API_BASE_URL;
+
 // Add token to requests
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('konfi_token');
