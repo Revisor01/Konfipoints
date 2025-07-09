@@ -55,39 +55,16 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
   const contentRef = useRef(null);
 
 
+  // Verwende CSS-basierte Keyboard-Unterstützung statt JavaScript transforms
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
-      const keyboardWillShow = (info) => {
-        if (footerRef.current && contentRef.current) {
-          const keyboardHeight = info.keyboardHeight;
-          const safeAreaBottom = isPlatform('ios') ? 24 : 0;
-          const adjustedHeight = Math.max(0, keyboardHeight - safeAreaBottom);
-          
-          // 1. Bewege den Footer nach oben
-          footerRef.current.style.transition = 'transform 0.3s ease-out';
-          footerRef.current.style.transform = `translateY(-${adjustedHeight}px)`;
-          
-          // 2. Gib dem Inhalt unten Platz
-          contentRef.current.style.setProperty('--padding-bottom', `${adjustedHeight + 20}px`);
-          
-          // 3. Scrolle nach unten
-          scrollToBottom("auto");
-          
-          // 4. Stelle sicher, dass die Textarea im Sichtbereich bleibt
-          setTimeout(() => {
-            if (textareaRef.current) {
-              textareaRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
-            }
-          }, 350);
-        }
+      const keyboardWillShow = () => {
+        // Nur noch scrollen, keine transforms mehr
+        scrollToBottom("auto");
       };
       
       const keyboardWillHide = () => {
-        if (footerRef.current && contentRef.current) {
-          // Setze die Transformationen und Abstände zurück
-          footerRef.current.style.transform = 'translateY(0px)';
-          contentRef.current.style.removeProperty('--padding-bottom');
-        }
+        // Cleanup falls nötig
       };
       
       const showListener = Keyboard.addListener('keyboardWillShow', keyboardWillShow);
@@ -143,7 +120,14 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
   const handleScroll = (e) => {
     const element = e.target;
     const isNearBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 100;
+    const isNearTop = element.scrollTop < 100;
+    
     setShowScrollButton(!isNearBottom && messages.length > 0);
+    
+    // Load more messages when scrolling near top
+    if (isNearTop && hasMore && !loadingMore && messages.length > 0) {
+      loadMoreMessages();
+    }
   };
 
   const loadMessages = async (offset = 0) => {
@@ -377,7 +361,16 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
         </IonRefresher>
 
         {loadingMore && (
-          <div className="text-center text-gray-400 py-2">Lade mehr Nachrichten...</div>
+          <div className="text-center text-gray-400 py-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-2"></div>
+            <span className="text-sm">Lade ältere Nachrichten...</span>
+          </div>
+        )}
+
+        {!hasMore && messages.length > 50 && (
+          <div className="text-center text-gray-400 py-4">
+            <span className="text-sm">📜 Beginn der Unterhaltung</span>
+          </div>
         )}
 
         {showScrollButton && (

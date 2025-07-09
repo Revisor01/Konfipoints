@@ -2760,4 +2760,107 @@ app.get('/api/chat/files/:filename', (req, res) => {
   }
 });
 
+// Create poll for a room
+app.post('/api/chat/rooms/:roomId/polls', verifyToken, (req, res) => {
+  const roomId = req.params.roomId;
+  const { question, options, multiple_choice = false, expires_in_hours } = req.body;
+  const userId = req.user.id;
+  const userType = req.user.type;
+  
+  // Only admins can create polls
+  if (userType !== 'admin') {
+    return res.status(403).json({ error: 'Only admins can create polls' });
+  }
+  
+  // Validate input
+  if (!question || !question.trim()) {
+    return res.status(400).json({ error: 'Question is required' });
+  }
+  
+  if (!options || !Array.isArray(options) || options.length < 2) {
+    return res.status(400).json({ error: 'At least 2 options are required' });
+  }
+  
+  const validOptions = options.filter(opt => opt && opt.trim());
+  if (validOptions.length < 2) {
+    return res.status(400).json({ error: 'At least 2 valid options are required' });
+  }
+  
+  // Check if user has access to this room
+  db.get("SELECT 1 FROM chat_rooms WHERE id = ?", [roomId], (err, room) => {
+    if (err || !room) {
+      return res.status(403).json({ error: 'Room not found or access denied' });
+    }
+    
+    // Calculate expiration date
+    let expiresAt = null;
+    if (expires_in_hours && expires_in_hours > 0) {
+      const expirationDate = new Date();
+      expirationDate.setHours(expirationDate.getHours() + expires_in_hours);
+      expiresAt = expirationDate.toISOString();
+    }
+    
+    // Create the poll message first
+    const insertMessageQuery = `
+      INSERT INTO chat_messages (room_id, user_id, user_type, message_type, content)
+      VALUES (?, ?, ?, 'poll', ?)
+    `;
+    
+    db.run(insertMessageQuery, [roomId, userId, userType, question.trim()], function(err) {
+      if (err) {
+        console.error('Error creating poll message:', err);
+        return res.status(500).json({ error: 'Database error creating poll message' });
+      }
+      
+      const messageId = this.lastID;
+      
+      // Create the poll entry
+      const insertPollQuery = `
+        INSERT INTO chat_polls (message_id, question, options, multiple_choice, expires_at)
+        VALUES (?, ?, ?, ?, ?)
+      `;
+      
+      db.run(insertPollQuery, [messageId, question.trim(), JSON.stringify(validOptions), multiple_choice, expiresAt], function(err) {
+        if (err) {
+          console.error('Error creating poll:', err);
+          return res.status(500).json({ error: 'Database error creating poll' });
+        }
+        
+        // Get the complete poll data with sender info
+        const pollQuery = `
+          SELECT m.*, 
+                  CASE 
+                    WHEN m.user_type = 'admin' THEN a.display_name
+                    ELSE k.name
+                  END as sender_name,
+                  CASE
+                    WHEN m.user_type = 'admin' THEN a.username
+                    ELSE k.username  
+                  END as sender_username,
+                  p.question, p.options, p.expires_at, p.multiple_choice
+          FROM chat_messages m
+          LEFT JOIN admins a ON m.user_id = a.id AND m.user_type = 'admin'
+          LEFT JOIN konfis k ON m.user_id = k.id AND m.user_type = 'konfi'
+          LEFT JOIN chat_polls p ON m.id = p.message_id
+          WHERE m.id = ?
+        `;
+        
+        db.get(pollQuery, [messageId], (err, pollData) => {
+          if (err) {
+            console.error('Error fetching created poll:', err);
+            return res.status(500).json({ error: 'Database error fetching poll' });
+          }
+          
+          // Parse options back to array
+          if (pollData.options) {
+            pollData.options = JSON.parse(pollData.options);
+          }
+          
+          res.json(pollData);
+        });
+      });
+    });
+  });
+});
+
 // === ENDE CHAT SYSTEM ===

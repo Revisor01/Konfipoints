@@ -3,17 +3,7 @@ import React, { useState } from 'react';
 import { Download, Eye, Trash2, Reply, MoreVertical, Share as ShareIcon } from 'lucide-react';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
-import { 
-  IonModal, 
-  IonContent, 
-  IonHeader, 
-  IonToolbar, 
-  IonTitle, 
-  IonButtons, 
-  IonButton, 
-  IonIcon 
-} from '@ionic/react';
-import { close } from 'ionicons/icons';
+import ImageModal from '../shared/ImageModal';
 import api, { API_URL } from '../../services/api';
 
 const MessageBubble = ({ 
@@ -63,18 +53,46 @@ const MessageBubble = ({
 
   const downloadFile = async () => {
     try {
-      const response = await fetch(getFileUrl(message.file_path));
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = message.file_name;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      if (Capacitor.isNativePlatform()) {
+        // Native platform - use Share API to let user choose what to do
+        const fileUrl = getFileUrl(message.file_path);
+        await Share.share({
+          title: message.file_name,
+          text: `Datei: ${message.file_name}`,
+          url: fileUrl
+        });
+      } else {
+        // Web platform - direct download
+        const response = await fetch(getFileUrl(message.file_path));
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = message.file_name || 'download';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        
+        // Cleanup
+        setTimeout(() => {
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        }, 100);
+      }
     } catch (err) {
-      console.error('Download failed:', err);
+      console.error('Download/Share failed:', err);
+      
+      // Fallback: try to open in new tab
+      try {
+        const fileUrl = getFileUrl(message.file_path);
+        window.open(fileUrl, '_blank');
+      } catch (fallbackErr) {
+        console.error('Fallback failed:', fallbackErr);
+        alert('Datei konnte nicht geöffnet werden');
+      }
     }
   };
 
@@ -158,11 +176,39 @@ const MessageBubble = ({
         );
 
       case 'file':
+        const fileExtension = message.file_name?.split('.').pop()?.toLowerCase();
+        const isPDF = fileExtension === 'pdf';
+        
+        const getFileIcon = () => {
+          switch (fileExtension) {
+            case 'pdf': return '📄';
+            case 'doc':
+            case 'docx': return '📝';
+            case 'xls':
+            case 'xlsx': return '📊';
+            case 'ppt':
+            case 'pptx': return '📽️';
+            case 'zip':
+            case 'rar': return '🗜️';
+            case 'mp4':
+            case 'avi':
+            case 'mov': return '🎥';
+            case 'mp3':
+            case 'wav': return '🎵';
+            default: return '📎';
+          }
+        };
+
+        const openFile = () => {
+          const fileUrl = getFileUrl(message.file_path);
+          window.open(fileUrl, '_blank');
+        };
+
         return (
           <div className="bg-gray-100 border border-gray-200 rounded-lg p-3 max-w-xs">
             <div className="flex items-center gap-3">
               <div className="bg-blue-500 text-white p-2 rounded">
-                📎
+                {getFileIcon()}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm truncate">{message.file_name}</p>
@@ -170,12 +216,24 @@ const MessageBubble = ({
                   {(message.file_size / 1024 / 1024).toFixed(1)} MB
                 </p>
               </div>
-              <button
-                onClick={downloadFile}
-                className="text-blue-500 hover:text-blue-700 p-1"
-              >
-                <Download className="w-4 h-4" />
-              </button>
+              <div className="flex gap-1">
+                {isPDF && (
+                  <button
+                    onClick={openFile}
+                    className="text-green-500 hover:text-green-700 p-1"
+                    title="Anzeigen"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  onClick={downloadFile}
+                  className="text-blue-500 hover:text-blue-700 p-1"
+                  title={Capacitor.isNativePlatform() ? "Teilen" : "Herunterladen"}
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+              </div>
             </div>
             {message.content && (
               <p className="mt-2 text-sm">{message.content}</p>
@@ -289,28 +347,14 @@ const MessageBubble = ({
       
       {/* Image Modal for Fullscreen View */}
       {message.message_type === 'image' && (
-        <IonModal isOpen={showImageModal} onDidDismiss={() => setShowImageModal(false)}>
-          <IonHeader>
-            <IonToolbar>
-              <IonTitle>{message.file_name}</IonTitle>
-              <IonButtons slot="end">
-                <IonButton fill="clear" onClick={() => setShowImageModal(false)}>
-                  <IonIcon icon={close} />
-                </IonButton>
-              </IonButtons>
-            </IonToolbar>
-          </IonHeader>
-          <IonContent class="ion-padding">
-            <div className="w-full h-full flex items-center justify-center">
-              <img 
-                src={getFileUrl(message.file_path)} 
-                alt={message.file_name}
-                className="max-w-full max-h-full object-contain"
-                style={{ maxWidth: '100%', maxHeight: '100%' }}
-              />
-            </div>
-          </IonContent>
-        </IonModal>
+        <ImageModal
+          isOpen={showImageModal}
+          onClose={() => setShowImageModal(false)}
+          imageUrl={getFileUrl(message.file_path)}
+          alt={message.file_name}
+          title={message.file_name}
+          showControls={true}
+        />
       )}
     </div>
   );

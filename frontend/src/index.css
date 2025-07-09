@@ -261,12 +261,14 @@ ion-textarea {
 }
 
 
-/* iOS keyboard env() support - KRITISCH für native Tastatur (Beibehalten) */
-/* Diese Regel ist korrekt und entscheidend, wenn vom Browser/WebView unterstützt. */
+/* iOS keyboard env() support - CSS-basierte Keyboard-Unterstützung */
 @supports (padding-bottom: env(keyboard-inset-height)) {
-  .chat-page ion-content {
-    /* Nur Tastaturhöhe und Safe Area - KEINE Tab Bar */
-    /* padding-bottom: calc(env(keyboard-inset-height, 0px) + env(safe-area-inset-bottom)); */
+  .chat-room-page ion-content {
+    padding-bottom: calc(env(keyboard-inset-height, 0px) + 80px);
+  }
+  
+  .chat-room-page .chat-input-footer {
+    transform: translateY(calc(-1 * env(keyboard-inset-height, 0px)));
   }
 }
 
@@ -506,6 +508,68 @@ ion-modal {
   --color: #ff3b30;
   --background: rgba(255, 59, 48, 0.1);
   font-weight: 600;
+}
+
+/* Fullscreen Image Modal */
+.fullscreen-image-modal {
+  --width: 100%;
+  --height: 100%;
+  --border-radius: 0;
+  --box-shadow: none;
+  --backdrop-opacity: 1;
+}
+
+.fullscreen-image-modal ion-header {
+  --background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.fullscreen-image-modal ion-content {
+  --background: #000;
+}
+
+/* iOS Poll Modal */
+ion-modal {
+  --width: 100%;
+  --height: 100%;
+  --max-height: 100%;
+  --border-radius: 0;
+  --box-shadow: none;
+  --backdrop-opacity: 0.6;
+}
+
+.ios-poll-modal ion-header {
+  --background: rgba(249, 249, 249, 0.94);
+  --color: #000;
+  --border-color: rgba(60, 60, 67, 0.29);
+  border-bottom: 0.5px solid var(--border-color);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.ios-poll-modal ion-header ion-toolbar {
+  --background: transparent;
+  --color: #000;
+  --border-color: transparent;
+  --min-height: 44px;
+}
+
+.ios-poll-modal ion-content {
+  --background: #fff;
+  --color: #000;
+  --padding-bottom: env(safe-area-inset-bottom);
+}
+
+.ios-poll-modal ion-item {
+  --background: transparent;
+  --border-color: rgba(60, 60, 67, 0.29);
+  --border-style: solid;
+  --border-width: 0 0 0.5px 0;
+}
+
+.ios-poll-modal ion-item:last-child {
+  --border-width: 0;
 }
 
 

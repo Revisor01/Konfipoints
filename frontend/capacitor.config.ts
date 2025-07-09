@@ -23,8 +23,8 @@ const config: CapacitorConfig = {
       backgroundColor: "#000000"
     },
     Keyboard: {
-      resize: "none",
-      resizeOnFullScreen: true
+      resize: "ionic",
+      resizeOnFullScreen: false
     },
     Share: {
       // Native iOS sharing

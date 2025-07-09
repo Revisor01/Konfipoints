@@ -86,13 +86,36 @@ const CreatePollModal = ({ isOpen, onDismiss, onSubmit }) => {
     <IonModal 
       isOpen={isOpen} 
       onDidDismiss={onDismiss}
+      presentingElement={undefined}
+      showBackdrop={true}
+      backdropDismiss={true}
     >
-      <IonHeader>
-        <IonToolbar>
-          <IonTitle>Umfrage erstellen</IonTitle>
+      <IonHeader className="ion-no-border">
+        <IonToolbar style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+          <IonTitle style={{ fontSize: '17px', fontWeight: '600' }}>
+            Umfrage erstellen
+          </IonTitle>
+          <IonButtons slot="start">
+            <IonButton 
+              onClick={onDismiss} 
+              fill="clear"
+              style={{ '--color': '#007AFF', fontSize: '17px' }}
+            >
+              Abbrechen
+            </IonButton>
+          </IonButtons>
           <IonButtons slot="end">
-            <IonButton onClick={onDismiss} fill="clear">
-              <IonIcon icon={close} />
+            <IonButton
+              fill="clear"
+              onClick={handleSubmit}
+              disabled={!question.trim() || options.filter(opt => opt.trim()).length < 2}
+              style={{ 
+                '--color': !question.trim() || options.filter(opt => opt.trim()).length < 2 ? '#8E8E93' : '#007AFF',
+                fontSize: '17px',
+                fontWeight: '600'
+              }}
+            >
+              Erstellen
             </IonButton>
           </IonButtons>
         </IonToolbar>
@@ -117,36 +140,26 @@ const CreatePollModal = ({ isOpen, onDismiss, onSubmit }) => {
           </IonItemDivider>
 
           {/* Options */}
-          <IonReorderGroup disabled={false} onIonItemReorder={(e) => {
-            const newOptions = [...options];
-            const [movedItem] = newOptions.splice(e.detail.from, 1);
-            newOptions.splice(e.detail.to, 0, movedItem);
-            setOptions(newOptions);
-            e.detail.complete();
-          }}>
-            {options.map((option, index) => (
-              <IonReorder key={index}>
-                <IonItem>
-                  <IonInput
-                    value={option}
-                    onIonInput={(e) => updateOption(index, e.detail.value)}
-                    placeholder={`Option ${index + 1}`}
-                    style={{ flex: 1 }}
-                  />
-                  {options.length > 2 && (
-                    <IonButton
-                      slot="end"
-                      fill="clear"
-                      color="danger"
-                      onClick={() => removeOption(index)}
-                    >
-                      <IonIcon icon={trash} />
-                    </IonButton>
-                  )}
-                </IonItem>
-              </IonReorder>
-            ))}
-          </IonReorderGroup>
+          {options.map((option, index) => (
+            <IonItem key={index}>
+              <IonInput
+                value={option}
+                onIonInput={(e) => updateOption(index, e.detail.value)}
+                placeholder={`Option ${index + 1}`}
+                style={{ flex: 1 }}
+              />
+              {options.length > 2 && (
+                <IonButton
+                  slot="end"
+                  fill="clear"
+                  color="danger"
+                  onClick={() => removeOption(index)}
+                >
+                  <IonIcon icon={trash} />
+                </IonButton>
+              )}
+            </IonItem>
+          ))}
 
           {/* Add Option Button */}
           {options.length < 10 && (
@@ -198,25 +211,6 @@ const CreatePollModal = ({ isOpen, onDismiss, onSubmit }) => {
         </IonList>
       </IonContent>
 
-      <IonFooter>
-        <IonToolbar>
-          <IonButtons slot="start">
-            <IonButton fill="clear" color="medium" onClick={onDismiss}>
-              Abbrechen
-            </IonButton>
-          </IonButtons>
-          <IonButtons slot="end">
-            <IonButton
-              fill="solid"
-              color="success"
-              onClick={handleSubmit}
-              disabled={!question.trim() || options.filter(opt => opt.trim()).length < 2}
-            >
-              Umfrage erstellen
-            </IonButton>
-          </IonButtons>
-        </IonToolbar>
-      </IonFooter>
     </IonModal>
   );
 };
