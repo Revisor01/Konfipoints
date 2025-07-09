@@ -289,7 +289,11 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
   };
 
   const handleBackToChatList = () => {
-    router.push('/admin/chat', 'back');
+    if (router.canGoBack()) {
+      router.goBack();
+    } else {
+      router.push('/admin/chat', 'root');
+    }
   };
 
   if (loading || !currentRoom) {
@@ -369,7 +373,14 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
                         message={{
                           id: msg.id,
                           question: msg.question || msg.content,
-                          options: msg.options ? JSON.parse(msg.options) : [],
+                          options: (() => {
+                            try {
+                              return msg.options ? JSON.parse(msg.options) : [];
+                            } catch (e) {
+                              console.error('Error parsing poll options:', e, msg.options);
+                              return [];
+                            }
+                          })(),
                           multiple_choice: msg.multiple_choice,
                           expires_at: msg.expires_at,
                           sender_name: msg.sender_name,
@@ -402,93 +413,88 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
         </div>
       </IonContent>
 
-      <IonFooter ref={footerRef} className="ion-no-border chat-input-footer" style={{ backgroundColor: '#f8f8f8' }}>
-        <IonToolbar className="ion-no-border">
-          {attachedFile && (
-            <div className="flex items-center gap-2 p-2 bg-gray-100 mx-4 mt-2 rounded-lg">
-              <span className="text-sm truncate max-w-xs">{attachedFile.name}</span>
-              <button
-                onClick={() => setAttachedFile(null)}
-                className="text-red-500 text-sm ml-auto font-semibold"
-                aria-label="Anhang entfernen"
-              >
-                ✕
-              </button>
-            </div>
-          )}
-
-          <IonItem lines="none" className="ion-no-padding">
-            <IonButton
-              slot="start"
-              fill="clear"
-              onClick={() => setShowActionSheet(true)}
-              className="ion-no-margin attachment-btn"
-              style={{
-                '--padding-start': '8px',
-                '--padding-end': '8px',
-                '--padding-top': '8px',
-                '--padding-bottom': '8px',
-                '--align-self': 'center',
-              }}
-              aria-label="Anhang hinzufügen"
+      <div ref={footerRef} className="chat-input-footer" style={{ backgroundColor: '#f8f8f8', padding: '8px' }}>
+        {attachedFile && (
+          <div className="flex items-center gap-2 p-2 bg-gray-100 mx-4 mt-2 rounded-lg">
+            <span className="text-sm truncate max-w-xs">{attachedFile.name}</span>
+            <button
+              onClick={() => setAttachedFile(null)}
+              className="text-red-500 text-sm ml-auto font-semibold"
+              aria-label="Anhang entfernen"
             >
-              <IonIcon icon={attach} />
-            </IonButton>
+              ✕
+            </button>
+          </div>
+        )}
 
-            <IonTextarea
-              ref={textareaRef}
-              autoGrow={true}
-              placeholder="Nachricht schreiben..."
-              value={message}
-              onIonInput={(e) => setMessage(e.detail.value)}
-              onIonFocus={() => {
-                setTimeout(() => {
-                  if (textareaRef.current) {
-                    textareaRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
-                  }
-                }, 300);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
+        <div className="flex items-center gap-2 p-2">
+          <IonButton
+            fill="clear"
+            onClick={() => setShowActionSheet(true)}
+            className="ion-no-margin attachment-btn"
+            style={{
+              '--padding-start': '8px',
+              '--padding-end': '8px',
+              '--padding-top': '8px',
+              '--padding-bottom': '8px',
+            }}
+            aria-label="Anhang hinzufügen"
+          >
+            <IonIcon icon={attach} />
+          </IonButton>
+
+          <IonTextarea
+            ref={textareaRef}
+            autoGrow={true}
+            placeholder="Nachricht schreiben..."
+            value={message}
+            onIonInput={(e) => setMessage(e.detail.value)}
+            onIonFocus={() => {
+              setTimeout(() => {
+                if (textareaRef.current) {
+                  textareaRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
                 }
-              }}
-              rows={1}
-              maxlength={1000}
-              enterkeyhint="send"
-              inputmode="text"
-              style={{
-                '--background': 'transparent',
-                '--padding-start': '8px',
-                '--padding-end': '8px',
-                '--padding-top': '8px',
-                '--padding-bottom': '8px',
-                width: '100%',
-              }}
-              aria-label="Nachricht eingeben"
-            />
+              }, 300);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage();
+              }
+            }}
+            rows={1}
+            maxlength={1000}
+            enterkeyhint="send"
+            inputmode="text"
+            style={{
+              '--background': 'transparent',
+              '--padding-start': '8px',
+              '--padding-end': '8px',
+              '--padding-top': '8px',
+              '--padding-bottom': '8px',
+              width: '100%',
+              flex: 1,
+            }}
+            aria-label="Nachricht eingeben"
+          />
 
-            <IonButton
-              slot="end"
-              onClick={handleSendMessage}
-              disabled={!message.trim() && !attachedFile}
-              fill="clear"
-              className="ion-no-margin send-btn"
-              style={{
-                '--padding-start': '8px',
-                '--padding-end': '8px',
-                '--padding-top': '8px',
-                '--padding-bottom': '8px',
-                '--align-self': 'center',
-              }}
-              aria-label="Nachricht senden"
-            >
-              <IonIcon slot="icon-only" icon={send} />
-            </IonButton>
-          </IonItem>
-        </IonToolbar>
-      </IonFooter>
+          <IonButton
+            onClick={handleSendMessage}
+            disabled={!message.trim() && !attachedFile}
+            fill="clear"
+            className="ion-no-margin send-btn"
+            style={{
+              '--padding-start': '8px',
+              '--padding-end': '8px',
+              '--padding-top': '8px',
+              '--padding-bottom': '8px',
+            }}
+            aria-label="Nachricht senden"
+          >
+            <IonIcon slot="icon-only" icon={send} />
+          </IonButton>
+        </div>
+      </div>
 
       <IonActionSheet
         isOpen={showActionSheet}

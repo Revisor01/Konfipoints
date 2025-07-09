@@ -2594,7 +2594,10 @@ app.get('/api/chat/rooms/:roomId/messages', verifyToken, (req, res) => {
       const processedMessages = await Promise.all(messages.map(async (msg) => {
         if (msg.message_type === 'poll' && msg.options) {
           try {
-            msg.options = JSON.parse(msg.options);
+            // Check if options is already an array or needs parsing
+            if (typeof msg.options === 'string') {
+              msg.options = JSON.parse(msg.options);
+            }
             
             // Load votes for this poll
             const votes = await new Promise((resolve, reject) => {
@@ -2616,7 +2619,7 @@ app.get('/api/chat/rooms/:roomId/messages', verifyToken, (req, res) => {
             
             msg.votes = votes;
           } catch (e) {
-            console.error('Error parsing poll options:', e);
+            console.error('Error parsing poll options:', e, 'Raw options:', msg.options);
             msg.options = [];
             msg.votes = [];
           }
@@ -2887,10 +2890,20 @@ app.post('/api/chat/rooms/:roomId/polls', verifyToken, (req, res) => {
             return res.status(500).json({ error: 'Database error fetching poll' });
           }
           
-          // Parse options back to array
+          // Parse options back to array safely
           if (pollData.options) {
-            pollData.options = JSON.parse(pollData.options);
+            try {
+              if (typeof pollData.options === 'string') {
+                pollData.options = JSON.parse(pollData.options);
+              }
+            } catch (e) {
+              console.error('Error parsing poll options on creation:', e);
+              pollData.options = [];
+            }
           }
+          
+          // Add empty votes array for new polls
+          pollData.votes = [];
           
           res.json(pollData);
         });
