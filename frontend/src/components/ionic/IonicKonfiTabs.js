@@ -11,7 +11,9 @@ import {
   IonContent,
   IonHeader,
   IonToolbar,
-  IonTitle
+  IonTitle,
+  IonRefresher,
+  IonRefresherContent
 } from '@ionic/react';
 import { Route } from 'react-router-dom';
 import {
@@ -80,56 +82,86 @@ const IonicKonfiTabs = () => {
 
   const pendingRequests = requests.filter(r => r.status === 'pending').length;
 
-  const DashboardTab = () => (
-    <IonContent>
-      <div style={{ 
-        background: 'linear-gradient(to bottom right, rgb(239 246 255), rgb(245 243 255))', 
-        minHeight: '100%', 
-        padding: '16px',
-        paddingTop: '0px'
-      }}>
-        <KonfiDashboard
-          konfiData={konfiData}
-          badges={badges}
-          settings={settings}
-          onUpdate={loadData}
-        />
-      </div>
-    </IonContent>
-  );
+  const DashboardTab = () => {
+    const doRefresh = async (event) => {
+      await loadData();
+      event.detail.complete();
+    };
 
-  const RequestsTab = () => (
-    <IonContent>
-      <div style={{ 
-        background: 'linear-gradient(to bottom right, rgb(239 246 255), rgb(245 243 255))', 
-        minHeight: '100%', 
-        padding: '16px',
-        paddingTop: '0px'
-      }}>
-        <KonfiRequests
-          requests={requests}
-          activities={activities}
-          onUpdate={loadData}
-        />
-      </div>
-    </IonContent>
-  );
+    return (
+      <IonContent>
+        <IonRefresher slot="fixed" onIonRefresh={doRefresh}>
+          <IonRefresherContent></IonRefresherContent>
+        </IonRefresher>
+        <div style={{ 
+          background: 'linear-gradient(to bottom right, rgb(239 246 255), rgb(245 243 255))', 
+          minHeight: '100%', 
+          padding: '16px',
+          paddingTop: '0px'
+        }}>
+          <KonfiDashboard
+            konfiData={konfiData}
+            badges={badges}
+            settings={settings}
+            onUpdate={loadData}
+          />
+        </div>
+      </IonContent>
+    );
+  };
 
-  const BadgesTab = () => (
-    <IonContent>
-      <div style={{ 
-        background: 'linear-gradient(to bottom right, rgb(239 246 255), rgb(245 243 255))', 
-        minHeight: '100%', 
-        padding: '16px',
-        paddingTop: '0px'
-      }}>
-        <KonfiBadges
-          badges={badges}
-          konfiData={konfiData}
-        />
-      </div>
-    </IonContent>
-  );
+  const RequestsTab = () => {
+    const doRefresh = async (event) => {
+      await loadData();
+      event.detail.complete();
+    };
+
+    return (
+      <IonContent>
+        <IonRefresher slot="fixed" onIonRefresh={doRefresh}>
+          <IonRefresherContent></IonRefresherContent>
+        </IonRefresher>
+        <div style={{ 
+          background: 'linear-gradient(to bottom right, rgb(239 246 255), rgb(245 243 255))', 
+          minHeight: '100%', 
+          padding: '16px',
+          paddingTop: '0px'
+        }}>
+          <KonfiRequests
+            requests={requests}
+            activities={activities}
+            onUpdate={loadData}
+          />
+        </div>
+      </IonContent>
+    );
+  };
+
+  const BadgesTab = () => {
+    const doRefresh = async (event) => {
+      await loadData();
+      event.detail.complete();
+    };
+
+    return (
+      <IonContent>
+        <IonRefresher slot="fixed" onIonRefresh={doRefresh}>
+          <IonRefresherContent></IonRefresherContent>
+        </IonRefresher>
+        <div style={{ 
+          background: 'linear-gradient(to bottom right, rgb(239 246 255), rgb(245 243 255))', 
+          minHeight: '100%', 
+          padding: '16px',
+          paddingTop: '0px'
+        }}>
+          <KonfiBadges
+            badges={badges}
+            konfiData={konfiData}
+          />
+        </div>
+      </IonContent>
+    );
+  };
 
   const ChatTab = () => (
     <IonContent>

@@ -63,10 +63,30 @@ ion-tab-bar {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Native iOS swipe gestures */
+/* Native iOS swipe gestures - Global configuration */
+.ios ion-router-outlet {
+  --ion-swipe-to-go-back-enabled: true;
+}
+
+.ios ion-nav {
+  --ion-swipe-to-go-back-enabled: true;
+}
+
 .ios .swipe-back {
   --padding-start: 0px;
   --padding-end: 0px;
+}
+
+/* Enhanced pull-to-refresh styling */
+.ios ion-refresher {
+  --threshold: 100px;
+  --min-height: 60px;
+  --max-height: 150px;
+}
+
+.ios ion-refresher-content {
+  --refreshing-spinner-size: 28px;
+  --pulling-icon-size: 24px;
 }
 
 /* Footer keyboard attachment */

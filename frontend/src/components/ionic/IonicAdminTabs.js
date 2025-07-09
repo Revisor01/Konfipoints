@@ -12,7 +12,9 @@ import {
   IonHeader,
   IonToolbar,
   IonTitle,
-  IonNav
+  IonNav,
+  IonRefresher,
+  IonRefresherContent
 } from '@ionic/react';
 import { Route } from 'react-router-dom';
 import {
@@ -93,6 +95,11 @@ const IonicAdminTabs = () => {
   }, []);
 
   const KonfisTab = () => {
+    const doRefresh = async (event) => {
+      await loadData();
+      event.detail.complete();
+    };
+
     const content = selectedKonfi ? (
       <KonfiDetailView
         konfi={selectedKonfi}
@@ -113,6 +120,9 @@ const IonicAdminTabs = () => {
 
     return (
       <IonContent fullscreen className="ion-padding app-gradient-background">
+        <IonRefresher slot="fixed" onIonRefresh={doRefresh}>
+          <IonRefresherContent></IonRefresherContent>
+        </IonRefresher>
         {content}
       </IonContent>
     );
@@ -130,41 +140,73 @@ const IonicAdminTabs = () => {
     };
     
     return (
-      <IonNav 
-        ref={navRef}
-        root={ChatView}
-        rootParams={{ 
-          onNavigateToRoom: handleNavigateToRoom 
-        }}
-      />
+      <IonContent fullscreen className="ion-padding app-gradient-background">
+        <IonNav 
+          ref={navRef}
+          root={ChatView}
+          rootParams={{ 
+            onNavigateToRoom: handleNavigateToRoom 
+          }}
+        />
+      </IonContent>
     );
   };
 
 
-  const ActivitiesTab = () => (
-    <IonContent fullscreen className="ion-padding app-gradient-background">
-      <ActivitiesView activities={activities} onUpdate={loadData} />
-    </IonContent>
-  );
+  const ActivitiesTab = () => {
+    const doRefresh = async (event) => {
+      await loadData();
+      event.detail.complete();
+    };
 
-  const BadgesTab = () => (
-    <IonContent fullscreen className="ion-padding app-gradient-background">
-      <BadgesView badges={badges} activities={activities} onUpdate={loadData} />
-    </IonContent>
-  );
+    return (
+      <IonContent fullscreen className="ion-padding app-gradient-background">
+        <IonRefresher slot="fixed" onIonRefresh={doRefresh}>
+          <IonRefresherContent></IonRefresherContent>
+        </IonRefresher>
+        <ActivitiesView activities={activities} onUpdate={loadData} />
+      </IonContent>
+    );
+  };
 
-  const SettingsTab = () => (
-    <IonContent fullscreen className="ion-padding app-gradient-background">
-      <MoreView
-        settings={settings}
-        jahrgaenge={jahrgaenge}
-        requests={requests}
-        konfis={konfis}
-        onUpdate={loadData}
-        notifications={notifications}
-      />
-    </IonContent>
-  );
+  const BadgesTab = () => {
+    const doRefresh = async (event) => {
+      await loadData();
+      event.detail.complete();
+    };
+
+    return (
+      <IonContent fullscreen className="ion-padding app-gradient-background">
+        <IonRefresher slot="fixed" onIonRefresh={doRefresh}>
+          <IonRefresherContent></IonRefresherContent>
+        </IonRefresher>
+        <BadgesView badges={badges} activities={activities} onUpdate={loadData} />
+      </IonContent>
+    );
+  };
+
+  const SettingsTab = () => {
+    const doRefresh = async (event) => {
+      await loadData();
+      event.detail.complete();
+    };
+
+    return (
+      <IonContent fullscreen className="ion-padding app-gradient-background">
+        <IonRefresher slot="fixed" onIonRefresh={doRefresh}>
+          <IonRefresherContent></IonRefresherContent>
+        </IonRefresher>
+        <MoreView
+          settings={settings}
+          jahrgaenge={jahrgaenge}
+          requests={requests}
+          konfis={konfis}
+          onUpdate={loadData}
+          notifications={notifications}
+        />
+      </IonContent>
+    );
+  };
 
   return (
     <IonTabs>
