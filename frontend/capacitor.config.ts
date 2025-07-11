@@ -19,21 +19,34 @@ const config: CapacitorConfig = {
       autoClear: false
     },
     StatusBar: {
-      overlaysWebView: true
+      overlaysWebView: true,
+      style: 'dark',
+      backgroundColor: '#eff6ff'
     },
     Keyboard: {
       resize: "native",
       resizeOnFullScreen: true,
+      style: 'dark'
     },
-    Share: {
-      // Native iOS sharing
+    SplashScreen: {
+      launchShowDuration: 0,
+      backgroundColor: '#eff6ff',
+      androidScaleType: 'CENTER_CROP',
+      showSpinner: false
+    },
+    App: {
+      launchAutoHide: true
     }
   },
   ios: {
     contentInset: 'automatic',
     backgroundColor: '#eff6ff',
     swipeBackEnabled: true,
-    allowsLinkPreview: true
+    allowsLinkPreview: true,
+    scheme: 'konfiquest',
+    limitsNavigationsToAppBoundDomains: true,
+    scrollEnabled: true,
+    backgroundColor: '#eff6ff'
   }
 };
 

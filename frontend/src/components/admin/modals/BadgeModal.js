@@ -1,7 +1,26 @@
 import React, { useState, useEffect } from 'react';
+import {
+  IonPage,
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonContent,
+  IonButton,
+  IonButtons,
+  IonItem,
+  IonLabel,
+  IonInput,
+  IonTextarea,
+  IonSelect,
+  IonSelectOption,
+  IonCheckbox,
+  IonList,
+  IonGrid,
+  IonRow,
+  IonCol
+} from '@ionic/react';
 import { useApp } from '../../../contexts/AppContext';
 import api from '../../../services/api';
-import UniversalModal from '../../shared/UniversalModal';
 
 const CRITERIA_TYPES = {
   total_points: { label: '🎯 Gesamtpunkte', description: 'Summe aller Punkte' },
@@ -85,71 +104,71 @@ const BadgeModal = ({ badge, activities, onSave, onClose, loading }) => {
     switch (formData.criteria_type) {
       case 'specific_activity':
         return (
-          <div>
-            <label className="block text-sm font-medium mb-2">Aktivität wählen</label>
-            <select
+          <IonItem>
+            <IonLabel position="stacked">Aktivität wählen</IonLabel>
+            <IonSelect
               value={formData.criteria_extra.required_activity_name || ''}
-              onChange={(e) => setFormData({
+              onSelectionChange={(e) => setFormData({
                 ...formData,
-                criteria_extra: { required_activity_name: e.target.value }
+                criteria_extra: { required_activity_name: e.detail.value }
               })}
-              className="w-full p-3 border rounded-lg"
+              placeholder="Aktivität wählen..."
             >
-              <option value="">Aktivität wählen...</option>
               {activities.map(activity => (
-                <option key={activity.id} value={activity.name}>
+                <IonSelectOption key={activity.id} value={activity.name}>
                   {activity.name} ({activity.points} P.)
-                </option>
+                </IonSelectOption>
               ))}
-            </select>
-          </div>
+            </IonSelect>
+          </IonItem>
         );
 
       case 'category_activities':
         return (
-          <div>
-            <label className="block text-sm font-medium mb-2">Kategorie wählen</label>
-            <select
+          <IonItem>
+            <IonLabel position="stacked">Kategorie wählen</IonLabel>
+            <IonSelect
               value={formData.criteria_extra.required_category || ''}
-              onChange={(e) => setFormData({
+              onSelectionChange={(e) => setFormData({
                 ...formData,
-                criteria_extra: { required_category: e.target.value }
+                criteria_extra: { required_category: e.detail.value }
               })}
-              className="w-full p-3 border rounded-lg"
+              placeholder="Kategorie wählen..."
             >
-              <option value="">Kategorie wählen...</option>
               {categories.map(category => (
-                <option key={category} value={category}>{category}</option>
+                <IonSelectOption key={category} value={category}>{category}</IonSelectOption>
               ))}
-            </select>
-          </div>
+            </IonSelect>
+          </IonItem>
         );
 
       case 'activity_combination':
         return (
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Erforderliche Aktivitäten ({selectedActivities.length})
-            </label>
-            <div className="border rounded-lg p-3 max-h-40 overflow-y-auto space-y-2">
-              {activities.map(activity => (
-                <label key={activity.id} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedActivities.includes(activity.name)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedActivities([...selectedActivities, activity.name]);
-                      } else {
-                        setSelectedActivities(selectedActivities.filter(n => n !== activity.name));
-                      }
-                    }}
-                  />
-                  <span className="text-sm">{activity.name}</span>
-                </label>
-              ))}
-            </div>
-          </div>
+          <>
+            <IonItem lines="none">
+              <IonLabel>
+                <h3>Erforderliche Aktivitäten ({selectedActivities.length})</h3>
+              </IonLabel>
+            </IonItem>
+            {activities.map(activity => (
+              <IonItem key={activity.id}>
+                <IonCheckbox
+                  slot="start"
+                  checked={selectedActivities.includes(activity.name)}
+                  onIonChange={(e) => {
+                    if (e.detail.checked) {
+                      setSelectedActivities([...selectedActivities, activity.name]);
+                    } else {
+                      setSelectedActivities(selectedActivities.filter(n => n !== activity.name));
+                    }
+                  }}
+                />
+                <IonLabel style={{ marginLeft: '16px' }}>
+                  {activity.name}
+                </IonLabel>
+              </IonItem>
+            ))}
+          </>
         );
 
       default:
@@ -158,116 +177,126 @@ const BadgeModal = ({ badge, activities, onSave, onClose, loading }) => {
   };
 
   return (
-    <UniversalModal
-      dismiss={onClose}
-      title={badge ? 'Badge bearbeiten' : 'Neues Badge erstellen'}
-      onSubmit={handleSubmit}
-      submitButtonText={badge ? 'Aktualisieren' : 'Erstellen'}
-      submitDisabled={!formData.name || !formData.icon || !formData.criteria_type || !formData.criteria_value}
-      loading={loading}
-    >
-      <div className="p-6 space-y-6">
-        <div className="space-y-4">
-        {/* Basic Info */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-medium mb-2">Name *</label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
-              className="w-full p-3 border rounded-lg"
-              placeholder="z.B. Fleißig"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Icon *</label>
-            <input
-              type="text"
-              value={formData.icon}
-              onChange={(e) => setFormData({...formData, icon: e.target.value})}
-              className="w-full p-3 border rounded-lg text-2xl text-center"
-              placeholder="🏆"
-              maxLength={2}
-            />
-          </div>
-        </div>
+    <IonPage>
+      <IonHeader>
+        <IonToolbar>
+          <IonTitle>{badge ? 'Badge bearbeiten' : 'Neues Badge erstellen'}</IonTitle>
+          <IonButtons slot="start">
+            <IonButton onClick={onClose}>
+              Abbrechen
+            </IonButton>
+          </IonButtons>
+          <IonButtons slot="end">
+            <IonButton
+              onClick={handleSubmit}
+              disabled={!formData.name || !formData.icon || !formData.criteria_type || !formData.criteria_value || loading}
+            >
+              {loading ? 'Speichern...' : (badge ? 'Aktualisieren' : 'Erstellen')}
+            </IonButton>
+          </IonButtons>
+        </IonToolbar>
+      </IonHeader>
 
-        <div>
-          <label className="block text-sm font-medium mb-2">Beschreibung</label>
-          <textarea
+      <IonContent>
+        <IonList>
+        <IonGrid>
+          <IonRow>
+            <IonCol size="8">
+              <IonItem>
+                <IonLabel position="stacked">Name *</IonLabel>
+                <IonInput
+                  value={formData.name}
+                  onIonInput={(e) => setFormData({...formData, name: e.detail.value})}
+                  placeholder="z.B. Fleißig"
+                />
+              </IonItem>
+            </IonCol>
+            <IonCol size="4">
+              <IonItem>
+                <IonLabel position="stacked">Icon *</IonLabel>
+                <IonInput
+                  value={formData.icon}
+                  onIonInput={(e) => setFormData({...formData, icon: e.detail.value})}
+                  placeholder="🏆"
+                  maxlength={2}
+                  style={{ textAlign: 'center', fontSize: '1.5rem' }}
+                />
+              </IonItem>
+            </IonCol>
+          </IonRow>
+        </IonGrid>
+
+        <IonItem>
+          <IonLabel position="stacked">Beschreibung</IonLabel>
+          <IonTextarea
             value={formData.description}
-            onChange={(e) => setFormData({...formData, description: e.target.value})}
-            className="w-full p-3 border rounded-lg"
-            rows="2"
+            onIonInput={(e) => setFormData({...formData, description: e.detail.value})}
             placeholder="Kurze Beschreibung..."
+            rows={2}
           />
-        </div>
+        </IonItem>
 
-        {/* Criteria */}
-        <div>
-          <label className="block text-sm font-medium mb-2">Kriterium *</label>
-          <select
+        <IonItem>
+          <IonLabel position="stacked">Kriterium *</IonLabel>
+          <IonSelect
             value={formData.criteria_type}
-            onChange={(e) => setFormData({...formData, criteria_type: e.target.value})}
-            className="w-full p-3 border rounded-lg"
+            onSelectionChange={(e) => setFormData({...formData, criteria_type: e.detail.value})}
+            placeholder="Kriterium wählen..."
           >
-            <option value="">Kriterium wählen...</option>
             {Object.entries(CRITERIA_TYPES).map(([key, type]) => (
-              <option key={key} value={key}>{type.label}</option>
+              <IonSelectOption key={key} value={key}>{type.label}</IonSelectOption>
             ))}
-          </select>
-          {formData.criteria_type && (
-            <p className="text-xs text-gray-600 mt-1">
-              {CRITERIA_TYPES[formData.criteria_type].description}
-            </p>
-          )}
-        </div>
+          </IonSelect>
+        </IonItem>
+        {formData.criteria_type && (
+          <IonItem lines="none">
+            <IonLabel>
+              <p style={{ fontSize: '0.875rem', color: '#666' }}>
+                {CRITERIA_TYPES[formData.criteria_type].description}
+              </p>
+            </IonLabel>
+          </IonItem>
+        )}
 
-        <div>
-          <label className="block text-sm font-medium mb-2">Wert *</label>
-          <input
+        <IonItem>
+          <IonLabel position="stacked">Wert *</IonLabel>
+          <IonInput
             type="number"
             value={formData.criteria_value}
-            onChange={(e) => setFormData({...formData, criteria_value: parseInt(e.target.value) || 1})}
-            className="w-full p-3 border rounded-lg"
-            min="1"
+            onIonInput={(e) => setFormData({...formData, criteria_value: parseInt(e.detail.value) || 1})}
+            min={1}
           />
-        </div>
+        </IonItem>
 
         {renderExtraFields()}
 
-        {/* Settings */}
-        <div className="space-y-3 pt-3 border-t">
-          <label className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              checked={formData.is_active}
-              onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
-              className="w-5 h-5"
-            />
-            <div>
-              <div className="font-medium">Badge aktiv</div>
-              <div className="text-xs text-gray-600">Badge kann erhalten werden</div>
-            </div>
-          </label>
+        <IonItem>
+          <IonCheckbox
+            slot="start"
+            checked={formData.is_active}
+            onIonChange={(e) => setFormData({...formData, is_active: e.detail.checked})}
+          />
+          <IonLabel style={{ marginLeft: '16px' }}>
+            <h3>Badge aktiv</h3>
+            <p>Badge kann erhalten werden</p>
+          </IonLabel>
+        </IonItem>
 
-          <label className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              checked={formData.is_hidden}
-              onChange={(e) => setFormData({...formData, is_hidden: e.target.checked})}
-              className="w-5 h-5"
-            />
-            <div>
-              <div className="font-medium">Geheimes Badge 🎭</div>
-              <div className="text-xs text-gray-600">Erst sichtbar wenn erhalten</div>
-            </div>
-          </label>
-        </div>
-        </div>
-      </div>
-    </UniversalModal>
+        <IonItem>
+          <IonCheckbox
+            slot="start"
+            checked={formData.is_hidden}
+            onIonChange={(e) => setFormData({...formData, is_hidden: e.detail.checked})}
+          />
+          <IonLabel style={{ marginLeft: '16px' }}>
+            <h3>Geheimes Badge 🎭</h3>
+            <p>Erst sichtbar wenn erhalten</p>
+          </IonLabel>
+        </IonItem>
+
+        </IonList>
+      </IonContent>
+    </IonPage>
   );
 };
 

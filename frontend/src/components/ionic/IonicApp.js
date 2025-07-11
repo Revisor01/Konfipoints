@@ -1,14 +1,47 @@
 import React, { useState, useEffect } from 'react';
-import { IonApp, IonRouterOutlet, setupIonicReact, IonContent } from '@ionic/react';
+import { 
+  IonApp, 
+  IonRouterOutlet, 
+  setupIonicReact, 
+  IonTabs,
+  IonTabBar,
+  IonTabButton,
+  IonIcon,
+  IonLabel,
+  IonBadge,
+  IonPage,
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonContent
+} from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
-import { Route, Redirect, Switch } from 'react-router-dom';
+
+import { Route, Redirect } from 'react-router';
+import { 
+  people, 
+  chatbubbles, 
+  calendar, 
+  star, 
+  ellipsisHorizontal,
+  person,
+  home
+} from 'ionicons/icons';
 
 import { useApp } from '../../contexts/AppContext';
 import LoginView from '../auth/LoginView';
-import IonicAdminTabs from './IonicAdminTabs';
-import IonicKonfiTabs from './IonicKonfiTabs';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ChatRoom from '../chat/ChatRoom';
+
+// Import individual tab components instead of wrapper components
+import KonfisView from '../admin/KonfisView';
+import AdminBadgesPage from '../admin/pages/AdminBadgesPage';
+import ActivitiesView from '../admin/ActivitiesView';
+import MoreView from '../admin/MoreView';
+import ChatView from '../chat/ChatView';
+import KonfiDashboard from '../konfi/KonfiDashboard';
+import KonfiBadgesView from '../konfi/views/KonfiBadgesView';
+import KonfiRequestsView from '../konfi/views/KonfiRequestsView';
 import api from '../../services/api';
 
 
@@ -16,67 +49,244 @@ setupIonicReact({
   rippleEffect: false,
   mode: 'ios',
   swipeBackEnabled: true,
-  inputBlurring: false, // Keep this as false
-  scrollPadding: false, // Keep this as false
-  scrollAssist: true,   // Keep this as true
+  inputBlurring: true,    // Lasse Ionic das nativ handhaben
+  scrollPadding: true,    // Lasse Ionic Safe Areas nativ handhaben  
   hardwareBackButton: false,
-  statusTap: false,
   backButtonText: '',
   backButtonIcon: 'arrow-back-outline',
   innerHTMLTemplatesEnabled: true,
-  experimentalTransitionShadows: false,
+  experimentalTransitionShadows: true,  // Native iOS shadows
   spinner: 'lines'
 });
 
 const IonicApp = () => {
   const { user, loading } = useApp();
+  const [data, setData] = useState({
+    konfis: [],
+    activities: [],
+    badges: [],
+    settings: {},
+    notifications: {}
+  });
+
+  const loadData = async () => {
+    try {
+      const [konfisRes, activitiesRes, badgesRes, settingsRes] = await Promise.all([
+        api.get('/konfis'),
+        api.get('/activities'),
+        api.get('/badges'),
+        api.get('/settings')
+      ]);
+      
+      setData({
+        konfis: konfisRes.data,
+        activities: activitiesRes.data,
+        badges: badgesRes.data,
+        settings: settingsRes.data,
+        notifications: {}
+      });
+    } catch (err) {
+      console.error('Error loading data:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      loadData();
+    }
+  }, [user]);
   
   if (loading) {
     return (
       <IonApp>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh'
-      }}>
-      <LoadingSpinner fullScreen />
-      </div>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh'
+        }}>
+          <LoadingSpinner fullScreen />
+        </div>
+      </IonApp>
+    );
+  }
+
+  if (!user) {
+    return (
+      <IonApp>
+        <IonReactRouter>
+          <IonRouterOutlet>
+            <Route path="/login" component={LoginView} exact />
+            <Redirect exact from="/" to="/login" />
+          </IonRouterOutlet>
+        </IonReactRouter>
       </IonApp>
     );
   }
   
   return (
     <IonApp>
-    <IonReactRouter>
-    {/* Nutze Switch, um sicherzustellen, dass nur eine Route gematched wird */}
-    <IonRouterOutlet animated={true}>
-    <Switch>
-    {!user ? (
-      // Login Routen
-      <>
-      <Route path="/login" component={LoginView} exact />
-      <Redirect exact from="/" to="/login" />
-      </>
-    ) : user.type === 'admin' ? (
-      // Admin Routen
-      <>
-      {/* WICHTIG: component={Component} statt render={() => <Component />} */}
-      {/* Dadurch wird der Lebenszyklus von React Router besser kontrolliert */}
-      <Route path="/admin" component={IonicAdminTabs} />
-      <Route path="/chat/:roomId" component={ChatRoom} exact={false} />
-      <Redirect exact from="/" to="/admin/konfis" />
-      </>
-    ) : (
-      // Konfi Routen
-      <>
-      <Route path="/konfi" component={IonicKonfiTabs} />
-      <Redirect exact from="/" to="/konfi/dashboard" />
-      </>
-    )}
-    </Switch>
-    </IonRouterOutlet>
-    </IonReactRouter>
+      <IonReactRouter>
+        {user.type === 'admin' ? (
+          // Admin Tabs - Native Ionic Pattern
+          <IonTabs>
+            <IonRouterOutlet>
+              <Redirect exact path="/admin" to="/admin/konfis" />
+              <Route exact path="/admin/konfis" render={() => 
+                <IonPage>
+                  <IonHeader>
+                    <IonToolbar>
+                      <IonTitle>Konfis</IonTitle>
+                    </IonToolbar>
+                  </IonHeader>
+                  <IonContent className="app-gradient-background" fullscreen>
+                    <KonfisView 
+                      konfis={data.konfis} 
+                      jahrgaenge={[]} 
+                      settings={data.settings}
+                      onUpdate={loadData}
+                    />
+                  </IonContent>
+                </IonPage>
+              } />
+              <Route exact path="/admin/chat" render={() => 
+                <IonPage>
+                  <IonHeader>
+                    <IonToolbar>
+                      <IonTitle>Chat</IonTitle>
+                    </IonToolbar>
+                  </IonHeader>
+                  <IonContent className="app-gradient-background" fullscreen>
+                    <ChatView onNavigate={() => {}} />
+                  </IonContent>
+                </IonPage>
+              } />
+              <Route exact path="/admin/activities" render={() => 
+                <IonPage>
+                  <IonHeader>
+                    <IonToolbar>
+                      <IonTitle>Aktivitäten</IonTitle>
+                    </IonToolbar>
+                  </IonHeader>
+                  <IonContent className="app-gradient-background" fullscreen>
+                    <ActivitiesView activities={data.activities} onUpdate={loadData} />
+                  </IonContent>
+                </IonPage>
+              } />
+              <Route exact path="/admin/badges" render={() => (
+                <AdminBadgesPage 
+                  badges={data.badges} 
+                  activities={data.activities} 
+                  onUpdate={loadData}
+                />
+              )} />
+              <Route exact path="/admin/settings" render={() => 
+                <IonPage>
+                  <IonHeader>
+                    <IonToolbar>
+                      <IonTitle>Mehr</IonTitle>
+                    </IonToolbar>
+                  </IonHeader>
+                  <IonContent className="app-gradient-background" fullscreen>
+                    <MoreView 
+                      settings={data.settings}
+                      onUpdate={loadData}
+                      notifications={data.notifications}
+                    />
+                  </IonContent>
+                </IonPage>
+              } />
+              <Route path="/chat/:roomId" component={ChatRoom} />
+              <Redirect exact from="/" to="/admin/konfis" />
+            </IonRouterOutlet>
+
+            <IonTabBar slot="bottom">
+              <IonTabButton tab="konfis" href="/admin/konfis">
+                <IonIcon icon={people} />
+                <IonLabel>Konfis</IonLabel>
+              </IonTabButton>
+              <IonTabButton tab="chat" href="/admin/chat">
+                <IonIcon icon={chatbubbles} />
+                <IonLabel>Chat</IonLabel>
+              </IonTabButton>
+              <IonTabButton tab="activities" href="/admin/activities">
+                <IonIcon icon={calendar} />
+                <IonLabel>Aktivitäten</IonLabel>
+              </IonTabButton>
+              <IonTabButton tab="badges" href="/admin/badges">
+                <IonIcon icon={star} />
+                <IonLabel>Badges</IonLabel>
+              </IonTabButton>
+              <IonTabButton tab="settings" href="/admin/settings">
+                <IonIcon icon={ellipsisHorizontal} />
+                <IonLabel>Mehr</IonLabel>
+                {data.notifications.requests > 0 && (
+                  <IonBadge color="danger">{data.notifications.requests}</IonBadge>
+                )}
+              </IonTabButton>
+            </IonTabBar>
+          </IonTabs>
+        ) : (
+          // Konfi Tabs - Native Ionic Pattern  
+          <IonTabs>
+            <IonRouterOutlet>
+              <Redirect exact path="/konfi" to="/konfi/dashboard" />
+              <Route exact path="/konfi/dashboard" render={() => 
+                <IonPage>
+                  <IonHeader>
+                    <IonToolbar>
+                      <IonTitle>Dashboard</IonTitle>
+                    </IonToolbar>
+                  </IonHeader>
+                  <IonContent className="app-gradient-background" fullscreen>
+                    <KonfiDashboard />
+                  </IonContent>
+                </IonPage>
+              } />
+              <Route exact path="/konfi/badges" render={() => 
+                <IonPage>
+                  <IonHeader>
+                    <IonToolbar>
+                      <IonTitle>Badges</IonTitle>
+                    </IonToolbar>
+                  </IonHeader>
+                  <IonContent className="app-gradient-background" fullscreen>
+                    <KonfiBadgesView />
+                  </IonContent>
+                </IonPage>
+              } />
+              <Route exact path="/konfi/requests" render={() => 
+                <IonPage>
+                  <IonHeader>
+                    <IonToolbar>
+                      <IonTitle>Anfragen</IonTitle>
+                    </IonToolbar>
+                  </IonHeader>
+                  <IonContent className="app-gradient-background" fullscreen>
+                    <KonfiRequestsView />
+                  </IonContent>
+                </IonPage>
+              } />
+              <Redirect exact from="/" to="/konfi/dashboard" />
+            </IonRouterOutlet>
+
+            <IonTabBar slot="bottom">
+              <IonTabButton tab="dashboard" href="/konfi/dashboard">
+                <IonIcon icon={home} />
+                <IonLabel>Dashboard</IonLabel>
+              </IonTabButton>
+              <IonTabButton tab="badges" href="/konfi/badges">
+                <IonIcon icon={star} />
+                <IonLabel>Badges</IonLabel>
+              </IonTabButton>
+              <IonTabButton tab="requests" href="/konfi/requests">
+                <IonIcon icon={person} />
+                <IonLabel>Anfragen</IonLabel>
+              </IonTabButton>
+            </IonTabBar>
+          </IonTabs>
+        )}
+      </IonReactRouter>
     </IonApp>
   );
 };

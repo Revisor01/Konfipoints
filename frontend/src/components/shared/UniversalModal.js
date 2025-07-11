@@ -1,6 +1,6 @@
+// frontend/src/components/shared/UniversalModal.js
 import React from 'react';
 import {
-  IonPage,
   IonHeader,
   IonToolbar,
   IonTitle,
@@ -9,18 +9,17 @@ import {
   IonButtons,
 } from '@ionic/react';
 
-const UniversalModal = ({ 
-  dismiss, 
-  title, 
-  children, 
+const UniversalModal = ({
+  dismiss,
+  title,
+  children,
   submitButtonText,
   onSubmit,
   submitDisabled = false,
   loading = false,
 }) => {
-  // SUPER SIMPEL wie andereapp - IonPage wrapper
   return (
-    <IonPage>
+    <>
       <IonHeader>
         <IonToolbar>
           <IonTitle>{title}</IonTitle>
@@ -41,11 +40,11 @@ const UniversalModal = ({
           )}
         </IonToolbar>
       </IonHeader>
-      
-      <IonContent fullscreen>
+
+      <IonContent>
         {children}
       </IonContent>
-    </IonPage>
+    </>
   );
 };
 
