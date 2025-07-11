@@ -1,5 +1,4 @@
-// CreatePollModal.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   IonModal,
   IonHeader,
@@ -18,9 +17,6 @@ import {
   IonSelectOption,
   IonList,
   IonItemDivider,
-  IonReorder,
-  IonReorderGroup,
-  IonFooter
 } from '@ionic/react';
 import { close, add, trash } from 'ionicons/icons';
 
@@ -29,6 +25,55 @@ const CreatePollModal = ({ isOpen, onDismiss, onSubmit }) => {
   const [options, setOptions] = useState(['', '']);
   const [multipleChoice, setMultipleChoice] = useState(false);
   const [expiresInHours, setExpiresInHours] = useState('');
+
+  // Improved Modal Body Lock and Keyboard Handling
+  useEffect(() => {
+    if (isOpen) {
+      // Modal ist offen - Body sperren und Viewport stabilisieren
+      const originalPosition = document.body.style.position;
+      const originalWidth = document.body.style.width;
+      const originalOverflow = document.body.style.overflow;
+      const originalTop = document.body.style.top;
+      const originalHeight = document.body.style.height;
+      
+      // Aktuelle Scroll-Position speichern
+      const scrollY = window.scrollY;
+      
+      // Viewport stabilisieren - verhindert Zoom/Verschiebung bei Keyboard
+      // VORSICHTIG: Nur wenn wirklich nötig, da es Feld-Sprünge verursachen kann
+      const viewportMeta = document.querySelector('meta[name="viewport"]');
+      const originalViewport = viewportMeta?.getAttribute('content');
+      // Kommentiert aus, da es Feld-Sprünge verursacht
+      // if (viewportMeta) {
+      //   viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+      // }
+      
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.height = '100%';
+      document.body.style.overflow = 'hidden';
+      document.body.classList.add('modal-open');
+      
+      return () => {
+        // Modal geschlossen - alles zurücksetzen
+        document.body.style.position = originalPosition;
+        document.body.style.top = originalTop;
+        document.body.style.width = originalWidth;
+        document.body.style.height = originalHeight;
+        document.body.style.overflow = originalOverflow;
+        document.body.classList.remove('modal-open');
+        
+        // Viewport zurücksetzen (nur wenn es geändert wurde)
+        // if (viewportMeta && originalViewport) {
+        //   viewportMeta.setAttribute('content', originalViewport);
+        // }
+        
+        // Scroll-Position wiederherstellen
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [isOpen]);
 
   const handleSubmit = async () => {
     const validOptions = options.filter(opt => opt.trim());
@@ -53,14 +98,12 @@ const CreatePollModal = ({ isOpen, onDismiss, onSubmit }) => {
     try {
       await onSubmit(pollData);
       
-      // Reset form only after successful submission
       setQuestion('');
       setOptions(['', '']);
       setMultipleChoice(false);
       setExpiresInHours('');
     } catch (error) {
       console.error('Failed to create poll:', error);
-      // Don't reset form on error
     }
   };
 
@@ -86,11 +129,17 @@ const CreatePollModal = ({ isOpen, onDismiss, onSubmit }) => {
     <IonModal 
       isOpen={isOpen} 
       onDidDismiss={onDismiss}
-      onWillDismiss={onDismiss}
       presentingElement={undefined}
+      // === WICHTIG: BREAKPOINTS FÜR SCHIEBBARES MODAL VON UNTEN ===
+      breakpoints={[0, 0.75, 1]} // 0 = geschlossen, 0.75 = 3/4 hoch, 1 = Vollbild
+      initialBreakpoint={0.75}    // Startet bei 3/4 Höhe
+      swipeToClose={true}         // Ermöglicht das Schließen durch Wischen
+      // ==========================================================
+      cssClass="create-poll-modal" // Diese Klasse kann für spezifisches Styling verwendet werden
+      backdropDismiss={true}      // Ermöglicht Schließen durch Tippen auf Backdrop
     >
       <IonHeader className="ion-no-border">
-        <IonToolbar style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+        <IonToolbar>
           <IonTitle style={{ fontSize: '17px', fontWeight: '600' }}>
             Umfrage erstellen
           </IonTitle>
@@ -122,6 +171,7 @@ const CreatePollModal = ({ isOpen, onDismiss, onSubmit }) => {
       
       <IonContent className="ion-padding">
         <IonList>
+          {/* ... (Modal-Inhalt bleibt gleich) ... */}
           {/* Question */}
           <IonItem>
             <IonLabel position="stacked">Frage *</IonLabel>
@@ -209,7 +259,6 @@ const CreatePollModal = ({ isOpen, onDismiss, onSubmit }) => {
           </IonItem>
         </IonList>
       </IonContent>
-
     </IonModal>
   );
 };

@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useIonRouter, isPlatform } from '@ionic/react';
-import { useHistory } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useIonRouter, isPlatform, useIonViewWillLeave } from '@ionic/react';
+// import { useHistory } from 'react-router-dom'; // Wird nicht direkt verwendet, kann entfernt werden
 
 import {
   IonContent,
@@ -14,15 +14,13 @@ import {
   IonRefresherContent,
   IonPage,
   IonToolbar,
-  IonItem,
   IonTitle,
-  IonButtons,
-  IonBackButton
+  IonButtons
 } from '@ionic/react';
-import { send, attach, camera, document, image, videocam, chevronDown, close } from 'ionicons/icons';
+import { send, attach, camera, document, image, chevronDown, close } from 'ionicons/icons';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { FilePicker } from '@capawesome/capacitor-file-picker';
-import { Keyboard, KeyboardResize } from '@capacitor/keyboard';
+import { Keyboard } from '@capacitor/keyboard'; // KeyboardResize nicht mehr nötig
 import { Capacitor } from '@capacitor/core';
 import { useApp } from '../../contexts/AppContext';
 import api from '../../services/api';
@@ -32,7 +30,7 @@ import PollComponent from './PollComponent';
 import CreatePollModal from './CreatePollModal';
 import { ArrowLeft, BarChart3, ArrowDown } from 'lucide-react';
 
-const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...props }) => {
+const ChatRoom = ({ room, match, location }) => {
   const { user } = useApp();
   const router = useIonRouter();
 
@@ -49,26 +47,83 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
 
   const [message, setMessage] = useState('');
   const [showActionSheet, setShowActionSheet] = useState(false);
-  const [attachedFile, setAttachedFile] = useState(null);
+
+  const [attachedFileData, setAttachedFileData] = useState(null);
+  const [attachedFileObject, setAttachedFileObject] = useState(null);
+
   const textareaRef = useRef(null);
-  const footerRef = useRef(null); // Ref für den Footer
+  const footerRef = useRef(null);
   const contentRef = useRef(null);
 
+  useIonViewWillLeave(() => {
+    setAttachedFileData(null);
+    setAttachedFileObject(null);
+    setMessage('');
+    console.log('ChatRoom: States beim Verlassen der Ansicht zurückgesetzt.');
+    
+    // === KOMPLETTER LAYOUT-RESET BEIM VERLASSEN ===
+    if (Capacitor.isNativePlatform()) {
+      try {
+        Keyboard.hide(); // Verstecke Tastatur beim Verlassen
+        
+        // Reset alle möglichen CSS-Properties die Layout beeinflussen
+        if (typeof window !== 'undefined' && window.document) {
+          window.document.documentElement.style.setProperty('--keyboard-actual-height', '0px');
+          // ENTFERNT: --ion-safe-area-top überschreibung - Ionic soll das automatisch machen
+          window.document.body.style.transform = '';
+          window.document.body.style.height = '';
+          window.document.body.style.position = '';
+          window.document.body.style.top = '';
+          window.document.body.style.width = '';
+          window.document.body.style.overflow = '';
+          window.document.body.classList.remove('post-native-action');
+        }
+        
+        // Reset viewport
+        if (typeof window !== 'undefined') {
+          window.scrollTo(0, 0);
+        }
+        
+        // WICHTIG: Force layout recalculation für Tab-System
+        setTimeout(() => {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('resize'));
+            console.log('ChatRoom: Layout-Reset für Tab-System getriggert');
+          }
+        }, 50);
+        
+        console.log('ChatRoom: Kompletter Layout-Reset beim Verlassen durchgeführt.');
+      } catch (error) {
+        console.error('Fehler beim Layout-Reset:', error);
+      }
+    }
+    // =======================================================
+  });
 
-  // Simplified keyboard handling - let Ionic handle it
+  // === WICHTIG: Keyboard Handling - NUR Listener, KEIN setResizeMode hier ===
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
-      const keyboardWillShow = () => {
+      const keyboardWillShowListener = Keyboard.addListener('keyboardWillShow', info => {
+        // Die Höhenanpassung des padding-bottom ist jetzt im CSS
+        // Hier nur scrollen, wenn die Tastatur erscheint
         setTimeout(() => scrollToBottom("auto"), 150);
-      };
-      
-      const showListener = Keyboard.addListener('keyboardWillShow', keyboardWillShow);
+        console.log('Keyboard will show. Scrolling to bottom.');
+      });
+
+      const keyboardWillHideListener = Keyboard.addListener('keyboardWillHide', () => {
+        // Hier nichts Spezielles zu tun, da padding-bottom im CSS durch --keyboard-actual-height
+        // auf 0 gesetzt wird, und Ionic das automatische Scrollen nach unten handhaben sollte.
+        console.log('Keyboard will hide.');
+      });
       
       return () => {
-        showListener.remove();
+        keyboardWillShowListener.remove();
+        keyboardWillHideListener.remove();
+        console.log('Keyboard listeners removed.');
       };
     }
-  }, []);
+  }, []); // Leeres Array, damit es nur einmal beim Mounten/Unmounten läuft
+  // =======================================================================
 
   useEffect(() => {
     const routeRoom = location?.state?.room;
@@ -117,7 +172,6 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
     
     setShowScrollButton(!isNearBottom && messages.length > 0);
     
-    // Load more messages when scrolling near top
     if (isNearTop && hasMore && !loadingMore && messages.length > 0) {
       loadMoreMessages();
     }
@@ -146,15 +200,15 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
   };
 
   const handleSendMessage = async () => {
-    if (!message.trim() && !attachedFile) return;
+    if (!message.trim() && !attachedFileObject) return;
 
     try {
       const formData = new FormData();
       if (message.trim()) {
         formData.append('content', message.trim());
       }
-      if (attachedFile) {
-        formData.append('file', attachedFile);
+      if (attachedFileObject) {
+        formData.append('file', attachedFileObject);
       }
 
       const response = await api.post(`/chat/rooms/${currentRoom.id}/messages`, formData, {
@@ -163,7 +217,8 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
 
       setMessages(prev => [...prev, response.data]);
       setMessage('');
-      setAttachedFile(null);
+      setAttachedFileData(null);
+      setAttachedFileObject(null);
       scrollToBottom();
     } catch (err) {
       console.error('Send Error:', err);
@@ -178,12 +233,9 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
       const response = await api.post(`/chat/rooms/${currentRoom.id}/polls`, pollData);
       console.log('Poll created successfully:', response.data);
       
-      // Add the poll immediately to the messages state
       setMessages(prev => [...prev, response.data]);
-      
       setShowCreatePoll(false);
       
-      // Scroll to bottom to show new poll
       setTimeout(() => {
         scrollToBottom();
       }, 300);
@@ -192,9 +244,7 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
       console.error('Poll creation error:', err);
       console.error('Error details:', err.response?.data);
       
-      // Show error to user
       if (err.response?.status === 400) {
-        // Use a custom modal or toast instead of alert
         console.error('Fehler beim Erstellen der Umfrage: Ungültige Daten');
       } else if (err.response?.status === 403) {
         console.error('Fehler: Keine Berechtigung zum Erstellen von Umfragen');
@@ -205,8 +255,7 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
   };
 
   const handleDeleteMessage = async (messageId) => {
-    // Use a custom modal for confirmation instead of window.confirm
-    if (!window.confirm('Nachricht wirklich löschen?')) return; // Placeholder, replace with custom modal
+    if (!window.confirm('Nachricht wirklich löschen?')) return; 
 
     try {
       await api.delete(`/chat/messages/${messageId}`);
@@ -222,18 +271,58 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
     }
   };
 
+  const processBlobToFileAndSetStates = async (blob, fileName, mimeType) => {
+    const file = new File([blob], fileName, { type: mimeType });
+    setAttachedFileObject(file);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAttachedFileData({ name: fileName, type: mimeType, dataUrl: reader.result });
+      
+      // WICHTIG: Layout nach Bildauswahl korrigieren
+      if (Capacitor.isNativePlatform()) {
+        setTimeout(() => {
+          try {
+            // Force Layout-Neuberechnung
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new Event('resize'));
+            }
+            
+            // Reset mögliche Keyboard-States (sicher mit window check)
+            if (typeof window !== 'undefined' && window.document) {
+              window.document.documentElement.style.setProperty('--keyboard-actual-height', '0px');
+              // ENTFERNT: --ion-safe-area-top überschreibung - Ionic soll das automatisch machen
+              window.document.body.classList.add('post-native-action');
+            }
+            
+            // Scrolle zum unteren Ende
+            if (contentRef.current) {
+              contentRef.current.scrollToBottom(300);
+            }
+            
+            console.log('Layout nach Bildauswahl korrigiert');
+          } catch (error) {
+            console.error('Fehler beim Layout-Reset nach Bildauswahl:', error);
+          }
+        }, 100);
+      }
+    };
+    reader.readAsDataURL(blob);
+  };
+
   const takePicture = async () => {
     try {
       const image = await Camera.getPhoto({
         quality: 90,
         allowEditing: false,
-        resultType: CameraResultType.DataUrl,
+        resultType: CameraResultType.Uri,
         source: CameraSource.Camera
       });
-      const response = await fetch(image.dataUrl);
-      const blob = await response.blob();
-      const file = new File([blob], 'camera-image.jpg', { type: 'image/jpeg' });
-      setAttachedFile(file);
+      if (image.webPath) {
+        const response = await fetch(image.webPath);
+        const blob = await response.blob();
+        await processBlobToFileAndSetStates(blob, 'camera-image.jpg', 'image/jpeg');
+      }
     } catch (error) {
       console.error('Camera error:', error);
     }
@@ -244,13 +333,14 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
       const image = await Camera.getPhoto({
         quality: 90,
         allowEditing: false,
-        resultType: CameraResultType.DataUrl,
+        resultType: CameraResultType.Uri,
         source: CameraSource.Photos
       });
-      const response = await fetch(image.dataUrl);
-      const blob = await response.blob();
-      const file = new File([blob], 'photo.jpg', { type: 'image/jpeg' });
-      setAttachedFile(file);
+      if (image.webPath) {
+        const response = await fetch(image.webPath);
+        const blob = await response.blob();
+        await processBlobToFileAndSetStates(blob, 'photo.jpg', 'image/jpeg');
+      }
     } catch (error) {
       console.error('Photo selection error:', error);
     }
@@ -269,8 +359,7 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
         const fileData = pickedFile.data;
         const response = await fetch(`data:${pickedFile.mimeType};base64,${fileData}`);
         const blob = await response.blob();
-        const file = new File([blob], pickedFile.name, { type: pickedFile.mimeType });
-        setAttachedFile(file);
+        await processBlobToFileAndSetStates(blob, pickedFile.name, pickedFile.mimeType);
       }
     } catch (error) {
       console.error('File picker error:', error);
@@ -289,11 +378,7 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
   };
 
   const handleBackToChatList = () => {
-    if (router.canGoBack()) {
-      router.goBack();
-    } else {
-      router.push('/admin/chat', 'root');
-    }
+    router.push('/admin/chat', 'back', 'replace');
   };
 
   if (loading || !currentRoom) {
@@ -374,8 +459,10 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
                           id: msg.id,
                           question: msg.question || msg.content,
                           options: (() => {
+                            if (!msg.options) return [];
+                            if (Array.isArray(msg.options)) return msg.options;
                             try {
-                              return msg.options ? JSON.parse(msg.options) : [];
+                              return JSON.parse(msg.options);
                             } catch (e) {
                               console.error('Error parsing poll options:', e, msg.options);
                               return [];
@@ -413,88 +500,93 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
         </div>
       </IonContent>
 
-      <div ref={footerRef} className="chat-input-footer" style={{ backgroundColor: '#f8f8f8', padding: '8px' }}>
-        {attachedFile && (
-          <div className="flex items-center gap-2 p-2 bg-gray-100 mx-4 mt-2 rounded-lg">
-            <span className="text-sm truncate max-w-xs">{attachedFile.name}</span>
-            <button
-              onClick={() => setAttachedFile(null)}
-              className="text-red-500 text-sm ml-auto font-semibold"
-              aria-label="Anhang entfernen"
+      <IonFooter ref={footerRef}>
+        <IonToolbar className="chat-input-toolbar" style={{ '--background': '#f8f8f8', padding: '0 8px' }}>
+          {attachedFileData && (
+            <div className="flex items-center gap-2 p-2 bg-gray-100 mx-auto rounded-lg" style={{ maxWidth: 'calc(100% - 16px)' }}>
+              <span className="text-sm truncate max-w-xs">{attachedFileData.name}</span>
+              <button
+                onClick={() => {
+                  setAttachedFileData(null);
+                  setAttachedFileObject(null);
+                }}
+                className="text-red-500 text-sm ml-auto font-semibold"
+                aria-label="Anhang entfernen"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-center gap-1 p-1">
+            <IonButton
+              fill="clear"
+              onClick={() => setShowActionSheet(true)}
+              className="ion-no-margin attachment-btn"
+              style={{
+                '--padding-start': '8px',
+                '--padding-end': '8px',
+                '--padding-top': '8px',
+                '--padding-bottom': '8px',
+              }}
+              aria-label="Anhang hinzufügen"
             >
-              ✕
-            </button>
-          </div>
-        )}
+              <IonIcon icon={attach} />
+            </IonButton>
 
-        <div className="flex items-center gap-2 p-2">
-          <IonButton
-            fill="clear"
-            onClick={() => setShowActionSheet(true)}
-            className="ion-no-margin attachment-btn"
-            style={{
-              '--padding-start': '8px',
-              '--padding-end': '8px',
-              '--padding-top': '8px',
-              '--padding-bottom': '8px',
-            }}
-            aria-label="Anhang hinzufügen"
-          >
-            <IonIcon icon={attach} />
-          </IonButton>
-
-          <IonTextarea
-            ref={textareaRef}
-            autoGrow={true}
-            placeholder="Nachricht schreiben..."
-            value={message}
-            onIonInput={(e) => setMessage(e.detail.value)}
-            onIonFocus={() => {
-              setTimeout(() => {
-                if (textareaRef.current) {
-                  textareaRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            <IonTextarea
+              ref={textareaRef}
+              autoGrow={true}
+              placeholder="Nachricht schreiben..."
+              value={message}
+              onIonInput={(e) => setMessage(e.detail.value)}
+              onIonFocus={() => {
+                setTimeout(() => {
+                  if (contentRef.current) {
+                    contentRef.current.scrollToBottom(300);
+                  }
+                }, 300);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
                 }
-              }, 300);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage();
-              }
-            }}
-            rows={1}
-            maxlength={1000}
-            enterkeyhint="send"
-            inputmode="text"
-            style={{
-              '--background': 'transparent',
-              '--padding-start': '8px',
-              '--padding-end': '8px',
-              '--padding-top': '8px',
-              '--padding-bottom': '8px',
-              width: '100%',
-              flex: 1,
-            }}
-            aria-label="Nachricht eingeben"
-          />
+              }}
+              rows={1}
+              maxlength={1000}
+              enterkeyhint="send"
+              inputmode="text"
+              style={{
+                '--background': 'transparent',
+                '--padding-start': '8px',
+                '--padding-end': '8px',
+                '--padding-top': '8px',
+                '--padding-bottom': '8px',
+                width: '100%',
+                flex: 1,
+              }}
+              aria-label="Nachricht eingeben"
+            />
 
-          <IonButton
-            onClick={handleSendMessage}
-            disabled={!message.trim() && !attachedFile}
-            fill="clear"
-            className="ion-no-margin send-btn"
-            style={{
-              '--padding-start': '8px',
-              '--padding-end': '8px',
-              '--padding-top': '8px',
-              '--padding-bottom': '8px',
-            }}
-            aria-label="Nachricht senden"
-          >
-            <IonIcon slot="icon-only" icon={send} />
-          </IonButton>
-        </div>
-      </div>
+            <IonButton
+              onClick={handleSendMessage}
+              disabled={!message.trim() && !attachedFileObject}
+              fill="clear"
+              className="ion-no-margin send-btn"
+              style={{
+                '--padding-start': '8px',
+                '--padding-end': '8px',
+                '--padding-top': '8px',
+                '--padding-bottom': '8px',
+              }}
+              aria-label="Nachricht senden"
+            >
+              <IonIcon slot="icon-only" icon={send} />
+            </IonButton>
+          </div>
+        </IonToolbar>
+      </IonFooter>
 
       <IonActionSheet
         isOpen={showActionSheet}
@@ -527,7 +619,7 @@ const ChatRoom = ({ room, onBack, nav, isInTab = false, match, location, ...prop
           },
           ...(isAdmin ? [{
             text: 'Umfrage erstellen',
-            icon: send, // Using send icon since BarChart3 is not available here
+            icon: BarChart3,
             handler: () => {
               setShowCreatePoll(true);
               setShowActionSheet(false);

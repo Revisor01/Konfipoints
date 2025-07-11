@@ -19,12 +19,11 @@ const config: CapacitorConfig = {
       autoClear: false
     },
     StatusBar: {
-      overlaysWebView: false,
-      backgroundColor: "#000000"
+      overlaysWebView: true
     },
     Keyboard: {
       resize: "native",
-      resizeOnFullScreen: true
+      resizeOnFullScreen: true,
     },
     Share: {
       // Native iOS sharing
@@ -32,9 +31,9 @@ const config: CapacitorConfig = {
   },
   ios: {
     contentInset: 'automatic',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#eff6ff',
     swipeBackEnabled: true,
-    allowsLinkPreview: false
+    allowsLinkPreview: true
   }
 };
 

@@ -34,9 +34,10 @@ import BadgesView from '../admin/BadgesView';
 import ActivitiesView from '../admin/ActivitiesView';
 import MoreView from '../admin/MoreView';
 import ChatView from '../chat/ChatView';
-// ChatRoom is NOT imported here, as it's a top-level route in IonicApp.js
+// ChatRoom is a top-level route in IonicApp.js
 
 const IonicAdminTabs = () => {
+  console.log('IonicAdminTabs: Rendering Tab Layout');
   const { user, setError } = useApp();
   const [loading, setLoading] = useState(true);
   const [selectedKonfi, setSelectedKonfi] = useState(null);
@@ -89,6 +90,31 @@ const IonicAdminTabs = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Layout-Reset Effect für Tab-Ansicht - NUR EINMAL
+  useEffect(() => {
+    let isMounted = true;
+    
+    // Reset Layout nach Navigation zurück zu Tabs
+    const resetTabLayout = () => {
+      if (isMounted && typeof window !== 'undefined') {
+        setTimeout(() => {
+          if (isMounted) {
+            window.dispatchEvent(new Event('resize'));
+            console.log('Tab layout reset triggered');
+          }
+        }, 100);
+      }
+    };
+
+    resetTabLayout();
+    
+    // Cleanup bei Unmount
+    return () => {
+      isMounted = false;
+      console.log('IonicAdminTabs unmounting');
+    };
+  }, []); // Leer array - NUR EINMAL ausführen
 
   const KonfisTab = () => {
     const doRefresh = async (event) => {
@@ -202,7 +228,10 @@ const IonicAdminTabs = () => {
       <IonRouterOutlet>
         <Route exact path="/admin" render={() => <KonfisTab />} />
         <Route exact path="/admin/konfis" render={() => <KonfisTab />} />
-        <Route exact path="/admin/chat" render={() => <ChatTab />} />
+    <Route exact path="/admin/chat" render={() => {
+      console.log('IonicAdminTabs: Rendering ChatTab content');
+      return <ChatTab />;
+    }} />
         <Route exact path="/admin/activities" render={() => <ActivitiesTab />} />
         <Route exact path="/admin/badges" render={() => <BadgesTab />} />
         <Route exact path="/admin/settings" render={() => <SettingsTab />} />

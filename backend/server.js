@@ -2618,6 +2618,9 @@ app.get('/api/chat/rooms/:roomId/messages', verifyToken, (req, res) => {
             });
             
             msg.votes = votes;
+            
+            // Convert multiple_choice to boolean
+            msg.multiple_choice = Boolean(msg.multiple_choice);
           } catch (e) {
             console.error('Error parsing poll options:', e, 'Raw options:', msg.options);
             msg.options = [];
@@ -2676,8 +2679,8 @@ app.post('/api/chat/rooms/:roomId/messages', verifyToken, chatUpload.single('fil
     }
     
     const insertQuery = `
-      INSERT INTO chat_messages (room_id, user_id, user_type, message_type, content, file_path, file_name, file_size, reply_to)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO chat_messages (room_id, user_id, user_type, message_type, content, file_path, file_name, file_size, reply_to, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '+2 hours'))
     `;
     
     db.run(insertQuery, [roomId, userId, userType, actualMessageType, content, filePath, fileName, fileSize, reply_to], function(err) {
@@ -2806,6 +2809,9 @@ app.post('/api/chat/rooms/:roomId/polls', verifyToken, (req, res) => {
   const userId = req.user.id;
   const userType = req.user.type;
   
+  // Debug log to check what we're receiving
+  console.log('Poll creation request:', { question, options, multiple_choice, expires_in_hours });
+  
   // Only admins can create polls
   if (userType !== 'admin') {
     return res.status(403).json({ error: 'Only admins can create polls' });
@@ -2841,8 +2847,8 @@ app.post('/api/chat/rooms/:roomId/polls', verifyToken, (req, res) => {
     
     // Create the poll message first
     const insertMessageQuery = `
-      INSERT INTO chat_messages (room_id, user_id, user_type, message_type, content)
-      VALUES (?, ?, ?, 'poll', ?)
+      INSERT INTO chat_messages (room_id, user_id, user_type, message_type, content, created_at)
+      VALUES (?, ?, ?, 'poll', ?, datetime('now', '+2 hours'))
     `;
     
     db.run(insertMessageQuery, [roomId, userId, userType, question.trim()], function(err) {
@@ -2859,7 +2865,11 @@ app.post('/api/chat/rooms/:roomId/polls', verifyToken, (req, res) => {
         VALUES (?, ?, ?, ?, ?)
       `;
       
-      db.run(insertPollQuery, [messageId, question.trim(), JSON.stringify(validOptions), multiple_choice, expiresAt], function(err) {
+      // Ensure multiple_choice is converted to proper boolean for SQLite
+      const multipleChoiceValue = multiple_choice ? 1 : 0;
+      console.log('Saving poll with multiple_choice:', multipleChoiceValue);
+      
+      db.run(insertPollQuery, [messageId, question.trim(), JSON.stringify(validOptions), multipleChoiceValue, expiresAt], function(err) {
         if (err) {
           console.error('Error creating poll:', err);
           return res.status(500).json({ error: 'Database error creating poll' });
@@ -2901,6 +2911,9 @@ app.post('/api/chat/rooms/:roomId/polls', verifyToken, (req, res) => {
               pollData.options = [];
             }
           }
+          
+          // Convert multiple_choice to boolean
+          pollData.multiple_choice = Boolean(pollData.multiple_choice);
           
           // Add empty votes array for new polls
           pollData.votes = [];

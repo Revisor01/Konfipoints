@@ -9,7 +9,7 @@ export const useStatusBar = () => {
       const setupStatusBar = async () => {
         try {
           // Set status bar to not overlay for proper touch handling
-          await StatusBar.setOverlaysWebView({ overlay: false });
+          await StatusBar.setOverlaysWebView({ overlay: true });
           
           // Set dark content (black text) for light backgrounds
           await StatusBar.setStyle({ style: Style.Dark });

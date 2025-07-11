@@ -23,51 +23,59 @@ setupIonicReact({
   backButtonText: '',
   backButtonIcon: 'arrow-back-outline',
   innerHTMLTemplatesEnabled: true,
-  experimentalTransitionShadows: true,
+  experimentalTransitionShadows: false,
   spinner: 'lines'
 });
 
 const IonicApp = () => {
   const { user, loading } = useApp();
-
+  
   if (loading) {
     return (
       <IonApp>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '100vh'
-        }}>
-          <LoadingSpinner fullScreen />
-        </div>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh'
+      }}>
+      <LoadingSpinner fullScreen />
+      </div>
       </IonApp>
     );
   }
-
+  
   return (
     <IonApp>
-      <IonReactRouter>
-        <IonRouterOutlet animated={true}>
-          {!user ? (
-            <>
-              <Route path="/login" component={LoginView} exact />
-              <Route exact path="/" render={() => <Redirect to="/login" />} />
-            </>
-          ) : user.type === 'admin' ? (
-            <>
-              <Route path="/chat/:roomId" component={ChatRoom} exact={false} />
-              <Route path="/admin" render={() => <IonicAdminTabs />} />
-              <Route exact path="/" render={() => <Redirect to="/admin/konfis" />} />
-            </>
-          ) : (
-            <>
-              <Route path="/konfi" render={() => <IonicKonfiTabs />} />
-              <Route exact path="/" render={() => <Redirect to="/konfi/dashboard" />} />
-            </>
-          )}
-        </IonRouterOutlet>
-      </IonReactRouter>
+    <IonReactRouter>
+    {/* Nutze Switch, um sicherzustellen, dass nur eine Route gematched wird */}
+    <IonRouterOutlet animated={true}>
+    <Switch>
+    {!user ? (
+      // Login Routen
+      <>
+      <Route path="/login" component={LoginView} exact />
+      <Redirect exact from="/" to="/login" />
+      </>
+    ) : user.type === 'admin' ? (
+      // Admin Routen
+      <>
+      {/* WICHTIG: component={Component} statt render={() => <Component />} */}
+      {/* Dadurch wird der Lebenszyklus von React Router besser kontrolliert */}
+      <Route path="/admin" component={IonicAdminTabs} />
+      <Route path="/chat/:roomId" component={ChatRoom} exact={false} />
+      <Redirect exact from="/" to="/admin/konfis" />
+      </>
+    ) : (
+      // Konfi Routen
+      <>
+      <Route path="/konfi" component={IonicKonfiTabs} />
+      <Redirect exact from="/" to="/konfi/dashboard" />
+      </>
+    )}
+    </Switch>
+    </IonRouterOutlet>
+    </IonReactRouter>
     </IonApp>
   );
 };
