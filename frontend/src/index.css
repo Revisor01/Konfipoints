@@ -223,28 +223,7 @@ ion-textarea {
 
 /* ... (Weitere Safe Area, Buttons, Date Input Fixes, Scrolling Optimierungen, etc. - Beibehalten) ... */
 
-/* Action sheet styling mit Safe Area Support - Beibehalten */
-ion-action-sheet {
-  --background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-}
-
-.ios .chat-action-sheet {
-  --background: rgba(248, 248, 248, 0.95);
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-.chat-action-sheet .action-sheet-button {
-  --background: transparent;
-  --color: #007aff;
-}
-
-.chat-action-sheet .action-sheet-button[role="cancel"] {
-  --color: #ff3b30;
-  --background: rgba(255, 59, 48, 0.1);
-  font-weight: 600;
-}
+/* Action sheet - Lasse Ionic das nativ handhaben */
 
 /* WICHTIG: iOS Native Modal Styling - Änderungen hier für Popup! */
 ion-modal {
@@ -367,28 +346,7 @@ ion-modal {
   --border-radius: 8px;
 }
 
-/* Chat Action Sheet Custom Styling - Beibehalten */
-.chat-action-sheet {
-  --background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-}
-
-.ios .chat-action-sheet {
-  --background: rgba(248, 248, 248, 0.95);
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-.chat-action-sheet .action-sheet-button {
-  --background: transparent;
-  --color: #007aff;
-}
-
-.chat-action-sheet .action-sheet-button[role="cancel"] {
-  --color: #ff3b30;
-  --background: rgba(255, 59, 48, 0.1);
-  font-weight: 600;
-}
+/* ActionSheet - Komplett nativ ohne Custom CSS */
 
 /* Fullscreen Image Modal - Beibehalten */
 .fullscreen-image-modal {
@@ -426,43 +384,4 @@ ion-header ion-toolbar:first-of-type {
   --ion-safe-area-top: 0px !important;
 }
 
-/* Create Poll Modal - Verhindert Body-Verschiebung aber erhält Breakpoints */
-.create-poll-modal {
-  /* Keine height/max-height Überschreibung - Breakpoints sollen funktionieren */
-  --backdrop-opacity: 0.6;
-}
-
-/* Verhindert nur das Keyboard-Resize im Modal Content */
-.create-poll-modal ion-content {
-  --keyboard-resize: none;
-  --keyboard-adjust: none;
-}
-
-/* Input-Stabilität bei Fokus-Wechseln in Modals */
-.create-poll-modal ion-input,
-.create-poll-modal ion-textarea,
-.create-poll-modal ion-select {
-  /* Verhindert viewport jumps bei Fokus */
-}
-
-/* Capacitor iOS spezifische Input-Stabilität */
-.ios .create-poll-modal {
-  /* Verhindert automatisches Scrolling bei Input-Fokus */
-  --keyboard-offset: 0px;
-}
-
-/* Stabilisiert Modal während Keyboard-Events */
-.create-poll-modal.modal-is-open {
-  position: relative;
-  transform: none !important;
-}
-
-/* Body-Lock während Modal offen ist - verhindert Hintergrund-Verschiebung */
-body.modal-open {
-  position: fixed !important;
-  width: 100% !important;
-  height: 100% !important;
-  overflow: hidden !important;
-  /* Verhindert iOS Safari Bounce */
-  -webkit-overflow-scrolling: touch;
-}
+/* Lass Ionic alles nativ handhaben - kein Custom CSS */

@@ -17,7 +17,7 @@ import {
   IonTitle,
   IonButtons
 } from '@ionic/react';
-import { send, attach, camera, document, image, chevronDown, close } from 'ionicons/icons';
+import { send, attach, camera, document, image, chevronDown, close, barChart } from 'ionicons/icons';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { FilePicker } from '@capawesome/capacitor-file-picker';
 import { Keyboard } from '@capacitor/keyboard'; // KeyboardResize nicht mehr nötig
@@ -46,7 +46,6 @@ const ChatRoom = ({ room, match, location }) => {
   const [showScrollButton, setShowScrollButton] = useState(false);
 
   const [message, setMessage] = useState('');
-  const [showActionSheet, setShowActionSheet] = useState(false);
 
   const [attachedFileData, setAttachedFileData] = useState(null);
   const [attachedFileObject, setAttachedFileObject] = useState(null);
@@ -54,6 +53,7 @@ const ChatRoom = ({ room, match, location }) => {
   const textareaRef = useRef(null);
   const footerRef = useRef(null);
   const contentRef = useRef(null);
+  const pageRef = useRef(null);
 
   useIonViewWillLeave(() => {
     setAttachedFileData(null);
@@ -390,7 +390,7 @@ const ChatRoom = ({ room, match, location }) => {
   }
 
   return (
-    <IonPage className="chat-room-page">
+    <IonPage ref={pageRef} className="chat-room-page">
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
@@ -520,8 +520,8 @@ const ChatRoom = ({ room, match, location }) => {
 
           <div className="flex items-center gap-1 p-1">
             <IonButton
+              id="attachment-action-sheet"
               fill="clear"
-              onClick={() => setShowActionSheet(true)}
               className="ion-no-margin attachment-btn"
               style={{
                 '--padding-start': '8px',
@@ -589,16 +589,15 @@ const ChatRoom = ({ room, match, location }) => {
       </IonFooter>
 
       <IonActionSheet
-        isOpen={showActionSheet}
-        onDidDismiss={() => setShowActionSheet(false)}
+        trigger="attachment-action-sheet"
         header="Anhang hinzufügen"
+        translucent={true}
         buttons={[
           {
             text: 'Foto aufnehmen',
             icon: camera,
             handler: () => {
               takePicture();
-              setShowActionSheet(false);
             }
           },
           {
@@ -606,7 +605,6 @@ const ChatRoom = ({ room, match, location }) => {
             icon: image,
             handler: () => {
               selectPhoto();
-              setShowActionSheet(false);
             }
           },
           {
@@ -614,30 +612,27 @@ const ChatRoom = ({ room, match, location }) => {
             icon: document,
             handler: () => {
               openNativeFilePicker();
-              setShowActionSheet(false);
             }
           },
           ...(isAdmin ? [{
             text: 'Umfrage erstellen',
-            icon: BarChart3,
+            icon: barChart,
             handler: () => {
               setShowCreatePoll(true);
-              setShowActionSheet(false);
             }
           }] : []),
           {
             text: 'Abbrechen',
-            icon: close,
             role: 'cancel'
           }
         ]}
-        cssClass="chat-action-sheet"
       />
 
       <CreatePollModal
         isOpen={showCreatePoll}
         onDismiss={() => setShowCreatePoll(false)}
         onSubmit={handleCreatePoll}
+        presentingElement={pageRef.current}
       />
     </IonPage>
   );
