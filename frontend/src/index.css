@@ -99,7 +99,7 @@ ion-tabs {
 /* Ensure tab bar stays at bottom - Beibehalten */
 ion-router-outlet {
   flex: 1;
-  overflow: hidden;
+  overflow: visible; /* Explizit erlauben, dass Overlays über die Grenzen hinausragen */
 }
 
 code {

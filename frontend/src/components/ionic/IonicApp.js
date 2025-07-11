@@ -11,6 +11,7 @@ import LoadingSpinner from '../common/LoadingSpinner';
 import ChatRoom from '../chat/ChatRoom';
 import api from '../../services/api';
 
+
 setupIonicReact({
   rippleEffect: false,
   mode: 'ios',

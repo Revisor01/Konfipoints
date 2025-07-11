@@ -1,28 +1,27 @@
 // frontend/src/components/admin/BadgesView.js
 import React, { useState } from 'react';
 import { Plus, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
+import { useIonModal } from '@ionic/react';
 import { useApp } from '../../contexts/AppContext';
 import api from '../../services/api';
 import BadgeModal from './modals/BadgeModal';
 
 const BadgesView = ({ badges, activities, onUpdate }) => {
   const { setSuccess, setError } = useApp();
-  const [showModal, setShowModal] = useState(false);
-  const [editBadge, setEditBadge] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [currentBadge, setCurrentBadge] = useState(null);
 
   const handleSaveBadge = async (badgeData) => {
     setLoading(true);
     try {
-      if (editBadge) {
-        await api.put(`/badges/${editBadge.id}`, badgeData);
+      if (currentBadge) {
+        await api.put(`/badges/${currentBadge.id}`, badgeData);
         setSuccess('Badge aktualisiert');
       } else {
         await api.post('/badges', badgeData);
         setSuccess('Badge erstellt');
       }
-      setShowModal(false);
-      setEditBadge(null);
+      hideModal();
       onUpdate();
     } catch (err) {
       setError('Fehler beim Speichern');
@@ -30,6 +29,15 @@ const BadgesView = ({ badges, activities, onUpdate }) => {
       setLoading(false);
     }
   };
+
+  // Hook für Modal - SUPER SIMPEL wie andereapp
+  const [showModal, hideModal] = useIonModal(BadgeModal, {
+    badge: currentBadge,
+    activities,
+    onSave: handleSaveBadge,
+    onClose: () => hideModal(),
+    loading,
+  });
 
   const handleDeleteBadge = async (badge) => {
     if (!window.confirm(`Badge "${badge.name}" wirklich löschen?`)) return;
@@ -43,9 +51,12 @@ const BadgesView = ({ badges, activities, onUpdate }) => {
     }
   };
 
-  const openEditModal = (badge) => {
-    setEditBadge(badge);
-    setShowModal(true);
+  const presentBadgeModal = (badge = null) => {
+    setCurrentBadge(badge);
+    showModal({
+      // Keine komplexe Konfiguration mehr! 
+      // Ionic macht alles nativ
+    });
   };
 
   return (
@@ -78,10 +89,7 @@ const BadgesView = ({ badges, activities, onUpdate }) => {
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-bold text-gray-800">Badges ({badges.length})</h3>
           <button
-            onClick={() => {
-              setEditBadge(null);
-              setShowModal(true);
-            }}
+            onClick={() => presentBadgeModal()}
             className="bg-yellow-500 text-white px-3 py-2 rounded-lg hover:bg-yellow-600 flex items-center gap-2 font-medium"
           >
             <Plus className="w-4 h-4" />
@@ -97,7 +105,7 @@ const BadgesView = ({ badges, activities, onUpdate }) => {
             <div 
               key={badge.id} 
               className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 cursor-pointer hover:bg-yellow-100 transition-colors"
-              onClick={() => openEditModal(badge)}
+              onClick={() => presentBadgeModal(badge)}
             >
             <div className="flex items-start gap-4">
               {/* Icon */}
@@ -142,7 +150,7 @@ const BadgesView = ({ badges, activities, onUpdate }) => {
               {/* Actions */}
               <div className="flex flex-col gap-2">
                 <button
-                  onClick={() => openEditModal(badge)}
+                  onClick={() => presentBadgeModal(badge)}
                   className="p-2 bg-blue-500 text-white rounded"
                 >
                   <Edit className="w-4 h-4" />
@@ -167,19 +175,6 @@ const BadgesView = ({ badges, activities, onUpdate }) => {
         </div>
       </div>
 
-      {/* Badge Modal */}
-      {showModal && (
-        <BadgeModal
-          badge={editBadge}
-          activities={activities}
-          onSave={handleSaveBadge}
-          onClose={() => {
-            setShowModal(false);
-            setEditBadge(null);
-          }}
-          loading={loading}
-        />
-      )}
     </div>
   );
 };

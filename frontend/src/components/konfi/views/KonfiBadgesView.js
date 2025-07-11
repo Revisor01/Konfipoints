@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, Target, CheckCircle, Clock, Lock } from 'lucide-react';
+import {
+  IonPage,
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonContent,
+  IonButton,
+  IonButtons,
+  useIonModal,
+} from '@ionic/react';
 import { useApp } from '../../../contexts/AppContext';
 import { getKonfiBadges, checkBadgeEligibility } from '../../../services/badge';
 import { calculateBadgeProgress } from '../../../utils/helpers';
@@ -8,7 +18,99 @@ const KonfiBadgesView = () => {
   const { user, badges } = useApp();
   const [konfisBadges, setKonfiBadges] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedBadge, setSelectedBadge] = useState(null);
+  const [currentBadgeData, setCurrentBadgeData] = useState(null);
+
+  const BadgeDetailModal = ({ badge, isEarned, progress, dismiss }) => {
+    const getCriteriaDescription = (type, value) => {
+      switch (type) {
+        case 'total_points':
+          return `Erreiche ${value} Gesamtpunkte`;
+        case 'activities_count':
+          return `Absolviere ${value} Aktivitäten`;
+        case 'specific_activity':
+          return `Absolviere eine spezifische Aktivität`;
+        case 'streak':
+          return `Erreiche einen ${value}-Wochen-Streak`;
+        case 'konfi_days':
+          return `Besuche ${value} Konfi-Tage`;
+        case 'bonus':
+          return `Besonderes Bonus-Badge`;
+        case 'seasonal':
+          return `Saison-Badge`;
+        default:
+          return `Erfülle das Kriterium: ${value}`;
+      }
+    };
+
+    return (
+      <IonPage>
+        <IonHeader>
+          <IonToolbar>
+            <IonTitle>Badge Details</IonTitle>
+            <IonButtons slot="end">
+              <IonButton onClick={dismiss}>
+                Schließen
+              </IonButton>
+            </IonButtons>
+          </IonToolbar>
+        </IonHeader>
+        
+        <IonContent fullscreen>
+          <div className="text-center mb-6">
+            <div className={`w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center text-4xl ${
+              isEarned ? 'bg-yellow-500 text-white' : 'bg-gray-200 text-gray-400'
+            }`}>
+              {isEarned ? <Trophy className="w-10 h-10" /> : badge.icon || '🏆'}
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">{badge.name}</h2>
+            <p className="text-gray-600">{badge.description}</p>
+          </div>
+
+          <div className="space-y-4 mb-6">
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-2">Anforderung:</h3>
+              <p className="text-gray-700">
+                {getCriteriaDescription(badge.criteria_type, badge.criteria_value)}
+              </p>
+            </div>
+
+            {!isEarned && progress && (
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-2">Dein Fortschritt:</h3>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex justify-between mb-2">
+                    <span>Erreicht: {progress.current}</span>
+                    <span>Ziel: {progress.target}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+                    <div 
+                      className="bg-blue-500 h-3 rounded-full transition-all"
+                      style={{ width: `${Math.min(progress.percentage, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    {Math.round(progress.percentage)}% erreicht
+                    {progress.percentage >= 100 && ' - Badge bereit!'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {isEarned && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-5 h-5 text-yellow-600" />
+                  <span className="font-medium text-yellow-800">
+                    Badge erhalten! Gratulation! 🎉
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </IonContent>
+      </IonPage>
+    );
+  };
 
   useEffect(() => {
     if (user?.id) {
@@ -40,7 +142,7 @@ const KonfiBadgesView = () => {
           isNearComplete ? 'border-orange-300 bg-orange-50' : 
           'border-gray-200 hover:border-blue-300'
         }`}
-        onClick={() => setSelectedBadge({ badge, isEarned, progress })}
+        onClick={() => presentBadgeModal(badge, isEarned, progress)}
       >
         <div className="text-center">
           <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center text-3xl ${
@@ -113,92 +215,20 @@ const KonfiBadgesView = () => {
     );
   };
 
-  const BadgeModal = ({ badge, isEarned, progress, onClose }) => {
-    const getCriteriaDescription = (type, value) => {
-      switch (type) {
-        case 'total_points':
-          return `Erreiche ${value} Gesamtpunkte`;
-        case 'activities_count':
-          return `Absolviere ${value} Aktivitäten`;
-        case 'specific_activity':
-          return `Absolviere eine spezifische Aktivität`;
-        case 'streak':
-          return `Erreiche einen ${value}-Wochen-Streak`;
-        case 'konfi_days':
-          return `Besuche ${value} Konfi-Tage`;
-        case 'bonus':
-          return `Besonderes Bonus-Badge`;
-        case 'seasonal':
-          return `Saison-Badge`;
-        default:
-          return `Erfülle das Kriterium: ${value}`;
-      }
-    };
+  // Hook für Modal - SUPER SIMPEL wie andereapp
+  const [showModal, hideModal] = useIonModal(BadgeDetailModal, {
+    badge: currentBadgeData?.badge,
+    isEarned: currentBadgeData?.isEarned,
+    progress: currentBadgeData?.progress,
+    dismiss: () => hideModal(),
+  });
 
-    return (
-      <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg max-w-md w-full p-6">
-          <div className="text-center mb-6">
-            <div className={`w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center text-4xl ${
-              isEarned ? 'bg-yellow-500 text-white' : 'bg-gray-200 text-gray-400'
-            }`}>
-              {isEarned ? <Trophy className="w-10 h-10" /> : badge.icon || '🏆'}
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">{badge.name}</h2>
-            <p className="text-gray-600">{badge.description}</p>
-          </div>
-
-          <div className="space-y-4 mb-6">
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-2">Anforderung:</h3>
-              <p className="text-gray-700">
-                {getCriteriaDescription(badge.criteria_type, badge.criteria_value)}
-              </p>
-            </div>
-
-            {!isEarned && progress && (
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-2">Dein Fortschritt:</h3>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex justify-between mb-2">
-                    <span>Erreicht: {progress.current}</span>
-                    <span>Ziel: {progress.target}</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
-                    <div 
-                      className="bg-blue-500 h-3 rounded-full transition-all"
-                      style={{ width: `${Math.min(progress.percentage, 100)}%` }}
-                    />
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    {Math.round(progress.percentage)}% erreicht
-                    {progress.percentage >= 100 && ' - Badge bereit!'}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {isEarned && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-5 h-5 text-yellow-600" />
-                  <span className="font-medium text-yellow-800">
-                    Badge erhalten! Gratulation! 🎉
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <button
-            onClick={onClose}
-            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Schließen
-          </button>
-        </div>
-      </div>
-    );
+  const presentBadgeModal = (badge, isEarned, progress) => {
+    setCurrentBadgeData({ badge, isEarned, progress });
+    showModal({
+      // Keine komplexe Konfiguration mehr!
+      // Ionic macht alles nativ
+    });
   };
 
   if (loading) {
@@ -235,6 +265,7 @@ const KonfiBadgesView = () => {
                 key={konfisBadge.badge.id}
                 badge={konfisBadge.badge}
                 isEarned={true}
+                progress={null}
               />
             ))}
           </div>
@@ -275,15 +306,6 @@ const KonfiBadgesView = () => {
         </div>
       )}
 
-      {/* Badge Detail Modal */}
-      {selectedBadge && (
-        <BadgeModal
-          badge={selectedBadge.badge}
-          isEarned={selectedBadge.isEarned}
-          progress={selectedBadge.progress}
-          onClose={() => setSelectedBadge(null)}
-        />
-      )}
     </div>
   );
 };

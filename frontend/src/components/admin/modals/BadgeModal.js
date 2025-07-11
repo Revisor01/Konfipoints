@@ -159,8 +159,7 @@ const BadgeModal = ({ badge, activities, onSave, onClose, loading }) => {
 
   return (
     <UniversalModal
-      isOpen={true}
-      onClose={onClose}
+      dismiss={onClose}
       title={badge ? 'Badge bearbeiten' : 'Neues Badge erstellen'}
       onSubmit={handleSubmit}
       submitButtonText={badge ? 'Aktualisieren' : 'Erstellen'}

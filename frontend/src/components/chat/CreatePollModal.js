@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  IonModal,
+  IonPage,
   IonHeader,
   IonToolbar,
   IonTitle,
@@ -18,24 +18,21 @@ import {
   IonList,
   IonItemDivider,
 } from '@ionic/react';
-import { close, add, trash } from 'ionicons/icons';
+import { add, trash } from 'ionicons/icons';
 
-const CreatePollModal = ({ isOpen, onDismiss, onSubmit, presentingElement }) => {
+const CreatePollModal = ({ dismiss, onSubmit }) => {
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
   const [multipleChoice, setMultipleChoice] = useState(false);
   const [expiresInHours, setExpiresInHours] = useState('');
-  const modal = useRef(null);
 
-  // Reset form when modal closes
+  // Reset form when component mounts (modal opens)
   useEffect(() => {
-    if (!isOpen) {
-      setQuestion('');
-      setOptions(['', '']);
-      setMultipleChoice(false);
-      setExpiresInHours('');
-    }
-  }, [isOpen]);
+    setQuestion('');
+    setOptions(['', '']);
+    setMultipleChoice(false);
+    setExpiresInHours('');
+  }, []);
 
   const handleSubmit = async () => {
     const validOptions = options.filter(opt => opt.trim());
@@ -59,7 +56,7 @@ const CreatePollModal = ({ isOpen, onDismiss, onSubmit, presentingElement }) => 
 
     try {
       await onSubmit(pollData);
-      modal.current?.dismiss();
+      dismiss();
     } catch (error) {
       console.error('Failed to create poll:', error);
     }
@@ -84,45 +81,19 @@ const CreatePollModal = ({ isOpen, onDismiss, onSubmit, presentingElement }) => 
   };
 
   return (
-    <IonModal 
-      ref={modal}
-      isOpen={isOpen} 
-      onDidDismiss={onDismiss}
-      presentingElement={undefined}
-      // === EINFACHES SCHIEBARES MODAL ===
-      breakpoints={[0, 0.75, 1]}
-      initialBreakpoint={0.75}
-      swipeToClose={true}
-      backdropDismiss={false}
-      showBackdrop={false}
-      canDismiss={true}
-      keyboardClose={false}
-      // ================================
-    >
-      <IonHeader className="ion-no-border">
+    <IonPage>
+      <IonHeader>
         <IonToolbar>
-          <IonTitle style={{ fontSize: '17px', fontWeight: '600' }}>
-            Umfrage erstellen
-          </IonTitle>
+          <IonTitle>Umfrage erstellen</IonTitle>
           <IonButtons slot="start">
-            <IonButton 
-              onClick={onDismiss} 
-              fill="clear"
-              style={{ '--color': '#007AFF', fontSize: '17px' }}
-            >
+            <IonButton onClick={dismiss}>
               Abbrechen
             </IonButton>
           </IonButtons>
           <IonButtons slot="end">
             <IonButton
-              fill="clear"
               onClick={handleSubmit}
               disabled={!question.trim() || options.filter(opt => opt.trim()).length < 2}
-              style={{ 
-                '--color': !question.trim() || options.filter(opt => opt.trim()).length < 2 ? '#8E8E93' : '#007AFF',
-                fontSize: '17px',
-                fontWeight: '600'
-              }}
             >
               Erstellen
             </IonButton>
@@ -130,7 +101,7 @@ const CreatePollModal = ({ isOpen, onDismiss, onSubmit, presentingElement }) => 
         </IonToolbar>
       </IonHeader>
       
-      <IonContent className="ion-padding">
+      <IonContent fullscreen>
         <IonList>
           {/* ... (Modal-Inhalt bleibt gleich) ... */}
           {/* Question */}
@@ -220,7 +191,7 @@ const CreatePollModal = ({ isOpen, onDismiss, onSubmit, presentingElement }) => 
           </IonItem>
         </IonList>
       </IonContent>
-    </IonModal>
+    </IonPage>
   );
 };
 

@@ -9,7 +9,6 @@ import {
   IonTextarea,
   IonButton,
   IonIcon,
-  IonActionSheet,
   IonRefresher,
   IonRefresherContent,
   IonPage,
@@ -17,6 +16,7 @@ import {
   IonTitle,
   IonButtons
 } from '@ionic/react';
+import { useIonActionSheet, useIonModal } from '@ionic/react';
 import { send, attach, camera, document, image, chevronDown, close, barChart } from 'ionicons/icons';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { FilePicker } from '@capawesome/capacitor-file-picker';
@@ -33,13 +33,13 @@ import { ArrowLeft, BarChart3, ArrowDown } from 'lucide-react';
 const ChatRoom = ({ room, match, location }) => {
   const { user } = useApp();
   const router = useIonRouter();
+  const [presentActionSheet] = useIonActionSheet();
 
   const isAdmin = user?.type === 'admin';
   const roomId = match?.params?.roomId;
   const [currentRoom, setCurrentRoom] = useState(room);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showCreatePoll, setShowCreatePoll] = useState(false);
   const messagesEndRef = useRef(null);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -234,7 +234,6 @@ const ChatRoom = ({ room, match, location }) => {
       console.log('Poll created successfully:', response.data);
       
       setMessages(prev => [...prev, response.data]);
-      setShowCreatePoll(false);
       
       setTimeout(() => {
         scrollToBottom();
@@ -252,6 +251,35 @@ const ChatRoom = ({ room, match, location }) => {
         console.error('Fehler beim Erstellen der Umfrage. Bitte versuche es erneut.');
       }
     }
+  };
+
+  // Hook für Modal - SUPER SIMPEL wie andereapp
+  const [showModal, hideModal] = useIonModal(CreatePollModal, {
+    dismiss: () => hideModal(),
+    onSubmit: handleCreatePoll,
+  });
+
+  // NEUE Funktion für ActionSheet mit useIonActionSheet Hook
+  const presentAttachmentActionSheet = () => {
+    presentActionSheet({
+      header: 'Anhang hinzufügen',
+      translucent: true,
+      buttons: [
+        { text: 'Foto aufnehmen', icon: camera, handler: takePicture },
+        { text: 'Foto auswählen', icon: image, handler: selectPhoto },
+        { text: 'Datei auswählen', icon: document, handler: openNativeFilePicker },
+        ...(isAdmin ? [{ text: 'Umfrage erstellen', icon: barChart, handler: presentCreatePollModal }] : []),
+        { text: 'Abbrechen', role: 'cancel' }
+      ]
+    });
+  };
+
+  // NEUE Funktion für CreatePollModal - SUPER SIMPEL
+  const presentCreatePollModal = () => {
+    showModal({
+      // Keine komplexe Konfiguration mehr!
+      // Ionic macht alles nativ
+    });
   };
 
   const handleDeleteMessage = async (messageId) => {
@@ -520,7 +548,7 @@ const ChatRoom = ({ room, match, location }) => {
 
           <div className="flex items-center gap-1 p-1">
             <IonButton
-              id="attachment-action-sheet"
+              onClick={presentAttachmentActionSheet}
               fill="clear"
               className="ion-no-margin attachment-btn"
               style={{
@@ -587,53 +615,6 @@ const ChatRoom = ({ room, match, location }) => {
           </div>
         </IonToolbar>
       </IonFooter>
-
-      <IonActionSheet
-        trigger="attachment-action-sheet"
-        header="Anhang hinzufügen"
-        translucent={true}
-        buttons={[
-          {
-            text: 'Foto aufnehmen',
-            icon: camera,
-            handler: () => {
-              takePicture();
-            }
-          },
-          {
-            text: 'Foto auswählen',
-            icon: image,
-            handler: () => {
-              selectPhoto();
-            }
-          },
-          {
-            text: 'Datei auswählen',
-            icon: document,
-            handler: () => {
-              openNativeFilePicker();
-            }
-          },
-          ...(isAdmin ? [{
-            text: 'Umfrage erstellen',
-            icon: barChart,
-            handler: () => {
-              setShowCreatePoll(true);
-            }
-          }] : []),
-          {
-            text: 'Abbrechen',
-            role: 'cancel'
-          }
-        ]}
-      />
-
-      <CreatePollModal
-        isOpen={showCreatePoll}
-        onDismiss={() => setShowCreatePoll(false)}
-        onSubmit={handleCreatePoll}
-        presentingElement={pageRef.current}
-      />
     </IonPage>
   );
 };
