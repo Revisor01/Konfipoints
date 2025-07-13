@@ -1579,6 +1579,13 @@ app.delete('/api/jahrgaenge/:id', verifyToken, (req, res) => {
         return res.status(404).json({ error: 'Jahrgang not found' });
       }
       
+      // Also delete associated chat room
+      db.run("DELETE FROM chat_rooms WHERE type = 'jahrgang' AND jahrgang_id = ?", [jahrgangId], (err) => {
+        if (err) {
+          console.error('Error deleting jahrgang chat room:', err);
+        }
+      });
+      
       res.json({ message: 'Jahrgang deleted successfully' });
     });
   });
@@ -1627,7 +1634,7 @@ app.get('/api/konfis', verifyToken, (req, res) => {
       
       // Get all activities for all konfis
       const activitiesQuery = `
-        SELECT ka.konfi_id, a.name, a.points, a.type, ka.completed_date as date, 
+        SELECT ka.konfi_id, a.name, a.points, a.type, a.category, ka.completed_date as date, 
                 COALESCE(adm.display_name, 'Unbekannt') as admin, ka.id
         FROM konfi_activities ka
         JOIN activities a ON ka.activity_id = a.id
@@ -2492,6 +2499,97 @@ app.post('/api/chat/direct', verifyToken, (req, res) => {
         });
     });
   });
+});
+
+// Create new chat room
+app.post('/api/chat/rooms', verifyToken, (req, res) => {
+  const { type, name, participants, jahrgang_id } = req.body;
+  const createdBy = req.user.id;
+  
+  if (!type || !name) {
+    return res.status(400).json({ error: 'Type and name are required' });
+  }
+  
+  // Validate type
+  if (!['direct', 'group', 'jahrgang', 'admin_team'].includes(type)) {
+    return res.status(400).json({ error: 'Invalid chat type' });
+  }
+  
+  // For jahrgang chats, check if one already exists
+  if (type === 'jahrgang') {
+    if (!jahrgang_id) {
+      return res.status(400).json({ error: 'Jahrgang ID required for jahrgang chats' });
+    }
+    
+    db.get("SELECT id FROM chat_rooms WHERE type = 'jahrgang' AND jahrgang_id = ?", [jahrgang_id], (err, existing) => {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      if (existing) {
+        return res.status(400).json({ error: 'Jahrgang chat already exists' });
+      }
+      
+      createRoom();
+    });
+  } else {
+    createRoom();
+  }
+  
+  function createRoom() {
+    // Create the room
+    db.run("INSERT INTO chat_rooms (name, type, jahrgang_id, created_by) VALUES (?, ?, ?, ?)",
+      [name, type, jahrgang_id || null, createdBy], function(err) {
+        if (err) return res.status(500).json({ error: 'Database error' });
+        
+        const roomId = this.lastID;
+        
+        // Add creator as participant
+        db.run("INSERT INTO chat_participants (room_id, user_id, user_type) VALUES (?, ?, ?)",
+          [roomId, createdBy, req.user.type], (err) => {
+            if (err) return res.status(500).json({ error: 'Database error' });
+            
+            // Add other participants
+            if (participants && participants.length > 0) {
+              let participantCount = 0;
+              const totalParticipants = participants.length;
+              
+              participants.forEach(participantId => {
+                db.run("INSERT INTO chat_participants (room_id, user_id, user_type) VALUES (?, ?, 'konfi')",
+                  [roomId, participantId], (err) => {
+                    if (err) console.error('Error adding participant:', err);
+                    
+                    participantCount++;
+                    if (participantCount === totalParticipants) {
+                      res.json({ room_id: roomId, created: true });
+                    }
+                  });
+              });
+            } else if (type === 'jahrgang') {
+              // Add all konfis from the jahrgang
+              db.all("SELECT id FROM konfis WHERE jahrgang_id = ?", [jahrgang_id], (err, konfis) => {
+                if (err) return res.status(500).json({ error: 'Database error' });
+                
+                if (konfis.length === 0) {
+                  return res.json({ room_id: roomId, created: true });
+                }
+                
+                let konfiCount = 0;
+                konfis.forEach(konfi => {
+                  db.run("INSERT INTO chat_participants (room_id, user_id, user_type) VALUES (?, ?, 'konfi')",
+                    [roomId, konfi.id], (err) => {
+                      if (err) console.error('Error adding konfi to jahrgang chat:', err);
+                      
+                      konfiCount++;
+                      if (konfiCount === konfis.length) {
+                        res.json({ room_id: roomId, created: true });
+                      }
+                    });
+                });
+              });
+            } else {
+              res.json({ room_id: roomId, created: true });
+            }
+          });
+      });
+  }
 });
 
 // Get chat rooms for user
