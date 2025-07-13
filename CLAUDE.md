@@ -68,6 +68,11 @@ docker-compose down           # Stop backend service
 - Konfi passwords: Generated biblical references (e.g., `Johannes3,16`)
 - JWT tokens with role-based access (`admin` vs `konfi`)
 
+### API Testing
+- **Backend URL**: https://konfipoints.godsapp.de/api
+- **Auth Token**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwidHlwZSI6ImFkbWluIiwiZGlzcGxheV9uYW1lIjoiUGFzdG9yIFNpbW9uIEx1dGhlIiwiaWF0IjoxNzUyMzUzOTM3LCJleHAiOjE3NTM1NjM1Mzd9.StuYdxqfGwrmykmKBu6G7G3EaTtW2ydJvnWfOFjXpEU`
+- **Test Command**: `curl -H "Authorization: Bearer <token>" https://konfipoints.godsapp.de/api/badges`
+
 ### Database Schema
 - SQLite database with tables for konfis, activities, badges, jahrgaenge (year groups)
 - Foreign key relationships between konfis and their activities/points
@@ -131,3 +136,87 @@ docker-compose down           # Stop backend service
 - **Use MCP Context7**: Always check for current framework versions and best practices
 - **Ionic Framework**: Currently using Ionic 8 - verify latest patterns and updates
 - **Dependencies**: Check for current versions and migration guides when updating
+
+## Ionic Modal Implementation Pattern
+
+### Korrekte IonModal Backdrop Implementation
+
+Für Modals mit korrektem Backdrop-Verhalten (wie in KonfiModal und BadgeModal) muss folgendes Pattern verwendet werden:
+
+**1. Parent Component (Page-Level):**
+```jsx
+// WICHTIG: Parent Component muss IonPage verwenden!
+const ParentPage = () => {
+  const pageRef = React.useRef(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  return (
+    <IonPage ref={pageRef}>
+      <IonHeader style={{ '--min-height': '0px' }}>
+        <IonToolbar style={{ '--min-height': '0px', '--padding-top': '0px', '--padding-bottom': '0px' }}>
+          <IonTitle style={{ display: 'none' }}>Page Title</IonTitle>
+        </IonToolbar>
+      </IonHeader>
+      <IonContent className="app-gradient-background" fullscreen>
+        {/* Page Content */}
+      </IonContent>
+      
+      {/* Modal */}
+      <IonModal 
+        isOpen={isModalOpen} 
+        onDidDismiss={() => setIsModalOpen(false)}
+        presentingElement={pageRef.current || undefined}
+        canDismiss={true}
+        backdropDismiss={true}
+      >
+        <ModalComponent onClose={() => setIsModalOpen(false)} />
+      </IonModal>
+    </IonPage>
+  );
+};
+```
+
+**2. Modal Component:**
+```jsx
+// Modal Component muss IonPage innerhalb des Modals verwenden
+const ModalComponent = ({ onClose }) => {
+  return (
+    <IonPage>
+      <IonHeader>
+        <IonToolbar>
+          <IonTitle>Modal Title</IonTitle>
+          <IonButtons slot="start">
+            <IonButton onClick={onClose}>Abbrechen</IonButton>
+          </IonButtons>
+        </IonToolbar>
+      </IonHeader>
+      <IonContent>
+        {/* Modal Content */}
+      </IonContent>
+    </IonPage>
+  );
+};
+```
+
+**Kritische Punkte:**
+- Parent Component MUSS `IonPage` als Root-Element verwenden
+- `pageRef` ist essentiell für `presentingElement`
+- Modal Component verwendet `IonPage` innerhalb des `IonModal`
+- `presentingElement={pageRef.current || undefined}` aktiviert das Backdrop
+
+**Falsche Implementation (funktioniert NICHT):**
+```jsx
+// FALSCH: div als Root-Element
+const WrongParent = () => {
+  const pageRef = React.useRef(null);
+  
+  return (
+    <div ref={pageRef}>  {/* FALSCH! Muss IonPage sein */}
+      {/* Content */}
+      <IonModal presentingElement={pageRef.current}>
+        {/* Modal wird keinen Backdrop haben */}
+      </IonModal>
+    </div>
+  );
+};
+```

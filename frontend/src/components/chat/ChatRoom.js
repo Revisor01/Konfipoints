@@ -14,10 +14,11 @@ import {
   IonPage,
   IonToolbar,
   IonTitle,
+  IonModal,
   IonButtons,
   IonSpinner
 } from '@ionic/react';
-import { useIonActionSheet, useIonModal } from '@ionic/react';
+import { useIonActionSheet } from '@ionic/react';
 import { send, attach, camera, document, image, chevronDown, close, barChart } from 'ionicons/icons';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { FilePicker } from '@capawesome/capacitor-file-picker';
@@ -37,14 +38,13 @@ const ChatRoom = ({ room, match, location, onBack }) => {
   const [presentActionSheet] = useIonActionSheet();
 
   const isAdmin = user?.type === 'admin';
-  const roomId = match?.params?.roomId;
+  const roomId = match?.params?.roomId || window.location.pathname.split('/chat/')[1]?.split('/')[0];
   const [currentRoom, setCurrentRoom] = useState(room);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef(null);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [showScrollButton, setShowScrollButton] = useState(false);
 
   const [message, setMessage] = useState('');
 
@@ -124,14 +124,18 @@ const ChatRoom = ({ room, match, location, onBack }) => {
   // =======================================================================
 
   useEffect(() => {
+    console.log('ChatRoom mounted, roomId:', roomId);
     const routeRoom = location?.state?.room;
     if (routeRoom) {
+      console.log('Using route room:', routeRoom);
       setCurrentRoom(routeRoom);
-    } else if (!currentRoom && roomId) {
+    } else if (roomId) {
+      console.log('Loading room from API for roomId:', roomId);
       const loadRoom = async () => {
         try {
           const response = await api.get('/chat/rooms');
           const foundRoom = response.data.find(r => r.id === parseInt(roomId));
+          console.log('Found room:', foundRoom);
           if (foundRoom) {
             setCurrentRoom(foundRoom);
           }
@@ -141,7 +145,7 @@ const ChatRoom = ({ room, match, location, onBack }) => {
       };
       loadRoom();
     }
-  }, [roomId, currentRoom, location]);
+  }, [roomId, location]);
 
   useEffect(() => {
     if (currentRoom) {
@@ -150,10 +154,10 @@ const ChatRoom = ({ room, match, location, onBack }) => {
   }, [currentRoom]);
 
   useEffect(() => {
-    if (messages.length > 0 && !showScrollButton) {
+    if (messages.length > 0) {
       scrollToBottom();
     }
-  }, [messages, showScrollButton]);
+  }, [messages]);
 
   const scrollToBottom = (behavior = "smooth") => {
     setTimeout(() => {
@@ -165,10 +169,7 @@ const ChatRoom = ({ room, match, location, onBack }) => {
 
   const handleScroll = (e) => {
     const element = e.target;
-    const isNearBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 100;
     const isNearTop = element.scrollTop < 100;
-    
-    setShowScrollButton(!isNearBottom && messages.length > 0);
     
     if (isNearTop && hasMore && !loadingMore && messages.length > 0) {
       loadMoreMessages();
@@ -251,11 +252,7 @@ const ChatRoom = ({ room, match, location, onBack }) => {
     }
   };
 
-  // Hook für Modal - SUPER SIMPEL wie andereapp
-  const [showModal, hideModal] = useIonModal(CreatePollModal, {
-    dismiss: () => hideModal(),
-    onSubmit: handleCreatePoll,
-  });
+  const [showPollModal, setShowPollModal] = useState(false);
 
   // NEUE Funktion für ActionSheet mit useIonActionSheet Hook
   const presentAttachmentActionSheet = () => {
@@ -274,10 +271,7 @@ const ChatRoom = ({ room, match, location, onBack }) => {
 
   // NEUE Funktion für CreatePollModal - SUPER SIMPEL
   const presentCreatePollModal = () => {
-    showModal({
-      // Keine komplexe Konfiguration mehr!
-      // Ionic macht alles nativ
-    });
+    setShowPollModal(true);
   };
 
   const handleDeleteMessage = async (messageId) => {
@@ -461,10 +455,10 @@ const ChatRoom = ({ room, match, location, onBack }) => {
             color: '#9ca3af',
             padding: '16px'
           }}>
-            <ion-spinner name="crescent" style={{
+            <IonSpinner name="crescent" style={{
               margin: '0 auto 8px',
               '--color': '#3b82f6'
-            }}></ion-spinner>
+            }} />
             <p style={{
               fontSize: '0.875rem',
               margin: '0'
@@ -485,29 +479,6 @@ const ChatRoom = ({ room, match, location, onBack }) => {
           </div>
         )}
 
-        {showScrollButton && (
-          <IonButton
-            onClick={() => {
-              scrollToBottom("smooth");
-              setShowScrollButton(false);
-            }}
-            fill="solid"
-            shape="round"
-            style={{
-              position: 'fixed',
-              bottom: '96px',
-              right: '20px',
-              '--background': '#3b82f6',
-              '--color': 'white',
-              width: '48px',
-              height: '48px',
-              '--box-shadow': '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-              zIndex: 50
-            }}
-          >
-            <IonIcon icon={arrowDown} />
-          </IonButton>
-        )}
 
         <div style={{ padding: '0 16px 16px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -567,7 +538,7 @@ const ChatRoom = ({ room, match, location, onBack }) => {
       </IonContent>
 
       <IonFooter ref={footerRef}>
-        <IonToolbar style={{ '--background': '#f8f8f8', padding: '0 8px' }}>
+        <IonToolbar style={{ '--background': '#f8f8f8', padding: '8px 8px', '--min-height': '60px' }}>
           {attachedFileData && (
             <div style={{
               display: 'flex',
@@ -675,6 +646,20 @@ const ChatRoom = ({ room, match, location, onBack }) => {
           </div>
         </IonToolbar>
       </IonFooter>
+      
+      {/* Poll Modal */}
+      <IonModal 
+        isOpen={showPollModal} 
+        onDidDismiss={() => setShowPollModal(false)}
+        presentingElement={pageRef.current || undefined}
+        canDismiss={true}
+        backdropDismiss={true}
+      >
+        <CreatePollModal
+          dismiss={() => setShowPollModal(false)}
+          onSubmit={handleCreatePoll}
+        />
+      </IonModal>
     </IonPage>
   );
 };

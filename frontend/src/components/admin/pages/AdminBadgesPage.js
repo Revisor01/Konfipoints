@@ -66,9 +66,12 @@ const AdminBadgesPage = ({ badges, activities, onUpdate }) => {
 
   return (
     <IonPage ref={pageRef}>
-      <IonHeader style={{ '--min-height': '0px' }}>
-        <IonToolbar style={{ '--min-height': '0px', '--padding-top': '0px', '--padding-bottom': '0px' }}>
-          <IonTitle style={{ display: 'none' }}>Badge Verwaltung</IonTitle>
+      <IonHeader collapse="condense">
+        <IonToolbar>
+          <IonTitle>Badge Verwaltung</IonTitle>
+        </IonToolbar>
+        <IonToolbar>
+          <IonTitle size="large">Badge Verwaltung</IonTitle>
         </IonToolbar>
       </IonHeader>
       <IonContent className="app-gradient-background" fullscreen>

@@ -11,7 +11,7 @@ import {
   IonSpinner,
   IonFooter,
   IonItem,
-  IonInput,
+  IonTextarea,
   IonActionSheet,
   IonRefresher,
   IonRefresherContent,
@@ -29,6 +29,8 @@ import {
 } from 'ionicons/icons';
 import { useIonRouter } from '@ionic/react';
 import { useParams } from 'react-router-dom';
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { FilePicker } from '@capawesome/capacitor-file-picker';
 import { useApp } from '../../contexts/AppContext';
 import api from '../../services/api';
 import { formatDate } from '../../utils/formatters';
@@ -121,6 +123,101 @@ const CompleteChatRoom = () => {
     event.detail.complete();
   };
 
+  // Capacitor Functions
+  const takePicture = async () => {
+    try {
+      const image = await Camera.getPhoto({
+        quality: 90,
+        allowEditing: false,
+        resultType: CameraResultType.Uri,
+        source: CameraSource.Camera
+      });
+      
+      if (image.webPath) {
+        await uploadFile(image.webPath, 'image');
+      }
+    } catch (err) {
+      console.error('Camera error:', err);
+    }
+  };
+
+  const selectPhoto = async () => {
+    try {
+      const image = await Camera.getPhoto({
+        quality: 90,
+        allowEditing: false,
+        resultType: CameraResultType.Uri,
+        source: CameraSource.Photos
+      });
+      
+      if (image.webPath) {
+        await uploadFile(image.webPath, 'image');
+      }
+    } catch (err) {
+      console.error('Gallery error:', err);
+    }
+  };
+
+  const pickFile = async () => {
+    try {
+      const result = await FilePicker.pickFiles({
+        types: ['image/*', 'video/*', 'application/pdf', 'text/*'],
+        multiple: false,
+        readData: true
+      });
+      
+      if (result.files && result.files[0]) {
+        const file = result.files[0];
+        await uploadFile(file.data, 'file', file.name, file.mimeType);
+      }
+    } catch (err) {
+      console.error('File picker error:', err);
+    }
+  };
+
+  const uploadFile = async (fileData, type, fileName, mimeType) => {
+    try {
+      const formData = new FormData();
+      
+      if (type === 'image') {
+        const response = await fetch(fileData);
+        const blob = await response.blob();
+        formData.append('file', blob, `image_${Date.now()}.jpg`);
+      } else {
+        const byteArray = new Uint8Array(fileData);
+        const blob = new Blob([byteArray], { type: mimeType });
+        formData.append('file', blob, fileName);
+      }
+      
+      const response = await api.post(`/chat/rooms/${roomId}/messages`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      setMessages(prev => [...prev, response.data]);
+      setTimeout(() => scrollToBottom(), 100);
+    } catch (err) {
+      console.error('Upload error:', err);
+    }
+  };
+
+  // Poll Voting Function
+  const handleVote = async (pollMessageId, optionIndex) => {
+    try {
+      const response = await api.post(`/chat/polls/${pollMessageId}/vote`, {
+        option_index: optionIndex
+      });
+      
+      // Update the message locally with new vote data
+      setMessages(prev => prev.map(msg => 
+        msg.id === pollMessageId 
+          ? { ...msg, votes: response.data.votes }
+          : msg
+      ));
+    } catch (err) {
+      console.error('Vote error:', err);
+    }
+  };
+
   const renderMessage = (msg, idx) => {
     const isOwnMessage = msg.user_id === user?.id;
     
@@ -182,6 +279,11 @@ const CompleteChatRoom = () => {
                   setSelectedImage(`https://konfipoints.godsapp.de/api/chat/files/${msg.file_name}`);
                   setShowImageModal(true);
                 }}
+                onError={(e) => {
+                  console.error('Image load error:', e);
+                  // Fallback to relative URL
+                  e.target.src = `${api.defaults.baseURL}/chat/files/${msg.file_name}`;
+                }}
               />
             </div>
           )}
@@ -239,12 +341,20 @@ const CompleteChatRoom = () => {
                     const percentage = totalVotes > 0 ? Math.round((optionVotes / totalVotes) * 100) : 0;
                     
                     return (
-                      <div key={idx} style={{
-                        marginBottom: '8px',
-                        padding: '8px',
-                        backgroundColor: 'rgba(0,0,0,0.05)',
-                        borderRadius: '8px'
-                      }}>
+                      <div 
+                        key={idx} 
+                        style={{
+                          marginBottom: '8px',
+                          padding: '8px',
+                          backgroundColor: 'rgba(0,0,0,0.05)',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          transition: 'background-color 0.2s ease'
+                        }}
+                        onClick={() => handleVote(msg.id, idx)}
+                        onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(0,0,0,0.1)'}
+                        onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(0,0,0,0.05)'}
+                      >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span>{option}</span>
                           <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>
@@ -376,10 +486,12 @@ const CompleteChatRoom = () => {
               <IonIcon icon={attach} />
             </IonButton>
             
-            <IonInput
+            <IonTextarea
               value={message}
               onIonInput={(e) => setMessage(e.detail.value)}
               placeholder="Nachricht schreiben..."
+              rows={1}
+              autoGrow={true}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -391,7 +503,8 @@ const CompleteChatRoom = () => {
                 '--border-radius': '20px',
                 '--padding-start': '16px',
                 '--padding-end': '16px',
-                margin: '0 8px'
+                margin: '0 8px',
+                fontSize: '16px'
               }}
             />
             
@@ -414,23 +527,17 @@ const CompleteChatRoom = () => {
           {
             text: 'Foto aufnehmen',
             icon: camera,
-            handler: () => {
-              console.log('Camera clicked');
-            }
+            handler: takePicture
           },
           {
             text: 'Bild auswählen',
             icon: image,
-            handler: () => {
-              console.log('Gallery clicked');
-            }
+            handler: selectPhoto
           },
           {
             text: 'Datei anhängen',
             icon: document,
-            handler: () => {
-              console.log('File clicked');
-            }
+            handler: pickFile
           },
           ...(user?.type === 'admin' ? [{
             text: 'Umfrage erstellen',

@@ -169,6 +169,7 @@ const MessageBubble = ({
       });
     }
     
+    // Only show delete for admins and only if onDelete function is provided
     if (onDelete) {
       buttons.push({
         text: 'Löschen',
@@ -386,7 +387,6 @@ const MessageBubble = ({
           position: 'relative',
           maxWidth: '85%'
         }}
-        onClick={presentMessageActions}
       >
         {/* Sender Name */}
         {!isOwnMessage && showSender && (
@@ -413,6 +413,20 @@ const MessageBubble = ({
             borderBottomLeftRadius: isOwnMessage ? '16px' : '4px',
             margin: '0',
             '--box-shadow': 'none'
+          }}
+          onTouchStart={(e) => {
+            const timer = setTimeout(() => {
+              presentMessageActions();
+            }, 500);
+            
+            const handleTouchEnd = () => {
+              clearTimeout(timer);
+              document.removeEventListener('touchend', handleTouchEnd);
+              document.removeEventListener('touchmove', handleTouchEnd);
+            };
+            
+            document.addEventListener('touchend', handleTouchEnd);
+            document.addEventListener('touchmove', handleTouchEnd);
           }}
         >
           {renderMessageContent()}

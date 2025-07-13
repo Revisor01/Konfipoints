@@ -2815,6 +2815,44 @@ app.post('/api/chat/rooms/:roomId/messages', verifyToken, chatUpload.single('fil
   });
 });
 
+// Delete message (only for admins)
+app.delete('/api/chat/messages/:messageId', verifyToken, (req, res) => {
+  const messageId = req.params.messageId;
+  const userId = req.user.id;
+  const userType = req.user.type;
+
+  // Only admins can delete messages
+  if (userType !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  // Check if message exists and get its info
+  db.get("SELECT * FROM chat_messages WHERE id = ? AND deleted_at IS NULL", [messageId], (err, message) => {
+    if (err) {
+      console.error('Error fetching message:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    // Soft delete the message
+    db.run("UPDATE chat_messages SET deleted_at = datetime('now', '+2 hours') WHERE id = ?", [messageId], function(err) {
+      if (err) {
+        console.error('Error deleting message:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Message not found' });
+      }
+
+      res.json({ message: 'Message deleted successfully' });
+    });
+  });
+});
+
 // Mark room as read
 app.put('/api/chat/rooms/:roomId/read', verifyToken, (req, res) => {
   const roomId = req.params.roomId;
