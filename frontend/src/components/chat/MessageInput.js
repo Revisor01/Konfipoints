@@ -1,11 +1,30 @@
 // MessageInput.js
 import React, { useState, useRef } from 'react';
-import { Send, Paperclip, Camera, X, Image, FileText, Video } from 'lucide-react';
+import { 
+  IonButton,
+  IonIcon,
+  IonTextarea,
+  IonCard,
+  IonPopover,
+  IonList,
+  IonItem,
+  IonLabel,
+  useIonActionSheet
+} from '@ionic/react';
+import { 
+  send, 
+  attach, 
+  camera, 
+  close, 
+  image, 
+  document, 
+  videocam 
+} from 'ionicons/icons';
 
 const MessageInput = ({ onSendMessage, user, room }) => {
   const [message, setMessage] = useState('');
   const [attachedFile, setAttachedFile] = useState(null);
-  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [presentActionSheet] = useIonActionSheet();
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
   const videoInputRef = useRef(null);
@@ -24,7 +43,6 @@ const MessageInput = ({ onSendMessage, user, room }) => {
     await onSendMessage(formData);
     setMessage('');
     setAttachedFile(null);
-    setShowAttachMenu(false);
   };
 
   const handleKeyPress = (e) => {
@@ -42,12 +60,38 @@ const MessageInput = ({ onSendMessage, user, room }) => {
         return;
       }
       setAttachedFile(file);
-      setShowAttachMenu(false);
     }
   };
 
   const removeAttachment = () => {
     setAttachedFile(null);
+  };
+
+  const presentAttachmentActions = () => {
+    presentActionSheet({
+      header: 'Anhang hinzufügen',
+      buttons: [
+        {
+          text: 'Bild wählen',
+          icon: image,
+          handler: () => imageInputRef.current?.click()
+        },
+        {
+          text: 'Video wählen',
+          icon: videocam,
+          handler: () => videoInputRef.current?.click()
+        },
+        {
+          text: 'Datei wählen',
+          icon: document,
+          handler: () => fileInputRef.current?.click()
+        },
+        {
+          text: 'Abbrechen',
+          role: 'cancel'
+        }
+      ]
+    });
   };
 
   const getFilePreview = () => {
@@ -58,164 +102,204 @@ const MessageInput = ({ onSendMessage, user, room }) => {
 
     if (isImage) {
       return (
-        <div className="relative inline-block">
+        <div style={{ position: 'relative', display: 'inline-block' }}>
           <img
             src={URL.createObjectURL(attachedFile)}
             alt="Preview"
-            className="h-20 w-20 object-cover rounded-lg"
+            style={{
+              height: '80px',
+              width: '80px',
+              objectFit: 'cover',
+              borderRadius: '8px'
+            }}
           />
-          <button
+          <IonButton
             onClick={removeAttachment}
-            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
+            fill="solid"
+            shape="round"
+            size="small"
+            style={{
+              position: 'absolute',
+              top: '-8px',
+              right: '-8px',
+              '--background': '#ef4444',
+              width: '24px',
+              height: '24px',
+              '--border-radius': '50%'
+            }}
           >
-            <X className="w-3 h-3" />
-          </button>
+            <IonIcon icon={close} style={{ fontSize: '12px' }} />
+          </IonButton>
         </div>
       );
     }
 
     if (isVideo) {
       return (
-        <div className="relative inline-block">
+        <div style={{ position: 'relative', display: 'inline-block' }}>
           <video
             src={URL.createObjectURL(attachedFile)}
-            className="h-20 w-20 object-cover rounded-lg"
+            style={{
+              height: '80px',
+              width: '80px',
+              objectFit: 'cover',
+              borderRadius: '8px'
+            }}
             muted
           />
-          <button
+          <IonButton
             onClick={removeAttachment}
-            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
+            fill="solid"
+            shape="round"
+            size="small"
+            style={{
+              position: 'absolute',
+              top: '-8px',
+              right: '-8px',
+              '--background': '#ef4444',
+              width: '24px',
+              height: '24px',
+              '--border-radius': '50%'
+            }}
           >
-            <X className="w-3 h-3" />
-          </button>
+            <IonIcon icon={close} style={{ fontSize: '12px' }} />
+          </IonButton>
         </div>
       );
     }
 
     return (
-      <div className="bg-gray-100 border border-gray-300 rounded-lg p-3 flex items-center gap-2">
-        <FileText className="w-5 h-5 text-gray-600" />
-        <span className="text-sm font-medium truncate max-w-32">
+      <IonCard style={{
+        backgroundColor: '#f3f4f6',
+        border: '1px solid #d1d5db',
+        borderRadius: '8px',
+        padding: '12px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        margin: '0'
+      }}>
+        <IonIcon icon={document} style={{ fontSize: '20px', color: '#6b7280' }} />
+        <span style={{
+          fontSize: '0.875rem',
+          fontWeight: '500',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          maxWidth: '128px'
+        }}>
           {attachedFile.name}
         </span>
-        <button
+        <IonButton
           onClick={removeAttachment}
-          className="text-red-500 hover:text-red-700 ml-auto"
+          fill="clear"
+          size="small"
+          style={{
+            '--color': '#ef4444',
+            marginLeft: 'auto'
+          }}
         >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
+          <IonIcon icon={close} />
+        </IonButton>
+      </IonCard>
     );
   };
 
   return (
-      <div className="p-4 bg-white">
+    <div style={{ padding: '16px', backgroundColor: 'white' }}>
       {/* File Preview */}
       {attachedFile && (
-        <div className="mb-3">
-        {getFilePreview()}
+        <div style={{ marginBottom: '12px' }}>
+          {getFilePreview()}
         </div>
       )}
       
-      <div className="flex items-end gap-3">
-      {/* Attachment Menu */}
-      <div className="relative">
-      <button
-      onClick={() => setShowAttachMenu(!showAttachMenu)}
-      className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100"
-      >
-      <Paperclip className="w-5 h-5" />
-      </button>
-      
-      {showAttachMenu && (
-        <div className="absolute bottom-full left-0 mb-2 bg-white border border-gray-200 rounded-xl shadow-lg p-1 min-w-48">
-        <button
-        onClick={() => {
-          imageInputRef.current?.click();
-          setShowAttachMenu(false);
-        }}
-        className="w-full text-left px-4 py-3 hover:bg-gray-100 rounded-lg flex items-center gap-3"
+      <div style={{
+        display: 'flex',
+        alignItems: 'flex-end',
+        gap: '12px'
+      }}>
+        {/* Attachment Button */}
+        <IonButton
+          onClick={presentAttachmentActions}
+          fill="clear"
+          style={{
+            '--color': '#6b7280',
+            '--background-hover': '#f3f4f6',
+            '--border-radius': '50%',
+            width: '48px',
+            height: '48px'
+          }}
         >
-        <Image className="w-5 h-5 text-blue-500" />
-        Bild wählen
-        </button>
-        <button
-        onClick={() => {
-          videoInputRef.current?.click();
-          setShowAttachMenu(false);
-        }}
-        className="w-full text-left px-4 py-3 hover:bg-gray-100 rounded-lg flex items-center gap-3"
-        >
-        <Video className="w-5 h-5 text-green-500" />
-        Video wählen
-        </button>
-        <button
-        onClick={() => {
-          fileInputRef.current?.click();
-          setShowAttachMenu(false);
-        }}
-        className="w-full text-left px-4 py-3 hover:bg-gray-100 rounded-lg flex items-center gap-3"
-        >
-        <FileText className="w-5 h-5 text-purple-500" />
-        Datei wählen
-        </button>
+          <IonIcon icon={attach} />
+        </IonButton>
+        
+        {/* Message Input */}
+        <div style={{ flex: 1 }}>
+          <IonTextarea
+            value={message}
+            onIonInput={(e) => setMessage(e.detail.value)}
+            onKeyDown={handleKeyPress}
+            placeholder="Nachricht schreiben..."
+            autoGrow={true}
+            rows={1}
+            maxlength={1000}
+            style={{
+              '--border-color': '#d1d5db',
+              '--border-radius': '16px',
+              '--background': 'white',
+              '--padding-start': '16px',
+              '--padding-end': '16px',
+              '--padding-top': '12px',
+              '--padding-bottom': '12px',
+              fontSize: '16px', // Verhindert Zoom auf iOS
+              minHeight: '48px'
+            }}
+          />
         </div>
-      )}
-      </div>
-      
-      {/* Message Input */}
-      <div className="flex-1">
-      <textarea
-      value={message}
-      onChange={(e) => setMessage(e.target.value)}
-      onKeyPress={handleKeyPress}
-      placeholder="Nachricht schreiben..."
-      className="w-full px-4 py-3 border border-gray-300 rounded-2xl resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
-      rows="1"
-      style={{
-        minHeight: '48px',
-        maxHeight: '120px',
-        overflow: 'auto',
-        fontSize: '16px' // Verhindert Zoom auf iOS
-      }}
-      />
-      </div>
-      
-      {/* Send Button */}
-      <button
-      onClick={handleSend}
-      disabled={!message.trim() && !attachedFile}
-      className="bg-blue-500 text-white p-3 rounded-full hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-      style={{ minHeight: '48px', minWidth: '48px' }}
-      >
-      <Send className="w-5 h-5" />
-      </button>
+        
+        {/* Send Button */}
+        <IonButton
+          onClick={handleSend}
+          disabled={!message.trim() && !attachedFile}
+          fill="solid"
+          shape="round"
+          style={{
+            '--background': '#3b82f6',
+            '--background-hover': '#2563eb',
+            '--color': 'white',
+            width: '48px',
+            height: '48px'
+          }}
+        >
+          <IonIcon icon={send} />
+        </IonButton>
       </div>
       
       {/* Hidden File Inputs */}
       <input
-      ref={imageInputRef}
-      type="file"
-      accept="image/*"
-      onChange={(e) => handleFileSelect(e.target.files[0], 'image')}
-      className="hidden"
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        onChange={(e) => handleFileSelect(e.target.files[0], 'image')}
+        style={{ display: 'none' }}
       />
       <input
-      ref={videoInputRef}
-      type="file"
-      accept="video/*"
-      onChange={(e) => handleFileSelect(e.target.files[0], 'video')}
-      className="hidden"
+        ref={videoInputRef}
+        type="file"
+        accept="video/*"
+        onChange={(e) => handleFileSelect(e.target.files[0], 'video')}
+        style={{ display: 'none' }}
       />
       <input
-      ref={fileInputRef}
-      type="file"
-      accept=".pdf,.doc,.docx,.txt,.zip,.rar"
-      onChange={(e) => handleFileSelect(e.target.files[0], 'file')}
-      className="hidden"
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.doc,.docx,.txt,.zip,.rar"
+        onChange={(e) => handleFileSelect(e.target.files[0], 'file')}
+        style={{ display: 'none' }}
       />
-      </div>
-    );
-    };
+    </div>
+  );
+};
 
 export default MessageInput;

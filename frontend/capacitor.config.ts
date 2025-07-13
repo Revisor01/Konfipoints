@@ -20,13 +20,10 @@ const config: CapacitorConfig = {
     },
     StatusBar: {
       overlaysWebView: true,
-      style: 'dark',
-      backgroundColor: '#eff6ff'
+      style: 'dark'
     },
     Keyboard: {
-      resize: "native",
-      resizeOnFullScreen: true,
-      style: 'dark'
+      resize: "ionic"
     },
     SplashScreen: {
       launchShowDuration: 0,
@@ -45,8 +42,7 @@ const config: CapacitorConfig = {
     allowsLinkPreview: true,
     scheme: 'konfiquest',
     limitsNavigationsToAppBoundDomains: true,
-    scrollEnabled: true,
-    backgroundColor: '#eff6ff'
+    scrollEnabled: false
   }
 };
 

@@ -14,7 +14,8 @@ import {
   IonPage,
   IonToolbar,
   IonTitle,
-  IonButtons
+  IonButtons,
+  IonSpinner
 } from '@ionic/react';
 import { useIonActionSheet, useIonModal } from '@ionic/react';
 import { send, attach, camera, document, image, chevronDown, close, barChart } from 'ionicons/icons';
@@ -28,9 +29,9 @@ import { formatDate } from '../../utils/formatters';
 import MessageBubble from './MessageBubble';
 import PollComponent from './PollComponent';
 import CreatePollModal from './CreatePollModal';
-import { ArrowLeft, BarChart3, ArrowDown } from 'lucide-react';
+import { chevronBack, arrowDown } from 'ionicons/icons';
 
-const ChatRoom = ({ room, match, location }) => {
+const ChatRoom = ({ room, match, location, onBack }) => {
   const { user } = useApp();
   const router = useIonRouter();
   const [presentActionSheet] = useIonActionSheet();
@@ -107,19 +108,16 @@ const ChatRoom = ({ room, match, location }) => {
         // Die Höhenanpassung des padding-bottom ist jetzt im CSS
         // Hier nur scrollen, wenn die Tastatur erscheint
         setTimeout(() => scrollToBottom("auto"), 150);
-        console.log('Keyboard will show. Scrolling to bottom.');
       });
 
       const keyboardWillHideListener = Keyboard.addListener('keyboardWillHide', () => {
         // Hier nichts Spezielles zu tun, da padding-bottom im CSS durch --keyboard-actual-height
         // auf 0 gesetzt wird, und Ionic das automatische Scrollen nach unten handhaben sollte.
-        console.log('Keyboard will hide.');
       });
       
       return () => {
         keyboardWillShowListener.remove();
         keyboardWillHideListener.remove();
-        console.log('Keyboard listeners removed.');
       };
     }
   }, []); // Leeres Array, damit es nur einmal beim Mounten/Unmounten läuft
@@ -406,24 +404,37 @@ const ChatRoom = ({ room, match, location }) => {
   };
 
   const handleBackToChatList = () => {
-    router.push('/admin/chat', 'back', 'replace');
+    if (onBack) {
+      onBack();
+    } else {
+      router.push('/admin/chat', 'back', 'replace');
+    }
   };
 
   if (loading || !currentRoom) {
     return (
-      <div className="h-full flex items-center justify-center bg-white">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-      </div>
+      <IonPage>
+        <IonContent className="ion-padding">
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '100%'
+          }}>
+            <IonSpinner name="crescent" />
+          </div>
+        </IonContent>
+      </IonPage>
     );
   }
 
   return (
-    <IonPage ref={pageRef} className="chat-room-page">
+    <IonPage ref={pageRef}>
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
             <IonButton onClick={handleBackToChatList}>
-              <ArrowLeft className="w-5 h-5" />
+              <IonIcon icon={chevronBack} />
             </IonButton>
           </IonButtons>
           <IonTitle>{getRoomTitle()}</IonTitle>
@@ -434,7 +445,6 @@ const ChatRoom = ({ room, match, location }) => {
     scrollEvents={true}
     ref={contentRef}
     onIonScroll={handleScroll}
-    className="app-gradient-background"
     >
         <IonRefresher slot="fixed" onIonRefresh={doRefresh} pullFactor={0.5} pullMin={100} pullMax={200}>
           <IonRefresherContent
@@ -446,33 +456,61 @@ const ChatRoom = ({ room, match, location }) => {
         </IonRefresher>
 
         {loadingMore && (
-          <div className="text-center text-gray-400 py-4">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-2"></div>
-            <span className="text-sm">Lade ältere Nachrichten...</span>
+          <div style={{
+            textAlign: 'center',
+            color: '#9ca3af',
+            padding: '16px'
+          }}>
+            <ion-spinner name="crescent" style={{
+              margin: '0 auto 8px',
+              '--color': '#3b82f6'
+            }}></ion-spinner>
+            <p style={{
+              fontSize: '0.875rem',
+              margin: '0'
+            }}>Lade ältere Nachrichten...</p>
           </div>
         )}
 
         {!hasMore && messages.length > 50 && (
-          <div className="text-center text-gray-400 py-4">
-            <span className="text-sm">📜 Beginn der Unterhaltung</span>
+          <div style={{
+            textAlign: 'center',
+            color: '#9ca3af',
+            padding: '16px'
+          }}>
+            <p style={{
+              fontSize: '0.875rem',
+              margin: '0'
+            }}>📜 Beginn der Unterhaltung</p>
           </div>
         )}
 
         {showScrollButton && (
-          <button
+          <IonButton
             onClick={() => {
               scrollToBottom("smooth");
               setShowScrollButton(false);
             }}
-            className="fixed bottom-24 right-5 bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg z-50"
-            aria-label="Nachrichten runter scrollen"
+            fill="solid"
+            shape="round"
+            style={{
+              position: 'fixed',
+              bottom: '96px',
+              right: '20px',
+              '--background': '#3b82f6',
+              '--color': 'white',
+              width: '48px',
+              height: '48px',
+              '--box-shadow': '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+              zIndex: 50
+            }}
           >
-            <ArrowDown className="w-6 h-6" />
-          </button>
+            <IonIcon icon={arrowDown} />
+          </IonButton>
         )}
 
-        <div className="px-4 pb-4">
-          <div className="space-y-4">
+        <div style={{ padding: '0 16px 16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {messages.map((msg, idx) => {
               const isOwnMessage = msg.user_id === user.id;
               const prevMsg = messages[idx - 1];
@@ -481,7 +519,7 @@ const ChatRoom = ({ room, match, location }) => {
               return (
                 <div key={msg.id}>
                   {msg.message_type === 'poll' ? (
-                    <div className="w-full">
+                    <div style={{ width: '100%' }}>
                       <PollComponent 
                         message={{
                           id: msg.id,
@@ -529,28 +567,51 @@ const ChatRoom = ({ room, match, location }) => {
       </IonContent>
 
       <IonFooter ref={footerRef}>
-        <IonToolbar className="chat-input-toolbar" style={{ '--background': '#f8f8f8', padding: '0 8px' }}>
+        <IonToolbar style={{ '--background': '#f8f8f8', padding: '0 8px' }}>
           {attachedFileData && (
-            <div className="flex items-center gap-2 p-2 bg-gray-100 mx-auto rounded-lg" style={{ maxWidth: 'calc(100% - 16px)' }}>
-              <span className="text-sm truncate max-w-xs">{attachedFileData.name}</span>
-              <button
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px',
+              backgroundColor: '#f3f4f6',
+              margin: '0 auto',
+              borderRadius: '8px',
+              maxWidth: 'calc(100% - 16px)'
+            }}>
+              <span style={{
+                fontSize: '0.875rem',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                maxWidth: '240px'
+              }}>{attachedFileData.name}</span>
+              <IonButton
                 onClick={() => {
                   setAttachedFileData(null);
                   setAttachedFileObject(null);
                 }}
-                className="text-red-500 text-sm ml-auto font-semibold"
-                aria-label="Anhang entfernen"
+                fill="clear"
+                size="small"
+                style={{
+                  '--color': '#ef4444',
+                  marginLeft: 'auto'
+                }}
               >
-                ✕
-              </button>
+                <IonIcon icon={close} />
+              </IonButton>
             </div>
           )}
 
-          <div className="flex items-center gap-1 p-1">
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            padding: '4px'
+          }}>
             <IonButton
               onClick={presentAttachmentActionSheet}
               fill="clear"
-              className="ion-no-margin attachment-btn"
               style={{
                 '--padding-start': '8px',
                 '--padding-end': '8px',
@@ -601,7 +662,6 @@ const ChatRoom = ({ room, match, location }) => {
               onClick={handleSendMessage}
               disabled={!message.trim() && !attachedFileObject}
               fill="clear"
-              className="ion-no-margin send-btn"
               style={{
                 '--padding-start': '8px',
                 '--padding-end': '8px',

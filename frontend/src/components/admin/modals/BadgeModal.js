@@ -17,7 +17,9 @@ import {
   IonList,
   IonGrid,
   IonRow,
-  IonCol
+  IonCol,
+  IonActionSheet,
+  useIonActionSheet
 } from '@ionic/react';
 import { useApp } from '../../../contexts/AppContext';
 import api from '../../../services/api';
@@ -36,6 +38,7 @@ const CRITERIA_TYPES = {
 
 const BadgeModal = ({ badge, activities, onSave, onClose, loading }) => {
   const { setError } = useApp();
+  const [presentActionSheet] = useIonActionSheet();
   const [formData, setFormData] = useState({
     name: '',
     icon: '',
@@ -180,7 +183,7 @@ const BadgeModal = ({ badge, activities, onSave, onClose, loading }) => {
     <IonPage>
       <IonHeader>
         <IonToolbar>
-          <IonTitle>{badge ? 'Badge bearbeiten' : 'Neues Badge erstellen'}</IonTitle>
+          <IonTitle>{badge ? 'Badge bearbeiten' : 'Badge'}</IonTitle>
           <IonButtons slot="start">
             <IonButton onClick={onClose}>
               Abbrechen
@@ -208,6 +211,7 @@ const BadgeModal = ({ badge, activities, onSave, onClose, loading }) => {
                   value={formData.name}
                   onIonInput={(e) => setFormData({...formData, name: e.detail.value})}
                   placeholder="z.B. Fleißig"
+                  inputmode="text"
                 />
               </IonItem>
             </IonCol>
@@ -228,25 +232,35 @@ const BadgeModal = ({ badge, activities, onSave, onClose, loading }) => {
 
         <IonItem>
           <IonLabel position="stacked">Beschreibung</IonLabel>
-          <IonTextarea
+          <IonInput
             value={formData.description}
             onIonInput={(e) => setFormData({...formData, description: e.detail.value})}
             placeholder="Kurze Beschreibung..."
-            rows={2}
+            inputmode="text"
           />
         </IonItem>
 
-        <IonItem>
+        <IonItem button onClick={() => {
+          presentActionSheet({
+            header: 'Kriterium wählen',
+            buttons: [
+              ...Object.entries(CRITERIA_TYPES).map(([key, type]) => ({
+                text: type.label,
+                handler: () => {
+                  setFormData({...formData, criteria_type: key});
+                }
+              })),
+              {
+                text: 'Abbrechen',
+                role: 'cancel'
+              }
+            ]
+          });
+        }}>
           <IonLabel position="stacked">Kriterium *</IonLabel>
-          <IonSelect
-            value={formData.criteria_type}
-            onSelectionChange={(e) => setFormData({...formData, criteria_type: e.detail.value})}
-            placeholder="Kriterium wählen..."
-          >
-            {Object.entries(CRITERIA_TYPES).map(([key, type]) => (
-              <IonSelectOption key={key} value={key}>{type.label}</IonSelectOption>
-            ))}
-          </IonSelect>
+          <IonLabel>
+            {formData.criteria_type ? CRITERIA_TYPES[formData.criteria_type]?.label : 'Kriterium wählen...'}
+          </IonLabel>
         </IonItem>
         {formData.criteria_type && (
           <IonItem lines="none">
@@ -269,6 +283,12 @@ const BadgeModal = ({ badge, activities, onSave, onClose, loading }) => {
         </IonItem>
 
         {renderExtraFields()}
+
+        <IonItem lines="none" style={{ marginTop: '16px' }}>
+          <IonLabel>
+            <h3 style={{ fontSize: '1rem', fontWeight: '600', color: '#374151' }}>Einstellungen</h3>
+          </IonLabel>
+        </IonItem>
 
         <IonItem>
           <IonCheckbox

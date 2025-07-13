@@ -1,6 +1,19 @@
 // PollComponent.js
 import React, { useState } from 'react';
-import { BarChart3, Users, Clock, Trash2 } from 'lucide-react';
+import { 
+  IonCard,
+  IonButton,
+  IonIcon,
+  IonBadge,
+  IonProgressBar
+} from '@ionic/react';
+import { 
+  barChart, 
+  people, 
+  time, 
+  trash, 
+  checkmark 
+} from 'ionicons/icons';
 
 const PollComponent = ({ 
   message, 
@@ -82,41 +95,83 @@ const PollComponent = ({
   };
 
   return (
-    <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-4`}>
-      <div className={`max-w-[80%] ${isOwnMessage ? 'order-1' : 'order-2'}`}>
+    <div style={{
+      display: 'flex',
+      justifyContent: isOwnMessage ? 'flex-end' : 'flex-start',
+      marginBottom: '16px'
+    }}>
+      <div style={{
+        maxWidth: '80%'
+      }}>
         {/* Sender Name */}
         {!isOwnMessage && showSender && (
-          <p className="text-xs text-gray-600 mb-1 ml-3">
+          <p style={{
+            fontSize: '0.75rem',
+            color: '#6b7280',
+            marginBottom: '4px',
+            marginLeft: '12px',
+            margin: '0 0 4px 12px'
+          }}>
             {message.sender_name}
           </p>
         )}
 
         {/* Poll Card */}
-        <div className={`bg-white border-2 border-green-200 rounded-2xl p-4 ${
-          isOwnMessage ? 'rounded-br-sm' : 'rounded-bl-sm'
-        }`}>
+        <IonCard style={{
+          backgroundColor: 'white',
+          border: '2px solid #bbf7d0',
+          borderRadius: '16px',
+          padding: '16px',
+          borderBottomRightRadius: isOwnMessage ? '4px' : '16px',
+          borderBottomLeftRadius: isOwnMessage ? '16px' : '4px',
+          margin: '0',
+          '--box-shadow': '0 2px 8px rgba(0,0,0,0.1)'
+        }}>
           {/* Poll Header */}
-          <div className="flex items-center gap-2 mb-3">
-            <BarChart3 className="w-5 h-5 text-green-600" />
-            <span className="font-bold text-green-800">Umfrage</span>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            marginBottom: '12px'
+          }}>
+            <IonIcon icon={barChart} style={{ fontSize: '20px', color: '#059669' }} />
+            <span style={{
+              fontWeight: 'bold',
+              color: '#065f46'
+            }}>Umfrage</span>
             {onDelete && (
-              <button
+              <IonButton
                 onClick={() => onDelete(message.id)}
-                className="ml-auto text-gray-400 hover:text-red-500 p-1"
-                title="Löschen"
+                fill="clear"
+                size="small"
+                style={{
+                  '--color': '#9ca3af',
+                  '--color-hover': '#ef4444',
+                  marginLeft: 'auto'
+                }}
               >
-                <Trash2 className="w-4 h-4" />
-              </button>
+                <IonIcon icon={trash} />
+              </IonButton>
             )}
           </div>
 
           {/* Question */}
-          <h3 className="font-bold text-gray-800 mb-4">
+          <h3 style={{
+            fontWeight: 'bold',
+            color: '#1f2937',
+            marginBottom: '16px',
+            margin: '0 0 16px 0'
+          }}>
             {message.question}
           </h3>
 
           {/* Options */}
-          <div className="space-y-3 mb-4">
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            marginBottom: '16px'
+          }}>
             {message.options.map((option, index) => {
               const voteCount = getVoteCount(index);
               const percentage = getVotePercentage(index);
@@ -124,68 +179,128 @@ const PollComponent = ({
               const canVote = !isExpired();
 
               return (
-                <div key={index} className="relative">
-                  <button
+                <div key={index} style={{ position: 'relative' }}>
+                  <IonButton
                     onClick={() => canVote && handleVote(index)}
                     disabled={isExpired()}
-                    className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
-                      userVoted 
-                        ? 'border-green-500 bg-green-50' 
-                        : canVote 
-                          ? 'border-gray-200 hover:border-green-300 hover:bg-gray-50' 
-                          : 'border-gray-200 bg-gray-50 cursor-not-allowed'
-                    }`}
+                    fill="outline"
+                    expand="block"
+                    style={{
+                      '--border-color': userVoted ? '#10b981' : '#e5e7eb',
+                      '--background': userVoted ? '#ecfdf5' : (canVote ? 'white' : '#f9fafb'),
+                      '--background-hover': canVote ? '#f9fafb' : undefined,
+                      '--color': '#1f2937',
+                      textAlign: 'left',
+                      height: 'auto',
+                      minHeight: '60px'
+                    }}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{option}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600">
-                          {voteCount} {voteCount === 1 ? 'Stimme' : 'Stimmen'}
-                        </span>
-                        {userVoted && (
-                          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                        )}
+                    <div style={{
+                      width: '100%',
+                      padding: '8px 0'
+                    }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: '8px'
+                      }}>
+                        <span style={{
+                          fontWeight: '500',
+                          flex: 1,
+                          textAlign: 'left'
+                        }}>{option}</span>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          <span style={{
+                            fontSize: '0.875rem',
+                            color: '#6b7280'
+                          }}>
+                            {voteCount} {voteCount === 1 ? 'Stimme' : 'Stimmen'}
+                          </span>
+                          {userVoted && (
+                            <IonIcon 
+                              icon={checkmark} 
+                              style={{ 
+                                color: '#10b981',
+                                fontSize: '16px'
+                              }} 
+                            />
+                          )}
+                        </div>
                       </div>
+                      
+                      {/* Vote Progress Bar */}
+                      {getTotalVotes() > 0 && (
+                        <IonProgressBar
+                          value={percentage / 100}
+                          color="success"
+                          style={{
+                            height: '8px',
+                            borderRadius: '4px'
+                          }}
+                        />
+                      )}
                     </div>
-                    
-                    {/* Vote Bar */}
-                    {getTotalVotes() > 0 && (
-                      <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-green-500 h-2 rounded-full transition-all"
-                          style={{ width: `${percentage}%` }}
-                        ></div>
-                      </div>
-                    )}
-                  </button>
+                  </IonButton>
                 </div>
               );
             })}
           </div>
 
           {/* Poll Info */}
-          <div className="flex items-center justify-between text-xs text-gray-500 border-t pt-3">
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1">
-                <Users className="w-3 h-3" />
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: '0.75rem',
+            color: '#6b7280',
+            borderTop: '1px solid #e5e7eb',
+            paddingTop: '12px'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px'
+            }}>
+              <span style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                <IonIcon icon={people} style={{ fontSize: '12px' }} />
                 {getTotalVotes()} {getTotalVotes() === 1 ? 'Teilnehmer' : 'Teilnehmer'}
               </span>
               {message.multiple_choice && (
-                <span className="text-blue-600">Mehrfachauswahl</span>
+                <IonBadge color="primary" style={{ fontSize: '0.75rem' }}>
+                  Mehrfachauswahl
+                </IonBadge>
               )}
             </div>
             
-            <div className="flex items-center gap-2">
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
               {message.expires_at && (
-                <span className={`flex items-center gap-1 ${isExpired() ? 'text-red-500' : 'text-orange-500'}`}>
-                  <Clock className="w-3 h-3" />
+                <span style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  color: isExpired() ? '#ef4444' : '#f59e0b'
+                }}>
+                  <IonIcon icon={time} style={{ fontSize: '12px' }} />
                   {isExpired() ? 'Abgelaufen' : `Bis ${formatDate(message.expires_at)}`}
                 </span>
               )}
               <span>{formatTime(message.created_at)}</span>
             </div>
           </div>
-        </div>
+        </IonCard>
       </div>
     </div>
   );

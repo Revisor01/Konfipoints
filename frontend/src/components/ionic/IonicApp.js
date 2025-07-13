@@ -34,7 +34,7 @@ import LoadingSpinner from '../common/LoadingSpinner';
 import ChatRoom from '../chat/ChatRoom';
 
 // Import individual tab components instead of wrapper components
-import KonfisView from '../admin/KonfisView';
+import AdminKonfisPage from '../admin/pages/AdminKonfisPage';
 import AdminBadgesPage from '../admin/pages/AdminBadgesPage';
 import ActivitiesView from '../admin/ActivitiesView';
 import MoreView from '../admin/MoreView';
@@ -66,16 +66,18 @@ const IonicApp = () => {
     activities: [],
     badges: [],
     settings: {},
+    jahrgaenge: [],
     notifications: {}
   });
 
   const loadData = async () => {
     try {
-      const [konfisRes, activitiesRes, badgesRes, settingsRes] = await Promise.all([
+      const [konfisRes, activitiesRes, badgesRes, settingsRes, jahrgaengeRes] = await Promise.all([
         api.get('/konfis'),
         api.get('/activities'),
         api.get('/badges'),
-        api.get('/settings')
+        api.get('/settings'),
+        api.get('/jahrgaenge')
       ]);
       
       setData({
@@ -83,6 +85,7 @@ const IonicApp = () => {
         activities: activitiesRes.data,
         badges: badgesRes.data,
         settings: settingsRes.data,
+        jahrgaenge: jahrgaengeRes.data,
         notifications: {}
       });
     } catch (err) {
@@ -127,78 +130,64 @@ const IonicApp = () => {
   return (
     <IonApp>
       <IonReactRouter>
-        {user.type === 'admin' ? (
-          // Admin Tabs - Native Ionic Pattern
-          <IonTabs>
-            <IonRouterOutlet>
-              <Redirect exact path="/admin" to="/admin/konfis" />
-              <Route exact path="/admin/konfis" render={() => 
-                <IonPage>
-                  <IonHeader>
-                    <IonToolbar>
-                      <IonTitle>Konfis</IonTitle>
-                    </IonToolbar>
-                  </IonHeader>
-                  <IonContent className="app-gradient-background" fullscreen>
-                    <KonfisView 
-                      konfis={data.konfis} 
-                      jahrgaenge={[]} 
-                      settings={data.settings}
-                      onUpdate={loadData}
-                    />
-                  </IonContent>
-                </IonPage>
-              } />
-              <Route exact path="/admin/chat" render={() => 
-                <IonPage>
-                  <IonHeader>
-                    <IonToolbar>
-                      <IonTitle>Chat</IonTitle>
-                    </IonToolbar>
-                  </IonHeader>
-                  <IonContent className="app-gradient-background" fullscreen>
-                    <ChatView onNavigate={() => {}} />
-                  </IonContent>
-                </IonPage>
-              } />
-              <Route exact path="/admin/activities" render={() => 
-                <IonPage>
-                  <IonHeader>
-                    <IonToolbar>
-                      <IonTitle>Aktivitäten</IonTitle>
-                    </IonToolbar>
-                  </IonHeader>
-                  <IonContent className="app-gradient-background" fullscreen>
-                    <ActivitiesView activities={data.activities} onUpdate={loadData} />
-                  </IonContent>
-                </IonPage>
-              } />
-              <Route exact path="/admin/badges" render={() => (
-                <AdminBadgesPage 
-                  badges={data.badges} 
-                  activities={data.activities} 
-                  onUpdate={loadData}
-                />
-              )} />
-              <Route exact path="/admin/settings" render={() => 
-                <IonPage>
-                  <IonHeader>
-                    <IonToolbar>
-                      <IonTitle>Mehr</IonTitle>
-                    </IonToolbar>
-                  </IonHeader>
-                  <IonContent className="app-gradient-background" fullscreen>
-                    <MoreView 
-                      settings={data.settings}
-                      onUpdate={loadData}
-                      notifications={data.notifications}
-                    />
-                  </IonContent>
-                </IonPage>
-              } />
-              <Route path="/chat/:roomId" component={ChatRoom} />
-              <Redirect exact from="/" to="/admin/konfis" />
-            </IonRouterOutlet>
+        <IonRouterOutlet>
+          {/* Chat Room routes (outside tabs to hide tab bar) */}
+          <Route path="/chat/:roomId" component={ChatRoom} />
+          
+          {user.type === 'admin' ? (
+            // Admin Tabs - Native Ionic Pattern
+            <IonTabs>
+              <IonRouterOutlet>
+                <Redirect exact path="/admin" to="/admin/konfis" />
+                <Route exact path="/admin/konfis" render={() => (
+                  <AdminKonfisPage 
+                    konfis={data.konfis} 
+                    jahrgaenge={data.jahrgaenge} 
+                    settings={data.settings}
+                    activities={data.activities}
+                    onUpdate={loadData}
+                  />
+                )} />
+                <Route exact path="/admin/chat" render={() => 
+                  <ChatView onNavigate={() => {}} />
+                } />
+                <Route exact path="/admin/activities" render={() => 
+                  <IonPage>
+                    <IonHeader>
+                      <IonToolbar>
+                        <IonTitle>Aktivitäten</IonTitle>
+                      </IonToolbar>
+                    </IonHeader>
+                    <IonContent className="app-gradient-background" fullscreen>
+                      <ActivitiesView activities={data.activities} onUpdate={loadData} />
+                    </IonContent>
+                  </IonPage>
+                } />
+                <Route exact path="/admin/badges" render={() => (
+                  <AdminBadgesPage 
+                    badges={data.badges} 
+                    activities={data.activities} 
+                    onUpdate={loadData}
+                  />
+                )} />
+                <Route exact path="/admin/settings" render={() => 
+                  <IonPage>
+                    <IonHeader>
+                      <IonToolbar>
+                        <IonTitle>Mehr</IonTitle>
+                      </IonToolbar>
+                    </IonHeader>
+                    <IonContent className="app-gradient-background" fullscreen>
+                      <MoreView 
+                        settings={data.settings}
+                        onUpdate={loadData}
+                        notifications={data.notifications}
+                      />
+                    </IonContent>
+                  </IonPage>
+                } />
+                <Redirect exact from="/" to="/admin/konfis" />
+              </IonRouterOutlet>
 
             <IonTabBar slot="bottom">
               <IonTabButton tab="konfis" href="/admin/konfis">
@@ -286,6 +275,7 @@ const IonicApp = () => {
             </IonTabBar>
           </IonTabs>
         )}
+        </IonRouterOutlet>
       </IonReactRouter>
     </IonApp>
   );

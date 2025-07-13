@@ -14,9 +14,12 @@ import {
   IonLabel,
   IonBadge,
   IonList,
-  IonChip
+  IonChip,
+  IonItemSliding,
+  IonItemOptions,
+  IonItemOption
 } from '@ionic/react';
-import { add } from 'ionicons/icons';
+import { add, trash, create } from 'ionicons/icons';
 
 const BadgesView = ({ badges, onAddBadgeClick, onEditBadgeClick, onDeleteBadgeClick }) => {
 
@@ -55,7 +58,8 @@ const BadgesView = ({ badges, onAddBadgeClick, onEditBadgeClick, onDeleteBadgeCl
           '--color': 'white',
           margin: '16px',
           borderRadius: '16px',
-          width: 'calc(100% - 32px)'
+          width: 'calc(100% - 32px)',
+          '--box-shadow': '0 4px 12px rgba(251, 191, 36, 0.3)'
         }}
       >
         <IonCardHeader>
@@ -64,10 +68,10 @@ const BadgesView = ({ badges, onAddBadgeClick, onEditBadgeClick, onDeleteBadgeCl
             fontWeight: 'bold',
             color: 'white'
           }}>
-            Badges Verwaltung
+            Badge Verwaltung
           </IonCardTitle>
         </IonCardHeader>
-        <IonCardContent style={{ position: 'relative' }}>
+        <IonCardContent>
           <IonGrid>
             <IonRow style={{ textAlign: 'center' }}>
               <IonCol>
@@ -75,49 +79,57 @@ const BadgesView = ({ badges, onAddBadgeClick, onEditBadgeClick, onDeleteBadgeCl
                   {badges.length}
                 </h2>
                 <p style={{ fontSize: '0.875rem', opacity: '0.9', margin: '4px 0 0' }}>
-                  Badges
+                  Gesamt
                 </p>
               </IonCol>
               <IonCol>
                 <h2 style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0' }}>
-                  {badges.filter(b => b.criteria_type === 'points').length}
+                  {badges.filter(b => !b.is_hidden).length}
                 </h2>
                 <p style={{ fontSize: '0.875rem', opacity: '0.9', margin: '4px 0 0' }}>
-                  Punkte
+                  Sichtbar
                 </p>
               </IonCol>
               <IonCol>
                 <h2 style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0' }}>
-                  {badges.filter(b => b.criteria_type === 'activities').length}
+                  {badges.filter(b => b.is_hidden).length}
                 </h2>
                 <p style={{ fontSize: '0.875rem', opacity: '0.9', margin: '4px 0 0' }}>
-                  Aktivitäten
+                  Geheim
                 </p>
               </IonCol>
             </IonRow>
           </IonGrid>
 
-          {/* Button unten rechts - weiter unten */}
-          <IonButton
-            fill="clear"
-            size="default"
-            onClick={onAddBadgeClick}
-            style={{
-              '--color': 'white',
-              '--background': 'rgba(255,255,255,0.2)',
-              '--border-radius': '12px',
-              fontWeight: '600',
-              minHeight: '40px',
-              position: 'absolute',
-              bottom: '16px',
-              right: '16px'
-            }}
-          >
-            <IonIcon icon={add} slot="start" />
-            Badge
-          </IonButton>
         </IonCardContent>
       </IonCard>
+
+      {/* Add Badge Button */}
+      <div style={{ 
+        margin: '0 16px 16px 16px', 
+        display: 'flex',
+        justifyContent: 'center'
+      }}>
+        <IonButton
+          expand="block"
+          fill="solid"
+          onClick={onAddBadgeClick}
+          style={{
+            '--background': 'linear-gradient(135deg, #f59e0b, #d97706)',
+            '--color': 'white',
+            '--border-radius': '12px',
+            width: '100%',
+            height: '48px',
+            '--box-shadow': '0 4px 12px rgba(245, 158, 11, 0.3)',
+            '--background-activated': 'linear-gradient(135deg, #f59e0b, #d97706)',
+            '--background-focused': 'linear-gradient(135deg, #f59e0b, #d97706)',
+            '--background-hover': 'linear-gradient(135deg, #f59e0b, #d97706)'
+          }}
+        >
+          <IonIcon icon={add} slot="start" />
+          Neues Badge erstellen
+        </IonButton>
+      </div>
 
       {/* Badges List - Styled Ionic */}
       <IonCard style={{
@@ -125,21 +137,31 @@ const BadgesView = ({ badges, onAddBadgeClick, onEditBadgeClick, onDeleteBadgeCl
         borderRadius: '12px',
         width: 'calc(100% - 32px)'
       }}>
+        <IonCardHeader style={{ paddingBottom: '8px' }}>
+          <h3 style={{ 
+            fontWeight: '600', 
+            color: '#1f2937', 
+            margin: '0',
+            fontSize: '1.125rem'
+          }}>
+            Badges ({badges.length})
+          </h3>
+        </IonCardHeader>
         <IonList>
           {badges.map(badge => (
-            <IonItem
-              key={badge.id}
-              button
-              onClick={() => onEditBadgeClick(badge)}
-              style={{
-                '--background': '#fefce8',
-                '--border-color': '#fed7aa',
-                '--color': '#1f2937',
-                margin: '8px',
-                borderRadius: '8px',
-                border: '1px solid var(--border-color)'
-              }}
-            >
+            <IonItemSliding key={badge.id}>
+              <IonItem
+                button
+                onClick={() => onEditBadgeClick(badge)}
+                style={{
+                  '--background': '#fefce8',
+                  '--border-color': '#fed7aa',
+                  '--color': '#1f2937',
+                  margin: '8px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-color)'
+                }}
+              >
               <IonLabel>
                 <h2 style={{
                   fontWeight: 'bold',
@@ -170,31 +192,27 @@ const BadgesView = ({ badges, onAddBadgeClick, onEditBadgeClick, onDeleteBadgeCl
                   {getCriteriaText(badge.criteria_type, badge.criteria_value)}
                 </p>
 
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <IonChip
                     color={badge.is_active ? 'success' : 'medium'}
                     style={{
                       '--background': badge.is_active ? '#dcfce7' : '#f3f4f6',
-                      minWidth: '32px',
-                      height: '24px',
-                      display: 'flex',
-                      justifyContent: 'center'
+                      fontSize: '0.75rem',
+                      height: '24px'
                     }}
                   >
-                    {badge.is_active ? '✓' : '⏸'}
+                    {badge.is_active ? 'Aktiv' : 'Inaktiv'}
                   </IonChip>
 
                   <IonChip
                     color={badge.is_hidden ? 'secondary' : 'tertiary'}
                     style={{
                       '--background': badge.is_hidden ? '#e9d5ff' : '#e0f2fe',
-                      minWidth: '32px',
-                      height: '24px',
-                      display: 'flex',
-                      justifyContent: 'center'
+                      fontSize: '0.75rem',
+                      height: '24px'
                     }}
                   >
-                    {badge.is_hidden ? '🔒' : '👁'}
+                    {badge.is_hidden ? 'Geheim' : 'Sichtbar'}
                   </IonChip>
 
                   {badge.earned_count > 0 && (
@@ -207,7 +225,17 @@ const BadgesView = ({ badges, onAddBadgeClick, onEditBadgeClick, onDeleteBadgeCl
                   )}
                 </div>
               </IonLabel>
-            </IonItem>
+              </IonItem>
+              
+              <IonItemOptions side="end">
+                <IonItemOption color="primary" onClick={() => onEditBadgeClick(badge)}>
+                  <IonIcon icon={create} />
+                </IonItemOption>
+                <IonItemOption color="danger" onClick={() => onDeleteBadgeClick(badge)}>
+                  <IonIcon icon={trash} />
+                </IonItemOption>
+              </IonItemOptions>
+            </IonItemSliding>
           ))}
 
           {badges.length === 0 && (

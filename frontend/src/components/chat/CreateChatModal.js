@@ -1,13 +1,30 @@
 // CreateChatModal.js
 import React, { useState, useEffect } from 'react';
-import { X, Users, MessageCircle } from 'lucide-react';
+import { 
+  IonPage,
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonContent,
+  IonButtons,
+  IonButton,
+  IonList,
+  IonItem,
+  IonLabel,
+  IonSelect,
+  IonSelectOption,
+  IonInput,
+  IonCheckbox,
+  IonRadioGroup,
+  IonRadio,
+  IonSpinner
+} from '@ionic/react';
+import api from '../../services/api';
 
 const CreateChatModal = ({ 
-  show, 
   onClose, 
-  user, 
-  api, 
   onChatCreated, 
+  loading 
 }) => {
   const [chatType, setChatType] = useState('direct');
   const [chatName, setChatName] = useState('');
@@ -15,14 +32,11 @@ const CreateChatModal = ({
   const [selectedKonfis, setSelectedKonfis] = useState([]);
   const [jahrgaenge, setJahrgaenge] = useState([]);
   const [konfis, setKonfis] = useState([]);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (show) {
-      loadJahrgaenge();
-      loadKonfis();
-    }
-  }, [show]);
+    loadJahrgaenge();
+    loadKonfis();
+  }, []);
 
   const loadJahrgaenge = async () => {
     try {
@@ -42,9 +56,9 @@ const CreateChatModal = ({
     }
   };
 
-  const handleSubmit = async () => {
+  const handleCreateChat = async () => {
     if (chatType === 'direct' && selectedKonfis.length === 0) {
-      console.error('Bitte mindestens einen Konfi auswählen');
+      console.error('Bitte mindestens einen Teilnehmer auswählen');
       return;
     }
 
@@ -53,166 +67,203 @@ const CreateChatModal = ({
       return;
     }
 
-    setLoading(true);
+    if (chatType === 'admin_team') {
+      // Create admin team chat
+      try {
+        const chatData = {
+          type: 'admin_team',
+          name: 'Admin Team',
+          participants: []
+        };
+
+        await api.post('/chat/rooms', chatData);
+        onChatCreated();
+      } catch (err) {
+        console.error('Fehler beim Erstellen des Admin-Chats:', err);
+      }
+      return;
+    }
+
     try {
       const chatData = {
         type: chatType,
         name: chatType === 'group' ? chatName : `Chat mit ${selectedKonfis.map(id => konfis.find(k => k.id === id)?.name).join(', ')}`,
-        participants: selectedKonfis,
-        jahrgang_id: chatType === 'jahrgang' ? selectedJahrgang : null
+        participants: selectedKonfis
       };
 
       await api.post('/chat/rooms', chatData);
       onChatCreated();
     } catch (err) {
-      console.error('Fehler beim Erstellen des Chats');
-    } finally {
-      setLoading(false);
+      console.error('Fehler beim Erstellen des Chats:', err);
     }
   };
 
-  if (!show) return null;
+  const filteredKonfis = konfis.filter(konfi => 
+    !selectedJahrgang || konfi.jahrgang_id === parseInt(selectedJahrgang)
+  );
+
+  const canCreate = () => {
+    if (chatType === 'direct') return selectedKonfis.length > 0;
+    if (chatType === 'group') return chatName.trim() && selectedKonfis.length > 0;
+    if (chatType === 'admin_team') return true;
+    return false;
+  };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-gray-800">Neuen Chat erstellen</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
+    <IonPage>
+      <IonHeader>
+        <IonToolbar>
+          <IonTitle>Chat</IonTitle>
+          <IonButtons slot="start">
+            <IonButton onClick={onClose} disabled={loading}>
+              Abbrechen
+            </IonButton>
+          </IonButtons>
+          <IonButtons slot="end">
+            <IonButton 
+              onClick={handleCreateChat} 
+              disabled={loading || !canCreate()}
+              strong={true}
+            >
+              {loading ? <IonSpinner name="crescent" /> : 'Erstellen'}
+            </IonButton>
+          </IonButtons>
+        </IonToolbar>
+      </IonHeader>
+      
+      <IonContent>
+        <IonList>
+          {/* Chat Type Selection */}
+          <IonItem>
+            <IonLabel>
+              <h2 style={{ fontWeight: '600', color: '#1f2937' }}>Chat-Typ</h2>
+              <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Wählen Sie die Art des Chats</p>
+            </IonLabel>
+          </IonItem>
+          
+          <IonRadioGroup value={chatType} onIonChange={e => setChatType(e.detail.value)}>
+            <IonItem>
+              <IonRadio slot="start" value="direct" />
+              <IonLabel>
+                <h3>Direkter Chat</h3>
+                <p style={{ color: '#6b7280' }}>Chat mit ausgewählten Konfis</p>
+              </IonLabel>
+            </IonItem>
+            <IonItem>
+              <IonRadio slot="start" value="group" />
+              <IonLabel>
+                <h3>Gruppenchat</h3>
+                <p style={{ color: '#6b7280' }}>Privater Chat mit mehreren Teilnehmern</p>
+              </IonLabel>
+            </IonItem>
+            <IonItem>
+              <IonRadio slot="start" value="admin_team" />
+              <IonLabel>
+                <h3>Admin Team</h3>
+                <p style={{ color: '#6b7280' }}>Chat für alle Admins</p>
+              </IonLabel>
+            </IonItem>
+          </IonRadioGroup>
 
-        <div className="space-y-4">
-          {/* Chat Type */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Chat-Typ
-            </label>
-            <div className="space-y-2">
-              <label className="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
-                <input
-                  type="radio"
-                  value="direct"
-                  checked={chatType === 'direct'}
-                  onChange={(e) => setChatType(e.target.value)}
-                  className="mr-3"
-                />
-                <MessageCircle className="w-5 h-5 mr-2 text-blue-500" />
-                <div>
-                  <div className="font-medium">Direktnachricht</div>
-                  <div className="text-sm text-gray-600">Privater Chat mit ausgewählten Konfis</div>
-                </div>
-              </label>
-              
-              <label className="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
-                <input
-                  type="radio"
-                  value="group"
-                  checked={chatType === 'group'}
-                  onChange={(e) => setChatType(e.target.value)}
-                  className="mr-3"
-                />
-                <Users className="w-5 h-5 mr-2 text-green-500" />
-                <div>
-                  <div className="font-medium">Gruppenchat</div>
-                  <div className="text-sm text-gray-600">Chat mit mehreren Teilnehmern</div>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          {/* Group Name */}
+          {/* Group Name Input */}
           {chatType === 'group' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Gruppenname *
-              </label>
-              <input
-                type="text"
+            <IonItem>
+              <IonLabel position="stacked">Gruppenname *</IonLabel>
+              <IonInput
                 value={chatName}
-                onChange={(e) => setChatName(e.target.value)}
+                onIonInput={(e) => setChatName(e.detail.value)}
                 placeholder="z.B. Projektteam"
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                clearInput={true}
               />
-            </div>
+            </IonItem>
           )}
 
           {/* Participant Selection */}
           {(chatType === 'direct' || chatType === 'group') && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Teilnehmer auswählen *
-              </label>
+            <>
+              <IonItem>
+                <IonLabel>
+                  <h2 style={{ fontWeight: '600', color: '#1f2937' }}>Teilnehmer auswählen *</h2>
+                  <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+                    {selectedKonfis.length} {selectedKonfis.length === 1 ? 'Teilnehmer' : 'Teilnehmer'} ausgewählt
+                  </p>
+                </IonLabel>
+              </IonItem>
               
               {/* Jahrgang Filter */}
-              <select
-                value={selectedJahrgang}
-                onChange={(e) => setSelectedJahrgang(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Alle Jahrgänge</option>
-                {jahrgaenge.map(j => (
-                  <option key={j.id} value={j.id}>{j.name}</option>
-                ))}
-              </select>
+              <IonItem>
+                <IonLabel position="stacked">Filter nach Jahrgang</IonLabel>
+                <IonSelect 
+                  value={selectedJahrgang} 
+                  onIonChange={e => setSelectedJahrgang(e.detail.value)}
+                  placeholder="Alle Jahrgänge"
+                  interface="popover"
+                >
+                  <IonSelectOption value="">Alle Jahrgänge</IonSelectOption>
+                  {jahrgaenge.map(j => (
+                    <IonSelectOption key={j.id} value={j.id}>{j.name}</IonSelectOption>
+                  ))}
+                </IonSelect>
+              </IonItem>
 
               {/* Konfi List */}
-              <div className="border border-gray-300 rounded-lg p-3 max-h-48 overflow-y-auto">
-                {konfis
-                  .filter(konfi => !selectedJahrgang || konfi.jahrgang_id === parseInt(selectedJahrgang))
-                  .map(konfi => (
-                    <label key={konfi.id} className="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedKonfis.includes(konfi.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedKonfis([...selectedKonfis, konfi.id]);
-                          } else {
-                            setSelectedKonfis(selectedKonfis.filter(id => id !== konfi.id));
-                          }
-                        }}
-                        className="mr-3"
-                      />
-                      <div>
-                        <div className="font-medium">{konfi.name}</div>
-                        <div className="text-sm text-gray-600">{konfi.jahrgang}</div>
-                      </div>
-                    </label>
-                  ))}
-              </div>
-              
-              {selectedKonfis.length > 0 && (
-                <p className="text-sm text-blue-600 mt-2">
-                  {selectedKonfis.length} {selectedKonfis.length === 1 ? 'Teilnehmer' : 'Teilnehmer'} ausgewählt
-                </p>
+              {filteredKonfis.length > 0 ? (
+                filteredKonfis.map(konfi => (
+                  <IonItem key={konfi.id}>
+                    <IonCheckbox
+                      slot="start"
+                      checked={selectedKonfis.includes(konfi.id)}
+                      onIonChange={(e) => {
+                        if (e.detail.checked) {
+                          setSelectedKonfis([...selectedKonfis, konfi.id]);
+                        } else {
+                          setSelectedKonfis(selectedKonfis.filter(id => id !== konfi.id));
+                        }
+                      }}
+                    />
+                    <IonLabel>
+                      <h3>{konfi.name}</h3>
+                      <p style={{ color: '#6b7280' }}>
+                        {jahrgaenge.find(j => j.id === konfi.jahrgang_id)?.name || 'Unbekannter Jahrgang'}
+                      </p>
+                    </IonLabel>
+                  </IonItem>
+                ))
+              ) : (
+                <IonItem>
+                  <IonLabel>
+                    <p style={{ 
+                      textAlign: 'center', 
+                      color: '#9ca3af', 
+                      padding: '2rem 0',
+                      fontStyle: 'italic'
+                    }}>
+                      {selectedJahrgang ? 'Keine Konfis in diesem Jahrgang gefunden' : 'Keine Konfis verfügbar'}
+                    </p>
+                  </IonLabel>
+                </IonItem>
               )}
-            </div>
+            </>
           )}
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-4">
-            <button
-              onClick={onClose}
-              className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 font-medium"
-            >
-              Abbrechen
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={loading}
-              className="flex-1 bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 disabled:opacity-50 font-medium"
-            >
-              {loading ? 'Erstelle...' : 'Chat erstellen'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+          {/* Admin Team Info */}
+          {chatType === 'admin_team' && (
+            <IonItem>
+              <IonLabel>
+                <p style={{ 
+                  textAlign: 'center', 
+                  color: '#6b7280', 
+                  padding: '2rem 0',
+                  fontStyle: 'italic'
+                }}>
+                  Erstellt einen Chat für alle Admins zum internen Austausch.
+                </p>
+              </IonLabel>
+            </IonItem>
+          )}
+        </IonList>
+      </IonContent>
+    </IonPage>
   );
 };
 

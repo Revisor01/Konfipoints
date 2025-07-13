@@ -1,5 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { X, ZoomIn, ZoomOut, RotateCw } from 'lucide-react';
+import { 
+  IonModal,
+  IonButton,
+  IonIcon,
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonContent,
+  IonButtons,
+  IonFab
+} from '@ionic/react';
+import { 
+  close, 
+  addOutline, 
+  removeOutline, 
+  refreshOutline 
+} from 'ionicons/icons';
 
 const ImageModal = ({ 
   isOpen, 
@@ -17,17 +33,10 @@ const ImageModal = ({
 
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = 'hidden';
       setScale(1);
       setRotation(0);
       setPosition({ x: 0, y: 0 });
-    } else {
-      document.body.style.overflow = 'unset';
     }
-    
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
   }, [isOpen]);
 
   useEffect(() => {
@@ -123,27 +132,61 @@ const ImageModal = ({
     setPosition({ x: 0, y: 0 });
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div 
-      className="fixed inset-0 z-5000 bg-black bg-opacity-90 flex items-center justify-center"
-      onClick={onClose}
+    <IonModal 
+      isOpen={isOpen} 
+      onDidDismiss={onClose}
+      backdropDismiss={true}
+      style={{
+        '--backdrop-opacity': '0.9',
+        '--backdrop-color': 'black'
+      }}
     >
-      <div className="relative w-full h-full flex items-center justify-center">
-        <div 
-          className="relative max-w-full max-h-full flex items-center justify-center"
-          onClick={(e) => e.stopPropagation()}
-        >
+      <IonHeader>
+        <IonToolbar style={{ '--background': 'rgba(0, 0, 0, 0.8)' }}>
+          {title && (
+            <IonTitle style={{ color: 'white' }}>{title}</IonTitle>
+          )}
+          <IonButtons slot="end">
+            <IonButton onClick={onClose} style={{ '--color': 'white' }}>
+              <IonIcon icon={close} />
+            </IonButton>
+          </IonButtons>
+        </IonToolbar>
+      </IonHeader>
+      
+      <IonContent 
+        style={{ 
+          '--background': 'black',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            onClose();
+          }
+        }}
+      >
+        <div style={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'relative'
+        }}>
           <img
             src={imageUrl}
             alt={alt}
-            className={`max-w-full max-h-full object-contain transition-transform duration-200 ${
-              isDragging ? 'cursor-grabbing' : scale > 1 ? 'cursor-grab' : 'cursor-default'
-            }`}
             style={{
+              maxWidth: '100%',
+              maxHeight: '100%',
+              objectFit: 'contain',
               transform: `scale(${scale}) rotate(${rotation}deg) translate(${position.x}px, ${position.y}px)`,
-              transformOrigin: 'center center'
+              transformOrigin: 'center center',
+              transition: isDragging ? 'none' : 'transform 0.2s',
+              cursor: isDragging ? 'grabbing' : scale > 1 ? 'grab' : 'default'
             }}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
@@ -156,53 +199,82 @@ const ImageModal = ({
           />
         </div>
 
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-white hover:text-gray-300 transition-colors bg-black bg-opacity-50 rounded-full"
-          aria-label="Schließen"
-        >
-          <X size={24} />
-        </button>
-
-        {title && (
-          <div className="absolute top-4 left-4 px-3 py-2 bg-black bg-opacity-50 text-white rounded-lg">
-            {title}
-          </div>
-        )}
-
         {showControls && (
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-            <button
-              onClick={handleZoomOut}
-              className="p-2 text-white hover:text-gray-300 transition-colors bg-black bg-opacity-50 rounded-full"
-              aria-label="Verkleinern"
+          <>
+            <IonFab 
+              vertical="bottom" 
+              horizontal="center" 
+              slot="fixed"
+              style={{ marginBottom: '20px' }}
             >
-              <ZoomOut size={20} />
-            </button>
-            <button
-              onClick={resetTransform}
-              className="px-3 py-2 text-white hover:text-gray-300 transition-colors bg-black bg-opacity-50 rounded-full text-sm"
-            >
-              Reset
-            </button>
-            <button
-              onClick={handleZoomIn}
-              className="p-2 text-white hover:text-gray-300 transition-colors bg-black bg-opacity-50 rounded-full"
-              aria-label="Vergrößern"
-            >
-              <ZoomIn size={20} />
-            </button>
-            <button
-              onClick={handleRotate}
-              className="p-2 text-white hover:text-gray-300 transition-colors bg-black bg-opacity-50 rounded-full"
-              aria-label="Drehen"
-            >
-              <RotateCw size={20} />
-            </button>
-          </div>
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                borderRadius: '24px',
+                padding: '8px'
+              }}>
+                <IonButton
+                  onClick={handleZoomOut}
+                  fill="clear"
+                  style={{
+                    '--color': 'white',
+                    '--background': 'rgba(255, 255, 255, 0.1)',
+                    '--border-radius': '50%',
+                    width: '40px',
+                    height: '40px'
+                  }}
+                >
+                  <IonIcon icon={removeOutline} />
+                </IonButton>
+                
+                <IonButton
+                  onClick={resetTransform}
+                  fill="clear"
+                  style={{
+                    '--color': 'white',
+                    '--background': 'rgba(255, 255, 255, 0.1)',
+                    '--border-radius': '20px',
+                    height: '40px',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  Reset
+                </IonButton>
+                
+                <IonButton
+                  onClick={handleZoomIn}
+                  fill="clear"
+                  style={{
+                    '--color': 'white',
+                    '--background': 'rgba(255, 255, 255, 0.1)',
+                    '--border-radius': '50%',
+                    width: '40px',
+                    height: '40px'
+                  }}
+                >
+                  <IonIcon icon={addOutline} />
+                </IonButton>
+                
+                <IonButton
+                  onClick={handleRotate}
+                  fill="clear"
+                  style={{
+                    '--color': 'white',
+                    '--background': 'rgba(255, 255, 255, 0.1)',
+                    '--border-radius': '50%',
+                    width: '40px',
+                    height: '40px'
+                  }}
+                >
+                  <IonIcon icon={refreshOutline} />
+                </IonButton>
+              </div>
+            </IonFab>
+          </>
         )}
-      </div>
-    </div>
+      </IonContent>
+    </IonModal>
   );
 };
 

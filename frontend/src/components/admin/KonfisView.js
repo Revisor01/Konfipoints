@@ -1,18 +1,61 @@
 // frontend/src/components/admin/KonfisView.js
 import React, { useState } from 'react';
-import { Search, Plus, Award, ArrowUpDown } from 'lucide-react';
+import {
+  IonCard,
+  IonCardHeader,
+  IonCardTitle,
+  IonCardContent,
+  IonGrid,
+  IonRow,
+  IonCol,
+  IonButton,
+  IonIcon,
+  IonItem,
+  IonLabel,
+  IonBadge,
+  IonList,
+  IonChip,
+  IonItemSliding,
+  IonItemOptions,
+  IonItemOption,
+  IonSearchbar,
+  IonSelect,
+  IonSelectOption,
+  IonModal,
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonContent,
+  IonButtons,
+  IonInput,
+  useIonActionSheet
+} from '@ionic/react';
+import { 
+  add, 
+  trash, 
+  create, 
+  search, 
+  swapVertical, 
+  trophy,
+  flash,
+  remove
+} from 'ionicons/icons';
 import { useApp } from '../../contexts/AppContext';
 import api from '../../services/api';
-import { filterBySearchTerm, filterByJahrgang, getProgressPercentage } from '../../utils/helpers';
-import Modal from '../shared/Modal';
+import { filterBySearchTerm, filterByJahrgang } from '../../utils/helpers';
 
-const KonfisView = ({ konfis, jahrgaenge, settings, onSelectKonfi, onUpdate }) => {
-  const { setSuccess, setError } = useApp();
+const KonfisView = ({ 
+  konfis, 
+  jahrgaenge, 
+  settings, 
+  onUpdate, 
+  onAddKonfiClick,
+  onSelectKonfi,
+  onDeleteKonfi
+}) => {
+  const [presentActionSheet] = useIonActionSheet();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedJahrgang, setSelectedJahrgang] = useState('alle');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newKonfi, setNewKonfi] = useState({ name: '', jahrgang_id: '' });
-  const [loading, setLoading] = useState(false);
   const [sortBy, setSortBy] = useState('name'); // 'name', 'points'
 
   const filteredAndSortedKonfis = (() => {
@@ -36,213 +79,338 @@ const KonfisView = ({ konfis, jahrgaenge, settings, onSelectKonfi, onUpdate }) =
     return result;
   })();
 
-  const handleAddKonfi = async () => {
-    if (!newKonfi.name.trim() || !newKonfi.jahrgang_id) {
-      setError('Name und Jahrgang sind erforderlich');
-      return;
-    }
 
-    setLoading(true);
-    try {
-      await api.post('/konfis', newKonfi);
-      setSuccess('Konfi erfolgreich hinzugefügt');
-      setShowAddModal(false);
-      setNewKonfi({ name: '', jahrgang_id: '' });
-      onUpdate();
-    } catch (err) {
-      setError('Fehler beim Hinzufügen');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const showGottesdienstTarget = parseInt(settings.target_gottesdienst || 10) > 0;
   const showGemeindeTarget = parseInt(settings.target_gemeinde || 10) > 0;
 
   return (
-    <div className="space-y-4">
-      {/* Header Card - Original Style */}
-      <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl p-6 shadow-sm">
-        <h2 className="text-xl font-bold mb-3">Konfis Verwaltung</h2>
-        <div className="grid grid-cols-3 gap-4 text-center">
-          <div>
-            <div className="text-2xl font-bold">{filteredAndSortedKonfis.length}</div>
-            <div className="text-xs opacity-80">Konfis</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold">
-              {filteredAndSortedKonfis.reduce((sum, k) => sum + (k.points?.gottesdienst || 0) + (k.points?.gemeinde || 0), 0)}
-            </div>
-            <div className="text-xs opacity-80">Punkte</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold">{jahrgaenge?.length || 0}</div>
-            <div className="text-xs opacity-80">Jahrgänge</div>
-          </div>
-        </div>
+    <>
+      {/* Header Card mit Statistiken */}
+      <IonCard
+        style={{
+          '--background': 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+          '--color': 'white',
+          margin: '16px',
+          borderRadius: '16px',
+          width: 'calc(100% - 32px)',
+          '--box-shadow': '0 4px 12px rgba(59, 130, 246, 0.3)'
+        }}
+      >
+        <IonCardHeader>
+          <IonCardTitle style={{
+            fontSize: '1.5rem',
+            fontWeight: 'bold',
+            color: 'white'
+          }}>
+            Konfis Verwaltung
+          </IonCardTitle>
+        </IonCardHeader>
+        <IonCardContent>
+          <IonGrid>
+            <IonRow style={{ textAlign: 'center' }}>
+              <IonCol>
+                <h2 style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0' }}>
+                  {filteredAndSortedKonfis.length}
+                </h2>
+                <p style={{ fontSize: '0.875rem', opacity: '0.9', margin: '4px 0 0' }}>
+                  Konfis
+                </p>
+              </IonCol>
+              <IonCol>
+                <h2 style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0' }}>
+                  {filteredAndSortedKonfis.reduce((sum, k) => sum + (k.points?.gottesdienst || 0) + (k.points?.gemeinde || 0), 0)}
+                </h2>
+                <p style={{ fontSize: '0.875rem', opacity: '0.9', margin: '4px 0 0' }}>
+                  Punkte
+                </p>
+              </IonCol>
+              <IonCol>
+                <h2 style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0' }}>
+                  {jahrgaenge?.length || 0}
+                </h2>
+                <p style={{ fontSize: '0.875rem', opacity: '0.9', margin: '4px 0 0' }}>
+                  Jahrgänge
+                </p>
+              </IonCol>
+            </IonRow>
+          </IonGrid>
+
+        </IonCardContent>
+      </IonCard>
+
+      {/* Add Konfi Button */}
+      <div style={{ 
+        margin: '0 16px 16px 16px', 
+        display: 'flex',
+        justifyContent: 'center'
+      }}>
+        <IonButton
+          expand="block"
+          fill="solid"
+          onClick={onAddKonfiClick}
+          style={{
+            '--background': 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+            '--color': 'white',
+            '--border-radius': '12px',
+            width: '100%',
+            height: '48px',
+            '--box-shadow': '0 4px 12px rgba(59, 130, 246, 0.3)',
+            '--background-activated': 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+            '--background-focused': 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+            '--background-hover': 'linear-gradient(135deg, #3b82f6, #8b5cf6)'
+          }}
+        >
+          <IonIcon icon={add} slot="start" />
+          Neuen Konfi hinzufügen
+        </IonButton>
       </div>
 
-      {/* Search & Controls */}
-      <div className="bg-white rounded-xl shadow-sm p-4">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="font-bold text-gray-800">Konfis ({filteredAndSortedKonfis.length})</h3>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 flex items-center gap-2 font-medium"
-          >
-            <Plus className="w-4 h-4" />
-            Neuer Konfi
-          </button>
-        </div>
+      {/* Search & Controls Card */}
+      <IonCard style={{
+        margin: '16px',
+        borderRadius: '12px',
+        width: 'calc(100% - 32px)'
+      }}>
+        <IonCardContent>
+          <div style={{ marginBottom: '16px' }}>
+            <h3 style={{ 
+              fontWeight: '600', 
+              color: '#1f2937', 
+              margin: '0 0 8px 0',
+              fontSize: '1.125rem'
+            }}>
+              Suche
+            </h3>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
+          <div style={{ 
+            '--background': '#f9fafb', 
+            borderRadius: '8px',
+            border: '1px solid #e5e7eb',
+            marginBottom: '16px',
+            overflow: 'hidden'
+          }}>
+            <IonSearchbar
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onIonInput={(e) => setSearchTerm(e.detail.value)}
               placeholder="Konfi suchen..."
-              className="w-full pl-10 pr-4 py-3 border-0 bg-gray-50 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white text-base"
+              showClearButton="focus"
+              style={{ 
+                '--background': 'transparent',
+                '--border-radius': '0px',
+                '--box-shadow': 'none',
+                margin: '0',
+                padding: '0'
+              }}
             />
           </div>
 
-          <select
-            value={selectedJahrgang}
-            onChange={(e) => setSelectedJahrgang(e.target.value)}
-            className="w-full p-3 border-0 bg-gray-50 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white appearance-none text-base"
-          >
-            <option value="alle">Alle Jahrgänge</option>
-            {jahrgaenge.map(j => (
-              <option key={j.id} value={j.name}>{j.name}</option>
-            ))}
-          </select>
-
-          <div className="relative">
-            <ArrowUpDown className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border-0 bg-gray-50 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white appearance-none text-base"
-            >
-              <option value="name">Nach Name sortieren</option>
-              <option value="points">Nach Punkten sortieren</option>
-            </select>
+          <div style={{ marginBottom: '12px' }}>
+            <IonItem button onClick={() => {
+              presentActionSheet({
+                header: 'Jahrgang wählen',
+                buttons: [
+                  {
+                    text: 'Alle Jahrgänge',
+                    handler: () => setSelectedJahrgang('alle')
+                  },
+                  ...jahrgaenge.map(j => ({
+                    text: j.name,
+                    handler: () => setSelectedJahrgang(j.name)
+                  })),
+                  {
+                    text: 'Abbrechen',
+                    role: 'cancel'
+                  }
+                ]
+              });
+            }} style={{ '--background': '#f9fafb', borderRadius: '8px' }}>
+              <IonLabel>
+                {selectedJahrgang === 'alle' ? 'Alle Jahrgänge' : selectedJahrgang}
+              </IonLabel>
+            </IonItem>
           </div>
-        </div>
-      </div>
+
+          <IonItem button onClick={() => {
+            presentActionSheet({
+              header: 'Sortierung',
+              buttons: [
+                {
+                  text: 'Nach Name sortieren',
+                  handler: () => setSortBy('name')
+                },
+                {
+                  text: 'Nach Punkten sortieren',
+                  handler: () => setSortBy('points')
+                },
+                {
+                  text: 'Abbrechen',
+                  role: 'cancel'
+                }
+              ]
+            });
+          }} style={{ '--background': '#f9fafb', borderRadius: '8px' }}>
+            <IonIcon icon={swapVertical} slot="start" color="medium" />
+            <IonLabel>
+              {sortBy === 'name' ? 'Nach Name' : 'Nach Punkten'}
+            </IonLabel>
+          </IonItem>
+        </IonCardContent>
+      </IonCard>
 
       {/* Konfis List */}
-      <div className="bg-white rounded-xl shadow-sm p-4">
-        <div className="space-y-3">
+      <IonCard style={{
+        margin: '16px',
+        borderRadius: '12px',
+        width: 'calc(100% - 32px)'
+      }}>
+        <IonCardHeader style={{ paddingBottom: '8px' }}>
+          <h3 style={{ 
+            fontWeight: '600', 
+            color: '#1f2937', 
+            margin: '0',
+            fontSize: '1.125rem'
+          }}>
+            Konfis ({filteredAndSortedKonfis.length})
+          </h3>
+        </IonCardHeader>
+        <IonList>
           {filteredAndSortedKonfis.map(konfi => (
-            <div 
-              key={konfi.id}
-              className="bg-blue-50 border border-blue-200 rounded-lg p-4 cursor-pointer hover:bg-blue-100 transition-colors"
-              onClick={() => {
-                // Scroll nach oben vor Konfi-Auswahl
-                const scrollContainer = document.querySelector('.flex-1.overflow-y-auto');
-                if (scrollContainer) {
-                  scrollContainer.scrollTop = 0;
-                }
-                onSelectKonfi(konfi);
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="font-medium text-gray-900">{konfi.name}</div>
+            <IonItemSliding key={konfi.id}>
+              <IonItem
+                button
+                onClick={() => onSelectKonfi?.(konfi)}
+                detail={true}
+                style={{
+                  '--background': '#eff6ff',
+                  '--border-color': '#bfdbfe',
+                  '--color': '#1f2937',
+                  margin: '8px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-color)'
+                }}
+              >
+                <IonLabel>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <h2 style={{
+                      fontWeight: 'bold',
+                      fontSize: '1.125rem',
+                      margin: '0',
+                      color: '#1f2937'
+                    }}>
+                      {konfi.name}
+                    </h2>
                     {konfi.badgeCount > 0 && (
-                      <div className="flex items-center gap-1 bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
-                        <Award className="w-3 h-3" />
-                        {konfi.badgeCount}
-                      </div>
+                      <IonChip color="warning" style={{ '--background': '#fef3c7' }}>
+                        <IonIcon icon={trophy} />
+                        <IonLabel>{konfi.badgeCount}</IonLabel>
+                      </IonChip>
                     )}
                   </div>
                   
-                  <div className="text-sm text-gray-600 mb-3">Jahrgang: {konfi.jahrgang}</div>
+                  <p style={{
+                    fontSize: '0.875rem',
+                    color: '#6b7280',
+                    margin: '0 0 12px 0'
+                  }}>
+                    Jahrgang: {konfi.jahrgang}
+                  </p>
                   
                   {/* Points Grid */}
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    {showGottesdienstTarget && (
-                      <div className="text-center p-2 bg-blue-100 rounded">
-                        <div className="font-bold text-blue-800">
-                          {konfi.points?.gottesdienst || 0}/{settings.target_gottesdienst}
+                  <IonGrid style={{ padding: '0' }}>
+                    <IonRow>
+                      {showGottesdienstTarget && (
+                        <IonCol style={{ padding: '2px' }}>
+                          <div style={{
+                            textAlign: 'center',
+                            padding: '6px 4px',
+                            backgroundColor: '#dbeafe',
+                            borderRadius: '6px'
+                          }}>
+                            <div style={{ fontWeight: 'bold', color: '#1e40af', fontSize: '0.75rem' }}>
+                              {konfi.points?.gottesdienst || 0}/{settings.target_gottesdienst}
+                            </div>
+                            <div style={{ color: '#3b82f6', fontSize: '0.7rem' }}>Gottesdienst</div>
+                          </div>
+                        </IonCol>
+                      )}
+                      {showGemeindeTarget && (
+                        <IonCol style={{ padding: '2px' }}>
+                          <div style={{
+                            textAlign: 'center',
+                            padding: '6px 4px',
+                            backgroundColor: '#dcfce7',
+                            borderRadius: '6px'
+                          }}>
+                            <div style={{ fontWeight: 'bold', color: '#166534', fontSize: '0.75rem' }}>
+                              {konfi.points?.gemeinde || 0}/{settings.target_gemeinde}
+                            </div>
+                            <div style={{ color: '#16a34a', fontSize: '0.7rem' }}>Gemeinde</div>
+                          </div>
+                        </IonCol>
+                      )}
+                      <IonCol style={{ padding: '2px' }}>
+                        <div style={{
+                          textAlign: 'center',
+                          padding: '6px 4px',
+                          backgroundColor: '#f3e8ff',
+                          borderRadius: '6px'
+                        }}>
+                          <div style={{ fontWeight: 'bold', color: '#7c3aed', fontSize: '0.75rem' }}>
+                            {(konfi.points?.gottesdienst || 0) + (konfi.points?.gemeinde || 0)}
+                          </div>
+                          <div style={{ color: '#8b5cf6', fontSize: '0.7rem' }}>Gesamt</div>
                         </div>
-                        <div className="text-blue-600">Gottesdienst</div>
-                      </div>
-                    )}
-                    {showGemeindeTarget && (
-                      <div className="text-center p-2 bg-green-100 rounded">
-                        <div className="font-bold text-green-800">
-                          {konfi.points?.gemeinde || 0}/{settings.target_gemeinde}
-                        </div>
-                        <div className="text-green-600">Gemeinde</div>
-                      </div>
-                    )}
-                    <div className="text-center p-2 bg-purple-100 rounded">
-                      <div className="font-bold text-purple-800">
-                        {(konfi.points?.gottesdienst || 0) + (konfi.points?.gemeinde || 0)}
-                      </div>
-                      <div className="text-purple-600">Gesamt</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+                      </IonCol>
+                    </IonRow>
+                  </IonGrid>
+                </IonLabel>
+              </IonItem>
+              
+              <IonItemOptions side="end">
+                <IonItemOption color="primary" onClick={() => onSelectKonfi?.(konfi)}>
+                  <IonIcon icon={create} />
+                </IonItemOption>
+                <IonItemOption color="danger" onClick={() => onDeleteKonfi?.(konfi)}>
+                  <IonIcon icon={trash} />
+                </IonItemOption>
+              </IonItemOptions>
+            </IonItemSliding>
           ))}
           
           {filteredAndSortedKonfis.length === 0 && (
-            <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">
-              <Search className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-              <p className="text-sm">Keine Konfis gefunden</p>
-            </div>
+            <IonItem style={{ '--background': '#f9fafb' }}>
+              <IonLabel>
+                <div style={{
+                  textAlign: 'center',
+                  padding: '3rem 2rem',
+                  color: '#9ca3af'
+                }}>
+                  <IonIcon
+                    icon={search}
+                    style={{
+                      fontSize: '4rem',
+                      opacity: 0.3,
+                      marginBottom: '1rem',
+                      display: 'block'
+                    }}
+                  />
+                  <p style={{
+                    fontSize: '1rem',
+                    margin: 0,
+                    fontWeight: '500'
+                  }}>
+                    Keine Konfis gefunden
+                  </p>
+                </div>
+              </IonLabel>
+            </IonItem>
           )}
-        </div>
-      </div>
+        </IonList>
+      </IonCard>
 
-      {/* Add Modal */}
-      <Modal
-        show={showAddModal}
-        onClose={() => {
-          setShowAddModal(false);
-          setNewKonfi({ name: '', jahrgang_id: '' });
-        }}
-        title="Neuen Konfi hinzufügen"
-        submitButtonText="Hinzufügen"
-        onSubmit={handleAddKonfi}
-        submitDisabled={!newKonfi.name.trim() || !newKonfi.jahrgang_id}
-        loading={loading}
-      >
-        <div className="p-4 space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Name *</label>
-            <input
-              type="text"
-              value={newKonfi.name}
-              onChange={(e) => setNewKonfi({...newKonfi, name: e.target.value})}
-              placeholder="Vor- und Nachname"
-              className="w-full p-3 border rounded-lg"
-              autoFocus
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">Jahrgang *</label>
-            <select
-              value={newKonfi.jahrgang_id}
-              onChange={(e) => setNewKonfi({...newKonfi, jahrgang_id: e.target.value})}
-              className="w-full p-3 border rounded-lg"
-            >
-              <option value="">Jahrgang wählen...</option>
-              {jahrgaenge.map(j => (
-                <option key={j.id} value={j.id}>{j.name}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </Modal>
-    </div>
+    </>
   );
 };
 

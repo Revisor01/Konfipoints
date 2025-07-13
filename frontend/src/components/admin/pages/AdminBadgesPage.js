@@ -5,7 +5,9 @@ import {
   IonToolbar, 
   IonTitle, 
   IonContent, 
-  IonModal 
+  IonModal,
+  IonRefresher,
+  IonRefresherContent
 } from '@ionic/react';
 import { useApp } from '../../../contexts/AppContext';
 import api from '../../../services/api';
@@ -13,6 +15,13 @@ import BadgesView from '../BadgesView';
 import BadgeModal from '../modals/BadgeModal';
 
 const AdminBadgesPage = ({ badges, activities, onUpdate }) => {
+  // Parse criteria_extra strings to objects for badges
+  const parsedBadges = badges.map(badge => ({
+    ...badge,
+    criteria_extra: badge.criteria_extra ? 
+      (typeof badge.criteria_extra === 'string' ? JSON.parse(badge.criteria_extra) : badge.criteria_extra)
+      : {}
+  }));
   const { setSuccess, setError } = useApp();
   const pageRef = React.useRef(null);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
@@ -57,14 +66,21 @@ const AdminBadgesPage = ({ badges, activities, onUpdate }) => {
 
   return (
     <IonPage ref={pageRef}>
-      <IonHeader>
-        <IonToolbar>
-          <IonTitle>Badges</IonTitle>
+      <IonHeader style={{ '--min-height': '0px' }}>
+        <IonToolbar style={{ '--min-height': '0px', '--padding-top': '0px', '--padding-bottom': '0px' }}>
+          <IonTitle style={{ display: 'none' }}>Badge Verwaltung</IonTitle>
         </IonToolbar>
       </IonHeader>
       <IonContent className="app-gradient-background" fullscreen>
+        <IonRefresher slot="fixed" onIonRefresh={(e) => {
+          onUpdate();
+          e.detail.complete();
+        }}>
+          <IonRefresherContent></IonRefresherContent>
+        </IonRefresher>
+        
         <BadgesView 
-          badges={badges} 
+          badges={parsedBadges} 
           onAddBadgeClick={() => presentBadgeModal(null)}
           onEditBadgeClick={(badge) => presentBadgeModal(badge)}
           onDeleteBadgeClick={handleDeleteBadge}
@@ -75,6 +91,8 @@ const AdminBadgesPage = ({ badges, activities, onUpdate }) => {
         isOpen={isModalOpen} 
         onDidDismiss={() => setIsModalOpen(false)}
         presentingElement={pageRef.current || undefined}
+        canDismiss={true}
+        backdropDismiss={true}
       >
         <BadgeModal
           badge={currentBadge}

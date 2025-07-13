@@ -19,6 +19,19 @@ ion-content {
   --padding-bottom: var(--ion-safe-area-bottom, 0px);
 }
 
+/* Optimiere Sliding Items - Icons verschwinden schneller */
+ion-item-options {
+  transition: transform 0.1s ease-out, opacity 0.1s ease-out;
+}
+
+ion-item-sliding {
+  --transition-duration: 100ms;
+}
+
+ion-item-sliding ion-item-option {
+  transition: all 0.1s ease-out;
+}
+
 /**
  * Ionic Dark Mode
  * -----------------------------------------------------
