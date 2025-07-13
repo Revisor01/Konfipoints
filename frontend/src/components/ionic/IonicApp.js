@@ -32,6 +32,8 @@ import { useApp } from '../../contexts/AppContext';
 import LoginView from '../auth/LoginView';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ChatRoom from '../chat/ChatRoom';
+import SimpleChatRoom from '../chat/SimpleChatRoom';
+import CompleteChatRoom from '../chat/CompleteChatRoom';
 
 // Import individual tab components instead of wrapper components
 import AdminKonfisPage from '../admin/pages/AdminKonfisPage';
@@ -132,7 +134,7 @@ const IonicApp = () => {
       <IonReactRouter>
         <IonRouterOutlet>
           {/* Chat Room routes (outside tabs to hide tab bar) */}
-          <Route path="/chat/:roomId" component={ChatRoom} />
+          <Route path="/chat/:roomId" component={CompleteChatRoom} />
           
           {user.type === 'admin' ? (
             // Admin Tabs - Native Ionic Pattern

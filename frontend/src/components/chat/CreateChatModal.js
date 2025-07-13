@@ -15,8 +15,6 @@ import {
   IonSelectOption,
   IonInput,
   IonCheckbox,
-  IonRadioGroup,
-  IonRadio,
   IonSpinner
 } from '@ionic/react';
 import api from '../../services/api';
@@ -27,6 +25,8 @@ const CreateChatModal = ({
   loading 
 }) => {
   const [chatType, setChatType] = useState('direct');
+  
+  console.log('Current chatType:', chatType); // Debug
   const [chatName, setChatName] = useState('');
   const [selectedJahrgang, setSelectedJahrgang] = useState('');
   const [selectedKonfis, setSelectedKonfis] = useState([]);
@@ -135,35 +135,36 @@ const CreateChatModal = ({
         <IonList>
           {/* Chat Type Selection */}
           <IonItem>
-            <IonLabel>
-              <h2 style={{ fontWeight: '600', color: '#1f2937' }}>Chat-Typ</h2>
-              <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Wählen Sie die Art des Chats</p>
-            </IonLabel>
+            <IonLabel position="stacked">Chat-Typ *</IonLabel>
+            <IonSelect
+              value={chatType}
+              onIonChange={e => setChatType(e.detail.value)}
+              placeholder="Chat-Typ wählen..."
+              interface="popover"
+            >
+              <IonSelectOption value="direct">Direkter Chat</IonSelectOption>
+              <IonSelectOption value="group">Gruppenchat</IonSelectOption>
+              <IonSelectOption value="admin_team">Admin Team</IonSelectOption>
+            </IonSelect>
           </IonItem>
-          
-          <IonRadioGroup value={chatType} onIonChange={e => setChatType(e.detail.value)}>
-            <IonItem>
-              <IonRadio slot="start" value="direct" />
+
+          {/* Chat Type Description */}
+          {chatType && (
+            <IonItem lines="none" style={{ '--background': '#f8f9fa' }}>
               <IonLabel>
-                <h3>Direkter Chat</h3>
-                <p style={{ color: '#6b7280' }}>Chat mit ausgewählten Konfis</p>
+                <p style={{ 
+                  color: '#6b7280', 
+                  fontSize: '0.875rem',
+                  fontStyle: 'italic',
+                  margin: '8px 0'
+                }}>
+                  {chatType === 'direct' && 'Chat mit ausgewählten Konfis'}
+                  {chatType === 'group' && 'Privater Chat mit mehreren Teilnehmern'}
+                  {chatType === 'admin_team' && 'Chat für alle Admins zum internen Austausch'}
+                </p>
               </IonLabel>
             </IonItem>
-            <IonItem>
-              <IonRadio slot="start" value="group" />
-              <IonLabel>
-                <h3>Gruppenchat</h3>
-                <p style={{ color: '#6b7280' }}>Privater Chat mit mehreren Teilnehmern</p>
-              </IonLabel>
-            </IonItem>
-            <IonItem>
-              <IonRadio slot="start" value="admin_team" />
-              <IonLabel>
-                <h3>Admin Team</h3>
-                <p style={{ color: '#6b7280' }}>Chat für alle Admins</p>
-              </IonLabel>
-            </IonItem>
-          </IonRadioGroup>
+          )}
 
           {/* Group Name Input */}
           {chatType === 'group' && (
