@@ -7,7 +7,10 @@ import {
   IonContent,
   IonRefresher,
   IonRefresherContent,
-  IonModal
+  IonModal,
+  IonCard,
+  IonCardHeader,
+  IonCardTitle
 } from '@ionic/react';
 import { useApp } from '../../../contexts/AppContext';
 import api from '../../../services/api';
@@ -98,9 +101,9 @@ const AdminKonfisPage = ({ konfis, jahrgaenge, settings, onUpdate, activities })
 
   return (
     <IonPage ref={pageRef}>
-      <IonHeader style={{ '--min-height': '24px' }}>
+      <IonHeader style={{ '--min-height': '0px' }}>
         <IonToolbar style={{ '--min-height': '0px', '--padding-top': '0px', '--padding-bottom': '0px' }}>
-          <IonTitle style={{ display: 'none' }}>Konfis Verwaltung</IonTitle>
+          <IonTitle style={{ display: 'none' }}>Konfis</IonTitle>
         </IonToolbar>
       </IonHeader>
       <IonContent className="app-gradient-background" fullscreen>
@@ -111,6 +114,36 @@ const AdminKonfisPage = ({ konfis, jahrgaenge, settings, onUpdate, activities })
           <IonRefresherContent></IonRefresherContent>
         </IonRefresher>
         
+        {/* Header Card mit Icon und Titel */}
+        <IonCard style={{
+          margin: '16px 16px 0',
+          background: 'rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          borderRadius: '16px',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+        }}>
+          <IonCardHeader style={{ padding: '20px 24px' }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '12px' 
+            }}>
+              <ion-icon name="people" style={{ 
+                fontSize: '28px', 
+                color: 'white' 
+              }}></ion-icon>
+              <IonCardTitle style={{
+                fontSize: '1.5rem',
+                fontWeight: '600',
+                color: 'white'
+              }}>
+                Konfis
+              </IonCardTitle>
+            </div>
+          </IonCardHeader>
+        </IonCard>
+
         <KonfisView 
           konfis={konfis}
           jahrgaenge={jahrgaenge}

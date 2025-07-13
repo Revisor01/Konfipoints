@@ -249,6 +249,12 @@ export const AppProvider = ({ children, value: propValue }) => {
     }
   };
 
+  const logout = () => {
+    localStorage.removeItem('konfi_token');
+    dispatch({ type: 'SET_USER', payload: null });
+    // Redirect to login will be handled by the main app component
+  };
+
   useEffect(() => {
     if (state.user) {
       refreshAll();
@@ -269,7 +275,8 @@ export const AppProvider = ({ children, value: propValue }) => {
     loadBadges,
     loadActivityRequests,
     loadJahrgaenge,
-    refreshAll
+    refreshAll,
+    logout
   };
 
   return (

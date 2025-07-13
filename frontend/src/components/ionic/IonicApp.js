@@ -13,7 +13,9 @@ import {
   IonHeader,
   IonToolbar,
   IonTitle,
-  IonContent
+  IonContent,
+  IonButton,
+  IonButtons
 } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
 
@@ -31,7 +33,7 @@ import {
 import { useApp } from '../../contexts/AppContext';
 import LoginView from '../auth/LoginView';
 import LoadingSpinner from '../common/LoadingSpinner';
-import ChatRoom from '../chat/ChatRoom';
+import ChatRoomPage from '../chat/pages/ChatRoomPage';
 import SimpleChatRoom from '../chat/SimpleChatRoom';
 
 // Import individual tab components instead of wrapper components
@@ -133,7 +135,7 @@ const IonicApp = () => {
       <IonReactRouter>
         <IonRouterOutlet>
           {/* Chat Room routes (outside tabs to hide tab bar) */}
-          <Route path="/chat/:roomId" component={ChatRoom} />
+          <Route path="/chat/:roomId" component={ChatRoomPage} />
           
           {user.type === 'admin' ? (
             // Admin Tabs - Native Ionic Pattern
@@ -226,6 +228,16 @@ const IonicApp = () => {
                   <IonHeader>
                     <IonToolbar>
                       <IonTitle>Dashboard</IonTitle>
+                      <IonButtons slot="end">
+                        <IonButton onClick={() => {
+                          if (window.confirm('Möchten Sie sich wirklich abmelden?')) {
+                            localStorage.removeItem('konfi_token');
+                            window.location.reload();
+                          }
+                        }}>
+                          Abmelden
+                        </IonButton>
+                      </IonButtons>
                     </IonToolbar>
                   </IonHeader>
                   <IonContent className="app-gradient-background" fullscreen>

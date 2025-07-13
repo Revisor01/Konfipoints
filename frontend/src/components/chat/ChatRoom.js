@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { useIonRouter, isPlatform, useIonViewWillLeave } from '@ionic/react';
 // import { useHistory } from 'react-router-dom'; // Wird nicht direkt verwendet, kann entfernt werden
 
@@ -32,7 +32,7 @@ import PollComponent from './PollComponent';
 import CreatePollModal from './CreatePollModal';
 import { chevronBack, arrowDown } from 'ionicons/icons';
 
-const ChatRoom = ({ room, match, location, onBack }) => {
+const ChatRoom = forwardRef(({ room, match, location, onBack, onCreatePoll, onDeleteMessage }, ref) => {
   const { user } = useApp();
   const router = useIonRouter();
   const [presentActionSheet] = useIonActionSheet();
@@ -54,7 +54,17 @@ const ChatRoom = ({ room, match, location, onBack }) => {
   const textareaRef = useRef(null);
   const footerRef = useRef(null);
   const contentRef = useRef(null);
-  const pageRef = useRef(null);
+
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    addMessage: (message) => {
+      setMessages(prev => [...prev, message]);
+      setTimeout(() => scrollToBottom(), 300);
+    },
+    removeMessage: (messageId) => {
+      setMessages(prev => prev.filter(m => m.id !== messageId));
+    }
+  }));
 
   useIonViewWillLeave(() => {
     setAttachedFileData(null);
@@ -224,35 +234,6 @@ const ChatRoom = ({ room, match, location, onBack }) => {
     }
   };
 
-  const handleCreatePoll = async (pollData) => {
-    try {
-      console.log('Creating poll with data:', pollData);
-      console.log('Room ID:', currentRoom.id);
-      
-      const response = await api.post(`/chat/rooms/${currentRoom.id}/polls`, pollData);
-      console.log('Poll created successfully:', response.data);
-      
-      setMessages(prev => [...prev, response.data]);
-      
-      setTimeout(() => {
-        scrollToBottom();
-      }, 300);
-      
-    } catch (err) {
-      console.error('Poll creation error:', err);
-      console.error('Error details:', err.response?.data);
-      
-      if (err.response?.status === 400) {
-        console.error('Fehler beim Erstellen der Umfrage: Ungültige Daten');
-      } else if (err.response?.status === 403) {
-        console.error('Fehler: Keine Berechtigung zum Erstellen von Umfragen');
-      } else {
-        console.error('Fehler beim Erstellen der Umfrage. Bitte versuche es erneut.');
-      }
-    }
-  };
-
-  const [showPollModal, setShowPollModal] = useState(false);
 
   // NEUE Funktion für ActionSheet mit useIonActionSheet Hook
   const presentAttachmentActionSheet = () => {
@@ -263,27 +244,12 @@ const ChatRoom = ({ room, match, location, onBack }) => {
         { text: 'Foto aufnehmen', icon: camera, handler: takePicture },
         { text: 'Foto auswählen', icon: image, handler: selectPhoto },
         { text: 'Datei auswählen', icon: document, handler: openNativeFilePicker },
-        ...(isAdmin ? [{ text: 'Umfrage erstellen', icon: barChart, handler: presentCreatePollModal }] : []),
+        ...(isAdmin ? [{ text: 'Umfrage erstellen', icon: barChart, handler: () => onCreatePoll && onCreatePoll() }] : []),
         { text: 'Abbrechen', role: 'cancel' }
       ]
     });
   };
 
-  // NEUE Funktion für CreatePollModal - SUPER SIMPEL
-  const presentCreatePollModal = () => {
-    setShowPollModal(true);
-  };
-
-  const handleDeleteMessage = async (messageId) => {
-    if (!window.confirm('Nachricht wirklich löschen?')) return; 
-
-    try {
-      await api.delete(`/chat/messages/${messageId}`);
-      setMessages(prev => prev.filter(m => m.id !== messageId));
-    } catch (err) {
-      console.error('Delete message error:', err);
-    }
-  };
 
   const loadMoreMessages = () => {
     if (!loadingMore && hasMore) {
@@ -407,7 +373,17 @@ const ChatRoom = ({ room, match, location, onBack }) => {
 
   if (loading || !currentRoom) {
     return (
-      <IonPage>
+      <>
+        <IonHeader>
+          <IonToolbar>
+            <IonButtons slot="start">
+              <IonButton onClick={handleBackToChatList}>
+                <IonIcon icon={chevronBack} />
+              </IonButton>
+            </IonButtons>
+            <IonTitle>Chat</IonTitle>
+          </IonToolbar>
+        </IonHeader>
         <IonContent className="ion-padding">
           <div style={{
             display: 'flex',
@@ -418,12 +394,12 @@ const ChatRoom = ({ room, match, location, onBack }) => {
             <IonSpinner name="crescent" />
           </div>
         </IonContent>
-      </IonPage>
+      </>
     );
   }
 
   return (
-    <IonPage ref={pageRef}>
+    <>
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
@@ -435,233 +411,219 @@ const ChatRoom = ({ room, match, location, onBack }) => {
         </IonToolbar>
       </IonHeader>
 
-    <IonContent
-    scrollEvents={true}
-    ref={contentRef}
-    onIonScroll={handleScroll}
-    >
-        <IonRefresher slot="fixed" onIonRefresh={doRefresh} pullFactor={0.5} pullMin={100} pullMax={200}>
-          <IonRefresherContent
-            pullingIcon={chevronDown}
-            pullingText="Zum Aktualisieren ziehen"
-            refreshingSpinner="circles"
-            refreshingText="Nachrichten werden geladen..."
-          />
-        </IonRefresher>
+      <IonContent
+      scrollEvents={true}
+      ref={contentRef}
+      onIonScroll={handleScroll}
+      >
+          <IonRefresher slot="fixed" onIonRefresh={doRefresh} pullFactor={0.5} pullMin={100} pullMax={200}>
+            <IonRefresherContent
+              pullingIcon={chevronDown}
+              pullingText="Zum Aktualisieren ziehen"
+              refreshingSpinner="circles"
+              refreshingText="Nachrichten werden geladen..."
+            />
+          </IonRefresher>
 
-        {loadingMore && (
-          <div style={{
-            textAlign: 'center',
-            color: '#9ca3af',
-            padding: '16px'
-          }}>
-            <IonSpinner name="crescent" style={{
-              margin: '0 auto 8px',
-              '--color': '#3b82f6'
-            }} />
-            <p style={{
-              fontSize: '0.875rem',
-              margin: '0'
-            }}>Lade ältere Nachrichten...</p>
-          </div>
-        )}
-
-        {!hasMore && messages.length > 50 && (
-          <div style={{
-            textAlign: 'center',
-            color: '#9ca3af',
-            padding: '16px'
-          }}>
-            <p style={{
-              fontSize: '0.875rem',
-              margin: '0'
-            }}>📜 Beginn der Unterhaltung</p>
-          </div>
-        )}
-
-
-        <div style={{ padding: '0 16px 16px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {messages.map((msg, idx) => {
-              const isOwnMessage = msg.user_id === user.id;
-              const prevMsg = messages[idx - 1];
-              const showSender = !isOwnMessage && (idx === 0 || prevMsg?.user_id !== msg.user_id);
-              
-              return (
-                <div key={msg.id}>
-                  {msg.message_type === 'poll' ? (
-                    <div style={{ width: '100%' }}>
-                      <PollComponent 
-                        message={{
-                          id: msg.id,
-                          question: msg.question || msg.content,
-                          options: (() => {
-                            if (!msg.options) return [];
-                            if (Array.isArray(msg.options)) return msg.options;
-                            try {
-                              return JSON.parse(msg.options);
-                            } catch (e) {
-                              console.error('Error parsing poll options:', e, msg.options);
-                              return [];
-                            }
-                          })(),
-                          multiple_choice: msg.multiple_choice,
-                          expires_at: msg.expires_at,
-                          sender_name: msg.sender_name,
-                          created_at: msg.created_at,
-                          votes: msg.votes || []
-                        }}
-                        user={user}
-                        api={api}
-                        isOwnMessage={isOwnMessage}
-                        showSender={showSender}
-                        formatDate={formatDate}
-                        onDelete={isAdmin ? () => handleDeleteMessage(msg.id) : null}
-                      />
-                    </div>
-                  ) : (
-                    <MessageBubble
-                      message={msg}
-                      isOwnMessage={isOwnMessage}
-                      showSender={showSender}
-                      onDelete={isAdmin ? () => handleDeleteMessage(msg.id) : null}
-                      formatDate={formatDate}
-                    />
-                  )}
-                </div>
-              );
-            })}
-
-            <div ref={messagesEndRef} />
-          </div>
-        </div>
-      </IonContent>
-
-      <IonFooter ref={footerRef}>
-        <IonToolbar style={{ '--background': '#f8f8f8', padding: '8px 8px', '--min-height': '60px' }}>
-          {attachedFileData && (
+          {loadingMore && (
             <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px',
-              backgroundColor: '#f3f4f6',
-              margin: '0 auto',
-              borderRadius: '8px',
-              maxWidth: 'calc(100% - 16px)'
+              textAlign: 'center',
+              color: '#9ca3af',
+              padding: '16px'
             }}>
-              <span style={{
+              <IonSpinner name="crescent" style={{
+                margin: '0 auto 8px',
+                '--color': '#3b82f6'
+              }} />
+              <p style={{
                 fontSize: '0.875rem',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                maxWidth: '240px'
-              }}>{attachedFileData.name}</span>
-              <IonButton
-                onClick={() => {
-                  setAttachedFileData(null);
-                  setAttachedFileObject(null);
-                }}
-                fill="clear"
-                size="small"
-                style={{
-                  '--color': '#ef4444',
-                  marginLeft: 'auto'
-                }}
-              >
-                <IonIcon icon={close} />
-              </IonButton>
+                margin: '0'
+              }}>Lade ältere Nachrichten...</p>
             </div>
           )}
 
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            padding: '4px'
-          }}>
-            <IonButton
-              onClick={presentAttachmentActionSheet}
-              fill="clear"
-              style={{
-                '--padding-start': '8px',
-                '--padding-end': '8px',
-                '--padding-top': '8px',
-                '--padding-bottom': '8px',
-              }}
-              aria-label="Anhang hinzufügen"
-            >
-              <IonIcon icon={attach} />
-            </IonButton>
+          {!hasMore && messages.length > 50 && (
+            <div style={{
+              textAlign: 'center',
+              color: '#9ca3af',
+              padding: '16px'
+            }}>
+              <p style={{
+                fontSize: '0.875rem',
+                margin: '0'
+              }}>📜 Beginn der Unterhaltung</p>
+            </div>
+          )}
 
-            <IonTextarea
-              ref={textareaRef}
-              autoGrow={true}
-              placeholder="Nachricht schreiben..."
-              value={message}
-              onIonInput={(e) => setMessage(e.detail.value)}
-              onIonFocus={() => {
-                setTimeout(() => {
-                  if (contentRef.current) {
-                    contentRef.current.scrollToBottom(300);
-                  }
-                }, 300);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
-              rows={1}
-              maxlength={1000}
-              enterkeyhint="send"
-              inputmode="text"
-              style={{
-                '--background': 'transparent',
-                '--padding-start': '8px',
-                '--padding-end': '8px',
-                '--padding-top': '8px',
-                '--padding-bottom': '8px',
-                width: '100%',
-                flex: 1,
-              }}
-              aria-label="Nachricht eingeben"
-            />
 
-            <IonButton
-              onClick={handleSendMessage}
-              disabled={!message.trim() && !attachedFileObject}
-              fill="clear"
-              style={{
-                '--padding-start': '8px',
-                '--padding-end': '8px',
-                '--padding-top': '8px',
-                '--padding-bottom': '8px',
-              }}
-              aria-label="Nachricht senden"
-            >
-              <IonIcon slot="icon-only" icon={send} />
-            </IonButton>
+          <div style={{ padding: '16px 16px 24px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {messages.map((msg, idx) => {
+                const isOwnMessage = msg.user_id === user.id;
+                const prevMsg = messages[idx - 1];
+                const showSender = !isOwnMessage && (idx === 0 || prevMsg?.user_id !== msg.user_id);
+                
+                return (
+                  <div key={msg.id}>
+                    {msg.message_type === 'poll' ? (
+                      <div style={{ width: '100%' }}>
+                        <PollComponent 
+                          message={{
+                            id: msg.id,
+                            question: msg.question || msg.content,
+                            options: (() => {
+                              if (!msg.options) return [];
+                              if (Array.isArray(msg.options)) return msg.options;
+                              try {
+                                return JSON.parse(msg.options);
+                              } catch (e) {
+                                console.error('Error parsing poll options:', e, msg.options);
+                                return [];
+                              }
+                            })(),
+                            multiple_choice: msg.multiple_choice,
+                            expires_at: msg.expires_at,
+                            sender_name: msg.sender_name,
+                            created_at: msg.created_at,
+                            votes: msg.votes || []
+                          }}
+                          user={user}
+                          api={api}
+                          isOwnMessage={isOwnMessage}
+                          showSender={showSender}
+                          formatDate={formatDate}
+                          onDelete={isAdmin ? () => onDeleteMessage && onDeleteMessage(msg.id) : null}
+                        />
+                      </div>
+                    ) : (
+                      <MessageBubble
+                        message={msg}
+                        isOwnMessage={isOwnMessage}
+                        showSender={showSender}
+                        onDelete={isAdmin ? () => onDeleteMessage && onDeleteMessage(msg.id) : null}
+                        formatDate={formatDate}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+
+              <div ref={messagesEndRef} />
+            </div>
           </div>
-        </IonToolbar>
-      </IonFooter>
-      
-      {/* Poll Modal */}
-      <IonModal 
-        isOpen={showPollModal} 
-        onDidDismiss={() => setShowPollModal(false)}
-        presentingElement={pageRef.current || undefined}
-        canDismiss={true}
-        backdropDismiss={true}
-      >
-        <CreatePollModal
-          dismiss={() => setShowPollModal(false)}
-          onSubmit={handleCreatePoll}
-        />
-      </IonModal>
-    </IonPage>
+        </IonContent>
+
+        <IonFooter ref={footerRef}>
+          <IonToolbar style={{ '--background': '#f8f8f8', padding: '8px 8px', '--min-height': '60px' }}>
+            {attachedFileData && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px',
+                backgroundColor: '#f3f4f6',
+                margin: '0 auto',
+                borderRadius: '8px',
+                maxWidth: 'calc(100% - 16px)'
+              }}>
+                <span style={{
+                  fontSize: '0.875rem',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  maxWidth: '240px'
+                }}>{attachedFileData.name}</span>
+                <IonButton
+                  onClick={() => {
+                    setAttachedFileData(null);
+                    setAttachedFileObject(null);
+                  }}
+                  fill="clear"
+                  size="small"
+                  style={{
+                    '--color': '#ef4444',
+                    marginLeft: 'auto'
+                  }}
+                >
+                  <IonIcon icon={close} />
+                </IonButton>
+              </div>
+            )}
+
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '4px'
+            }}>
+              <IonButton
+                onClick={presentAttachmentActionSheet}
+                fill="clear"
+                style={{
+                  '--padding-start': '8px',
+                  '--padding-end': '8px',
+                  '--padding-top': '8px',
+                  '--padding-bottom': '8px',
+                }}
+                aria-label="Anhang hinzufügen"
+              >
+                <IonIcon icon={attach} />
+              </IonButton>
+
+              <IonTextarea
+                ref={textareaRef}
+                autoGrow={true}
+                placeholder="Nachricht schreiben..."
+                value={message}
+                onIonInput={(e) => setMessage(e.detail.value)}
+                onIonFocus={() => {
+                  setTimeout(() => {
+                    if (contentRef.current) {
+                      contentRef.current.scrollToBottom(300);
+                    }
+                  }, 300);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                rows={1}
+                maxlength={1000}
+                enterkeyhint="send"
+                inputmode="text"
+                style={{
+                  '--background': 'transparent',
+                  '--padding-start': '8px',
+                  '--padding-end': '8px',
+                  '--padding-top': '8px',
+                  '--padding-bottom': '8px',
+                  width: '100%',
+                  flex: 1,
+                }}
+                aria-label="Nachricht eingeben"
+              />
+
+              <IonButton
+                onClick={handleSendMessage}
+                disabled={!message.trim() && !attachedFileObject}
+                fill="clear"
+                style={{
+                  '--padding-start': '8px',
+                  '--padding-end': '8px',
+                  '--padding-top': '8px',
+                  '--padding-bottom': '8px',
+                }}
+                aria-label="Nachricht senden"
+              >
+                <IonIcon slot="icon-only" icon={send} />
+              </IonButton>
+            </div>
+          </IonToolbar>
+        </IonFooter>
+    </>
   );
-};
+});
 
 export default ChatRoom;

@@ -7,7 +7,10 @@ import {
   IonContent, 
   IonModal,
   IonRefresher,
-  IonRefresherContent
+  IonRefresherContent,
+  IonCard,
+  IonCardHeader,
+  IonCardTitle
 } from '@ionic/react';
 import { useApp } from '../../../contexts/AppContext';
 import api from '../../../services/api';
@@ -66,12 +69,9 @@ const AdminBadgesPage = ({ badges, activities, onUpdate }) => {
 
   return (
     <IonPage ref={pageRef}>
-      <IonHeader collapse="condense">
-        <IonToolbar>
-          <IonTitle>Badge Verwaltung</IonTitle>
-        </IonToolbar>
-        <IonToolbar>
-          <IonTitle size="large">Badge Verwaltung</IonTitle>
+      <IonHeader style={{ '--min-height': '0px' }}>
+        <IonToolbar style={{ '--min-height': '0px', '--padding-top': '0px', '--padding-bottom': '0px' }}>
+          <IonTitle style={{ display: 'none' }}>Badges</IonTitle>
         </IonToolbar>
       </IonHeader>
       <IonContent className="app-gradient-background" fullscreen>
@@ -82,6 +82,36 @@ const AdminBadgesPage = ({ badges, activities, onUpdate }) => {
           <IonRefresherContent></IonRefresherContent>
         </IonRefresher>
         
+        {/* Header Card mit Icon und Titel */}
+        <IonCard style={{
+          margin: '16px 16px 0',
+          background: 'rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          borderRadius: '16px',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+        }}>
+          <IonCardHeader style={{ padding: '20px 24px' }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '12px' 
+            }}>
+              <ion-icon name="trophy" style={{ 
+                fontSize: '28px', 
+                color: 'white' 
+              }}></ion-icon>
+              <IonCardTitle style={{
+                fontSize: '1.5rem',
+                fontWeight: '600',
+                color: 'white'
+              }}>
+                Badges
+              </IonCardTitle>
+            </div>
+          </IonCardHeader>
+        </IonCard>
+
         <BadgesView 
           badges={parsedBadges} 
           onAddBadgeClick={() => presentBadgeModal(null)}

@@ -1,13 +1,15 @@
 // frontend/src/components/admin/MoreView.js
 import React, { useState } from 'react';
-import { ChevronRight, Clock, Calendar, User, Settings as SettingsIcon } from 'lucide-react';
+import { ChevronRight, Clock, Calendar, User, Settings as SettingsIcon, LogOut } from 'lucide-react';
 import RequestsView from './more/RequestsView';
 import JahrgaengeView from './more/JahrgaengeView';
 import AdminsView from './more/AdminsView';
 import SettingsView from './more/SettingsView';
+import { useApp } from '../../contexts/AppContext';
 
 const MoreView = ({ settings, jahrgaenge, requests, konfis, onUpdate, notifications }) => {
   const [selectedView, setSelectedView] = useState(null);
+  const { logout } = useApp();
 
   const menuItems = [
     { 
@@ -34,6 +36,13 @@ const MoreView = ({ settings, jahrgaenge, requests, konfis, onUpdate, notificati
       label: 'Einstellungen', 
       icon: SettingsIcon,
       description: 'System-Einstellungen'
+    },
+    { 
+      id: 'logout', 
+      label: 'Abmelden', 
+      icon: LogOut,
+      description: 'Aus der App abmelden',
+      isLogout: true
     }
   ];
 
@@ -69,13 +78,17 @@ const MoreView = ({ settings, jahrgaenge, requests, konfis, onUpdate, notificati
           return (
             <button
               key={item.id}
-              onClick={() => setSelectedView(item.id)}
-              className="w-full bg-white rounded-lg p-4 shadow-sm active:bg-gray-50 transition-colors"
+              onClick={() => item.isLogout ? logout() : setSelectedView(item.id)}
+              className={`w-full rounded-lg p-4 shadow-sm active:bg-gray-50 transition-colors ${
+                item.isLogout ? 'bg-red-50 border border-red-200' : 'bg-white'
+              }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <Icon className="w-5 h-5 text-gray-700" />
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    item.isLogout ? 'bg-red-100' : 'bg-gray-100'
+                  }`}>
+                    <Icon className={`w-5 h-5 ${item.isLogout ? 'text-red-600' : 'text-gray-700'}`} />
                   </div>
                   <div className="text-left">
                     <h3 className="font-medium flex items-center gap-2">

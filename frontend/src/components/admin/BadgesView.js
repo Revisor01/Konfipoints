@@ -52,20 +52,7 @@ const BadgesView = ({ badges, onAddBadgeClick, onEditBadgeClick, onDeleteBadgeCl
 
   return (
     <>
-      {/* Fixed Header (Top, large title will appear when scrolled up) */}
-      <IonHeader translucent={true}>
-        <IonToolbar>
-          <IonTitle>Badge Verwaltung</IonTitle>
-        </IonToolbar>
-      </IonHeader>
-
       <IonContent fullscreen={true}>
-        {/* Condensed Header (Collapses when scrolled) */}
-        <IonHeader collapse="condense">
-          <IonToolbar>
-            <IonTitle size="large">Badge Verwaltung</IonTitle>
-          </IonToolbar>
-        </IonHeader>
 
         {/* Inhalt (wie gehabt) */}
         <IonCard

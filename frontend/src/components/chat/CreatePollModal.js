@@ -20,19 +20,22 @@ import {
 } from '@ionic/react';
 import { add, trash } from 'ionicons/icons';
 
-const CreatePollModal = ({ dismiss, onSubmit }) => {
+const CreatePollModal = ({ dismiss, onSubmit, isOpen }) => {
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
   const [multipleChoice, setMultipleChoice] = useState(false);
   const [expiresInHours, setExpiresInHours] = useState('');
 
-  // Reset form when component mounts (modal opens)
+  // Reset form when modal opens
   useEffect(() => {
-    setQuestion('');
-    setOptions(['', '']);
-    setMultipleChoice(false);
-    setExpiresInHours('');
-  }, []);
+    if (isOpen) {
+      console.log('CreatePollModal useEffect - resetting form because modal opened');
+      setQuestion('');
+      setOptions(['', '']);
+      setMultipleChoice(false);
+      setExpiresInHours('');
+    }
+  }, [isOpen]);
 
   const handleSubmit = async () => {
     const validOptions = options.filter(opt => opt.trim());
@@ -53,6 +56,9 @@ const CreatePollModal = ({ dismiss, onSubmit }) => {
       multiple_choice: multipleChoice,
       expires_in_hours: expiresInHours ? parseInt(expiresInHours) : null
     };
+
+    console.log('CreatePollModal - submitting pollData:', pollData);
+    console.log('CreatePollModal - multipleChoice state:', multipleChoice);
 
     try {
       await onSubmit(pollData);
@@ -169,7 +175,13 @@ const CreatePollModal = ({ dismiss, onSubmit }) => {
             </IonLabel>
             <IonToggle
               checked={multipleChoice}
-              onIonToggle={(e) => setMultipleChoice(e.detail.checked)}
+              onIonToggle={(e) => {
+                console.log('Toggle onIonToggle event:', e);
+                console.log('Toggle checked value:', e.detail.checked);
+                console.log('Current multipleChoice state before:', multipleChoice);
+                setMultipleChoice(e.detail.checked);
+                console.log('Setting multipleChoice to:', e.detail.checked);
+              }}
             />
           </IonItem>
 
